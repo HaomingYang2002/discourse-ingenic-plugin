@@ -1,0 +1,40 @@
+# What each navigation entry points at is configured on the plugin side, in the
+# ingenic_nav_items site setting, because the same list also has to make sense to
+# a signed-out visitor arriving on a shared link. These settings cover the
+# layout around it.
+
+ingenic_sidebar_width:
+  default: 272
+  type: integer
+  description: "Width in pixels of the navigation sidebar on desktop. Below the large breakpoint Discourse's own narrower width is used instead, so content keeps its room on smaller screens."
+
+ingenic_sidebar_position:
+  default: "left"
+  type: enum
+  choices:
+    - left
+    - right
+  description: "Which side the navigation sidebar renders on. On narrow screens the sidebar becomes a drawer and this has no effect."
+
+ingenic_nav_order:
+  default: "first"
+  type: enum
+  choices:
+    - first
+    - last
+  description: "Whether the Ingenic navigation appears above Discourse's own sidebar sections (community, categories, tags) or after them."
+
+ingenic_nav_title:
+  default: ""
+  type: string
+  description: "Optional heading above the Ingenic navigation entries. Left empty, the entries render as a plain list with no heading."
+
+ingenic_hero_title:
+  default: ""
+  type: string
+  description: "Optional headline shown above the homepage blocks."
+
+ingenic_hero_subtitle:
+  default: ""
+  type: string
+  description: "Optional supporting text shown under the homepage headline."

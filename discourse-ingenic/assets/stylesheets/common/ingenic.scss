@@ -1,0 +1,235 @@
+// Ingenic community layout primitives.
+//
+// The theme owns colour, typography, spacing and the sidebar column; the plugin
+// only ships the structural pieces its own routes render, so that the two can
+// evolve independently.
+
+// Page tree on the documentation route. The navigation column itself belongs to
+// Discourse's sidebar, which the theme repositions rather than restyles.
+.ingenic-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ingenic-nav__item + .ingenic-nav__item {
+  margin-top: 0.25rem;
+}
+
+.ingenic-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--ingenic-radius, 8px);
+  text-decoration: none;
+  color: var(--primary);
+}
+
+.ingenic-nav__link:hover,
+.ingenic-nav__link.is-active {
+  background: var(--primary-low);
+}
+
+// Documentation browser: product and version on top, tree on the left, page
+// body on the right.
+.ingenic-docs__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--primary-low);
+}
+
+.ingenic-docs__identity {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ingenic-docs__product {
+  font-size: var(--font-up-2);
+  font-weight: 600;
+}
+
+.ingenic-docs__version {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--primary-low);
+  color: var(--primary-medium);
+  font-size: var(--font-down-1);
+}
+
+.ingenic-docs__search {
+  flex: 0 1 22rem;
+}
+
+.ingenic-docs__panes {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 2rem;
+}
+
+.ingenic-docs__notice {
+  color: var(--primary-medium);
+}
+
+.ingenic-docs__nav-title {
+  margin: 0 0 0.5rem;
+  color: var(--primary-medium);
+  font-size: var(--font-down-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ingenic-docs__step {
+  max-width: 45%;
+}
+
+.ingenic-docs__step--next {
+  margin-left: auto;
+  text-align: right;
+}
+
+.ingenic-docs__discuss {
+  margin-top: 1.5rem;
+}
+
+.ingenic-docs__tree {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  font-size: var(--font-down-1);
+}
+
+// Indent nested documentation pages. Depth comes from the page tree the
+// plugin returns, so any nesting level renders correctly.
+.ingenic-nav__link--depth-0 {
+  font-weight: 600;
+  padding-left: 0.25rem;
+}
+
+.ingenic-nav__link--depth-1 {
+  padding-left: 1.25rem;
+}
+
+.ingenic-nav__link--depth-2 {
+  padding-left: 2.25rem;
+}
+
+.ingenic-nav__link--depth-3 {
+  padding-left: 3.25rem;
+}
+
+.ingenic-docs__body {
+  min-width: 0;
+  line-height: 1.7;
+}
+
+.ingenic-docs__version-select {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.ingenic-docs__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--primary-low);
+}
+
+@media (max-width: 924px) {
+  .ingenic-docs__panes {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .ingenic-docs__tree {
+    position: static;
+    max-height: none;
+  }
+
+  .ingenic-docs__step {
+    max-width: 100%;
+  }
+}
+
+.ingenic-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.ingenic-card {
+  border: 1px solid var(--primary-low);
+  border-radius: var(--ingenic-radius, 8px);
+  padding: 1rem;
+  background: var(--secondary);
+}
+
+.ingenic-card__title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.ingenic-card__meta {
+  color: var(--primary-medium);
+  font-size: var(--font-down-1);
+}
+
+.ingenic-card__actions {
+  margin-top: 0.75rem;
+}
+
+.ingenic-card__image {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  border-radius: var(--ingenic-radius, 8px);
+}
+
+.ingenic-section {
+  margin-bottom: 2.5rem;
+}
+
+.ingenic-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ingenic-search__input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--ingenic-radius, 8px);
+  background: var(--secondary);
+}
+
+.ingenic-topic-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ingenic-topic-list__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--primary-low);
+}
+
+.ingenic-topic-list__link {
+  min-width: 0;
+}

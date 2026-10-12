@@ -1,0 +1,36 @@
+en:
+  ingenic:
+    nav:
+      title: "Navigation"
+      home: "Home"
+      docs: "Documentation"
+      downloads: "Downloads"
+      boards: "Development Boards"
+    home:
+      search_placeholder: "Search the community"
+      empty: "Nothing here yet."
+    docs:
+      version: "Version"
+      latest: "latest"
+      deprecated: "This version is no longer maintained."
+      contents: "Contents"
+      search_placeholder: "Search the community"
+      discuss: "Discuss in forum"
+      pick_page: "Choose a page from the contents to start reading."
+      not_found: "This documentation page is not available."
+    downloads:
+      title: "Downloads"
+      all_products: "All products"
+      all_types: "All types"
+      all_versions: "All versions"
+      all_platforms: "All platforms"
+      download: "Download"
+      checksum: "SHA-256"
+      size: "Size"
+      released: "Released"
+      empty: "No resources match the current filters."
+    boards:
+      title: "Development Boards"
+      apply: "Apply / Buy"
+      documentation: "Documentation"
+      empty: "No development boards are listed yet."

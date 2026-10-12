@@ -1,0 +1,80 @@
+@use "lib/viewport";
+
+// Ingenic community theme.
+//
+// The navigation is Discourse's own sidebar, so there is no second column to
+// style here: the theme settings only decide where that column sits and how
+// wide it is. Everything else is brand colour and the documentation lookup.
+
+:root {
+  // Shared corner radius for the cards and controls the plugin's pages render.
+  // The brand colour is not set here: it belongs to the theme's colour scheme,
+  // which is what the admin colour pickers edit.
+  --ingenic-radius: 10px;
+
+  // Core sizes the sidebar from this variable, and both the container grid and
+  // the header's max-width read it, so a single assignment keeps them in step.
+  --d-sidebar-width: #{$ingenic_sidebar_width}px;
+
+  // Core narrows the sidebar below this breakpoint to leave room for content.
+  // The setting describes a desktop preference, so it must not win here.
+  @include viewport.until(lg) {
+    --d-sidebar-width: #{$d-sidebar-narrow-width};
+  }
+}
+
+// The sidebar is one grid area of #main-outlet-wrapper, so moving it to the
+// other side means re-pointing the areas and putting the fixed-width column
+// second. Scoped to `md` and up: below that core takes the sidebar out of the
+// grid and shows it as a drawer, where there is no column to move.
+@include viewport.from(md) {
+  html.ingenic-sidebar-right body.has-sidebar-page #main-outlet-wrapper {
+    grid-template-areas:
+      "content sidebar"
+      "below-content sidebar";
+    grid-template-columns: minmax(0, 1fr) var(--d-sidebar-width);
+  }
+
+  html.ingenic-sidebar-right .sidebar-wrapper .sidebar-container {
+    border-right: 0;
+    border-left: 1px solid var(--d-sidebar-border-color);
+  }
+}
+
+// Where the Ingenic navigation sits among the sidebar's sections. Every section
+// core renders has order 0, so a negative order lifts ours above all of them
+// without this having to name any of them — and the panel header is lifted
+// further so the search box stays where a visitor expects it.
+html.ingenic-nav-first .sidebar-sections {
+  > .sidebar-panel-header {
+    order: -2;
+  }
+
+  > .sidebar-section-wrapper[data-section-name="ingenic"] {
+    order: -1;
+  }
+}
+
+.ingenic-homepage {
+  margin-bottom: 1.5rem;
+}
+
+.ingenic-hero {
+  padding: 1.5rem 0 0.5rem;
+}
+
+.ingenic-hero__title {
+  margin: 0 0 0.25rem;
+  font-size: var(--font-up-3);
+}
+
+.ingenic-hero__subtitle {
+  margin: 0;
+  color: var(--primary-medium);
+}
+
+@include viewport.until(md) {
+  .ingenic-hero {
+    padding-top: 0.75rem;
+  }
+}

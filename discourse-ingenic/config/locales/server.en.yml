@@ -1,0 +1,15 @@
+en:
+  site_settings:
+    ingenic_enabled: "Enable the Ingenic community extension (documentation versioning, downloads, development boards)."
+    ingenic_nav_items: "Left navigation items as a JSON array. Controls label, icon, target, order and visibility."
+    ingenic_homepage_blocks: "Homepage blocks as a JSON array. Controls which blocks render and in what order."
+    ingenic_default_locale: "Locale used when documentation has no entry in the reader's language. Only languages this site can serve are offered; content rows must use the same code (zh_CN, not zh-CN)."
+    ingenic_docs_discussion_category: "Category slug used for the 'Discuss in forum' link when a documentation page has no linked topic."
+
+  ingenic:
+    errors:
+      product_not_found: "Documentation product not found."
+      version_not_found: "Documentation version not found."
+      page_not_found: "Documentation page not found."
+      invalid_nav_items: "ingenic_nav_items is not valid JSON: %{message}"
+      invalid_homepage_blocks: "ingenic_homepage_blocks is not valid JSON: %{message}"

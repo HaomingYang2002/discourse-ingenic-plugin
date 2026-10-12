@@ -1,0 +1,60 @@
+plugins:
+  ingenic_enabled:
+    default: true
+    client: true
+
+  # JSON array. Each entry describes one left navigation item so that admins can
+  # reorder, hide or relabel the sidebar without a code change.
+  #
+  # [
+  #   { "key": "home",        "label": "Home",                 "icon": "house",       "href": "/",                    "position": 0,  "enabled": true },
+  #   { "key": "announce",    "label": "Official Announcements", "icon": "bullhorn", "category": "official-announcements", "position": 1, "enabled": true },
+  #   { "key": "discussions", "label": "Technical Discussions",  "icon": "comments", "category": "technical-discussions",  "position": 2, "enabled": true },
+  #   { "key": "docs",        "label": "Documentation",          "icon": "book",     "href": "/ingenic/docs",        "position": 3,  "enabled": true },
+  #   { "key": "downloads",   "label": "Downloads",              "icon": "download", "href": "/ingenic/downloads",   "position": 4,  "enabled": true },
+  #   { "key": "boards",      "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5,  "enabled": true },
+  #   { "key": "github",      "label": "GitHub",                 "icon": "code-branch", "href": "https://github.com/ingenic-official", "external": true, "position": 6, "enabled": true }
+  # ]
+  #
+  # A "category" entry resolves to /c/<slug>, so navigation can point at a forum
+  # section instead of a URL. Give each chip its own category and point that
+  # chip's "docs" entry at its own /ingenic/docs/<product> prefix.
+  ingenic_nav_items:
+    default: ""
+    type: string
+    multiline: true
+
+  # JSON array controlling which blocks appear on the custom homepage and in
+  # what order. Supported types: search, announcements, discussions, downloads,
+  # boards, docs, html.
+  #
+  # [
+  #   { "type": "search",        "enabled": true,  "position": 0 },
+  #   { "type": "announcements", "enabled": true,  "position": 1, "limit": 5, "category": "official-announcements" },
+  #   { "type": "discussions",   "enabled": true,  "position": 2, "limit": 10, "category": "technical-discussions" },
+  #   { "type": "downloads",     "enabled": true,  "position": 3, "limit": 6 },
+  #   { "type": "boards",        "enabled": true,  "position": 4, "limit": 4 },
+  #   { "type": "docs",          "enabled": true,  "position": 5 }
+  # ]
+  ingenic_homepage_blocks:
+    default: ""
+    type: string
+    multiline: true
+
+  # Language that documentation falls back to when a page has not been
+  # translated in the reader's language. The choices are the locales this
+  # Discourse can actually serve, so enabling a language in Discourse makes it
+  # selectable here without touching this file — and it cannot drift into
+  # offering a language no visitor can ask for.
+  #
+  # Codes are Discourse's own (zh_CN, pt_BR): content rows must use the same
+  # spelling, because that is what I18n.locale compares against.
+  ingenic_default_locale:
+    default: "en"
+    client: true
+    enum: "LocaleSiteSetting"
+
+  # Where the "Discuss in forum" link on a documentation page points when a page
+  # has no linked topic yet.
+  ingenic_docs_discussion_category:
+    default: ""
