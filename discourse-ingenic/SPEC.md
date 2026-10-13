@@ -128,6 +128,49 @@ Metadata is recorded per record: kind, version, platform, architecture, size,
 SHA-256 and release date. Kinds: `sdk`, `firmware`, `manual`, `datasheet`,
 `toolchain`, `example`, `release_notes`, `other`.
 
+A resource may also carry `point_cost`, 0 by default. The price is asked after
+the access level rather than instead of it, so a `login_form_request` resource
+that costs points still sends a new visitor through sign-in, developer details
+and approval first. Charging happens in the branch of the file endpoint that
+releases the file, never in the one that reports a resource unavailable, so a
+download missing from storage costs nothing.
+
+### Points
+
+Three tables. `ingenic_point_rules` is the price list — what each action is
+worth, its label, its order and whether it is still paid. `ingenic_point_entries`
+is the ledger: one append-only row per movement, never edited.
+`ingenic_point_balances` is a running total per account, derived from the entries
+and rebuildable from them.
+
+Four events, seeded by the migration at 5 / 2 / 1 / 15: `topic_created`,
+`post_created`, `like_received`, `solution_accepted`. Each is an event Discourse
+core (or `discourse-solved`, for the last) actually fires. Retiring an action is
+`published: false` rather than a delete, because the ledger keeps referring to
+it; `IngenicPointRule.amount_for` reads a retired rule as 0, which is what makes
+that safe.
+
+`Ingenic::Points` is the only door into the ledger — `award`, `reverse`,
+`reverse_subject`, `spend`, `adjust`, `total_for`, `unlocked_download_ids`,
+`rebuild!`. Every movement writes the entry and moves the balance in the same
+transaction, so the two cannot come apart.
+
+Reversal is a second, opposite entry rather than an edit, so the ledger says
+what happened. `spend` answers `:spent`, `:already` or `:insufficient` rather
+than raising, because the caller is a download and "you have not got enough" is
+a state to show. An award is once per subject, enforced by a unique index rather
+than by a check — including manual adjustments, which have no subject, so
+Postgres's treatment of NULLs as distinct is what lets an administrator adjust
+the same account twice.
+
+The hooks that subscribe to posting events rescue everything and report to the
+log: a point is not worth failing the post that earned it.
+
+A member sees their own balance, the price list and their own history at
+`/ingenic/points`, read-only from the front end. The admin screen at
+**Ingenic → Points** is administrator-only for reading as well as writing,
+because the ledger names accounts and an adjustment moves a member's standing.
+
 ### Development boards
 
 A board is filed against a **chip in the product tree** and reads its name from
@@ -240,6 +283,12 @@ are what still has to be run on a real instance.
 - [ ] `/ingenic/downloads/:id/file` streams the file and never exposes its path
 - [ ] `/ingenic/boards` returns only published boards, and filters by series and chip
 - [ ] a board reads its chip name from the tree and survives that chip's deletion
+- [ ] a post moves its author's balance, and deleting it leaves both the award and
+      the reversal in the ledger
+- [ ] a priced resource refuses the file when the balance is short, and charges once
+- [ ] a priced resource is never charged when the file turns out to be missing
+- [ ] `/ingenic/points` shows the reader their own history and nobody else's
+- [ ] `Ingenic::Points.rebuild!` corrects a balance that has been edited by hand
 - [ ] malformed `ingenic_nav_items` / `ingenic_homepage_blocks` /
       `ingenic_developer_form_fields` degrade to an empty list instead of raising
 - [ ] `bundle exec rspec plugins/discourse-ingenic/spec` passes
@@ -262,6 +311,10 @@ are what still has to be run on a real instance.
 - [ ] opening `/ingenic/docs` lands on the first series with the canonical URL
 - [ ] download centre filters combine correctly
 - [ ] each access tier shows the right prompt and the right button
+- [ ] a priced resource shows **Unlock for N points** when affordable and
+      **Needs N points** when not, and the button never links where the endpoint refuses
+- [ ] `/ingenic/points` renders the balance, the price list and the reader's history
+- [ ] a points URL can be pasted into a fresh tab and opens directly
 - [ ] board cards lay out on the grid, with the photo framed rather than oversized
 - [ ] the board filters narrow the catalogue and can be cleared
 - [ ] a board application button opens the external link in a new tab
@@ -275,7 +328,9 @@ are what still has to be run on a real instance.
 - [ ] the queue approves and rejects an application
 - [ ] the grant list revokes a grant
 - [ ] the board screen creates, edits and withdraws a board, and files it against a chip
-- [ ] a manager granted only `T33` cannot write to `T Series` or to `T32`
+- [ ] the points screen reprices a rule, adjusts an account and rebuilds the balances
+- [ ] a manager granted only `T33` cannot write to `T Series` or to `T32`, and
+      cannot reach the points screen at all
 
 ### Integration
 

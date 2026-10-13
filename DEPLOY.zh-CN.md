@@ -56,7 +56,7 @@ cd /var/discourse
 ./launcher rebuild app
 ```
 
-重建时会执行插件迁移并创建 15 张 `ingenic_*` 数据表。通常需要几分钟，
+重建时会执行插件迁移并创建 18 张 `ingenic_*` 数据表。通常需要几分钟，
 重建期间论坛会暂时无法访问。`discourse_docker` 的普通 rebuild 不提供零停机。
 
 进入容器确认插件已加载：
@@ -107,6 +107,8 @@ discourse-ingenic-theme.zip
 | `ingenic_download_admin_email` | 接收下载申请通知的邮箱 |
 | `ingenic_developer_form_fields` | JSON 配置；留空则使用内置的开发者信息表单 |
 | `ingenic_official_groups` | 需要显示官方认证图标的群组名称，例如 `admins` |
+| `ingenic_points_enabled` | 开启；如果还没准备好上线可以关闭 |
+| `ingenic_points_exclude_staff` | 开启 |
 
 `ingenic_download_storage_path` 决定上传的 SDK 和固件存放在哪里。这个目录必须
 放在 `public/` 之外：如果文件能被 Web 服务器直接访问，任何猜到地址的人都能下载，
@@ -142,9 +144,27 @@ discourse-ingenic-theme.zip
 优先。图标还没准备好时也可以先填写这个设置——已列出但尚未配置 flair 的群组不会
 授予任何图标，等到图片上传后图标会自动出现。
 
+`ingenic_points_enabled` 是整个积分系统的总开关。关闭后，论坛不再发放积分，
+标了价的资源对所有已获准的账号都免费。它不会清空流水账：已有的流水和余额原样保留，
+重新打开后从当前状态继续累计。关闭期间，管理员手工调整积分仍然可用——那是"有人
+有意为之"，与"论坛自动决定"是两件事。
+
+`ingenic_points_exclude_staff` 决定管理员和版主是否参与积分。默认开启（即不参与），
+理由是：在这里回答问题属于站务人员的本职工作，而不是他们的社区贡献；而且一个社区
+里没人能登顶的排行榜意义不大。试用这个功能时需要注意：用版主账号发帖测试会
+"什么都看不到"。这个设置不阻止站务人员"给出"积分——版主点的赞，对被点赞的作者
+仍然照常计分。
+
+两个设置都可以随时修改。把 `ingenic_points_exclude_staff` 关掉不会追溯补发站务
+人员之前发过的帖子，只对之后的帖子生效。
+
 `ingenic_nav_items` 和 `ingenic_homepage_blocks` 都是 JSON 配置，可选填。
-如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航：主页、在线文档、
-下载中心、开发板。
+如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航：在线文档、下载中心、
+开发板、积分。
+
+**一旦配置了 `ingenic_nav_items`，它会整体替换主题自带的列表**，而不是与之合并。
+因此在积分功能上线之前就已经配置过导航的站点，不会有"积分"入口，也不会自动多出
+一个：需要自己在 JSON 里补上，或者清空这个设置、以上面的列表为起点重新配置。
 
 一个可直接修改的 `ingenic_nav_items` 示例：
 
@@ -155,7 +175,8 @@ discourse-ingenic-theme.zip
   { "key": "discuss",   "label": "Technical Discussions",  "icon": "comments",  "category": "technical-discussions",  "position": 2, "enabled": true },
   { "key": "docs",      "label": "Documentation",          "icon": "book",      "href": "/ingenic/docs",        "position": 3, "enabled": true },
   { "key": "downloads", "label": "Downloads",              "icon": "download",  "href": "/ingenic/downloads",   "position": 4, "enabled": true },
-  { "key": "boards",    "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5, "enabled": true }
+  { "key": "boards",    "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5, "enabled": true },
+  { "key": "points",    "label": "Points",                 "icon": "star",      "href": "/ingenic/points",     "position": 6, "enabled": true }
 ]
 ```
 
@@ -195,7 +216,7 @@ discourse-ingenic-theme.zip
 
 ## 4. 录入内容
 
-在线文档、下载资源、开发板、范围权限和站点首页内容都可以直接在 Discourse 管理后台维护，不必每次进入 Rails 控制台。进入 **管理后台 → 插件 → Ingenic**，这里有五个标签页。管理员可以看到全部五个标签页；版主，以及只被授予某个产品或某块开发板范围权限的账号，只会看到该权限覆盖的两个页面（Documentation 和 Development boards），其余三个页面在服务端就限定为管理员，不给入口好过给一个点进去会被拒绝的链接。另外，Discourse 自己的“插件”页面仅限站务人员访问，因此打开这些页面的实际操作者是管理员或版主。
+在线文档、下载资源、开发板、积分、范围权限和站点首页内容都可以直接在 Discourse 管理后台维护，不必每次进入 Rails 控制台。进入 **管理后台 → 插件 → Ingenic**，这里有六个标签页。管理员可以看到全部六个标签页；版主，以及只被授予某个产品或某块开发板范围权限的账号，只会看到该权限覆盖的两个页面（Documentation 和 Development boards），其余四个页面在服务端就限定为管理员，不给入口好过给一个点进去会被拒绝的链接。另外，Discourse 自己的“插件”页面仅限站务人员访问，因此打开这些页面的实际操作者是管理员或版主。
 
 **Documentation（在线文档）**：管理产品树（系列 → 型号）、每个产品的版本，以及某个版本下的页面树。在某个版本中编辑过的页面，可以在之后的版本中选择覆盖；没有覆盖的页面会从上一个版本继承，因此新建版本相当于自动沿用上一版的内容，不需要手工复制。编辑器会标明当前页面来自哪个版本，并提供 **Override in this version**（在本版本中覆盖）和 **Restore inheritance**（恢复继承）。
 
@@ -206,6 +227,10 @@ discourse-ingenic-theme.zip
 **Boards（开发板）**：维护开发板卡片，包括图片、芯片、简介、规格、文档链接和 **Buy now（立即购买）** 链接。
 
 **Permissions（权限）**：文档的范围权限。授予 T 系列后，该用户可以管理 T 系列下的版本和页面；只授予 T33 时，不能管理 T32 或 T 系列父级。授权对象可以是用户或群组。服务端会对所有新增、修改、删除请求再次校验，前端隐藏按钮不是权限边界。
+
+**Points（积分）**：成员通过贡献获得的积分，以及下载资源可以标价消耗的积分。同一个页面分四块。*What earns points* 是价目表：每个动作值多少分、在成员记录里显示成什么名称、显示顺序，以及论坛是否还发放它。*Adjust one account* 手工调整某个账号的积分，按用户名挑选，填写的备注会成为流水记录上的原因。*Repair the balances* 依据流水重新计算所有余额，用于两者对不上的情况——流水是记录，余额只是它的缓存。*Recent movements* 是最近一百条流水，上方的 *Balances* 列出当前谁持有多少积分。
+
+这个页面**连查看也是仅限管理员**的，不只是修改：流水账里会出现账号名，而一次调整会改变某个成员在站内的状态。产品或开发板的范围权限到不了这里——积分余额不属于任何产品或开发板。
 
 **Site（站点）**：站点中属于"内容"而不是"论坛"的三部分，分三个标签页。*Promotions* 是首页的活动推广位，每项包含图片、标题和跳转地址。*Partner platforms* 是页脚的第三方平台区，每一项可以是跳转链接，也可以是二维码图片——网页类平台用链接，App 类平台用二维码让访客扫码。*Footer columns* 是页脚链接列，列数不限，每列有自己的标题和按顺序排列的链接。
 
@@ -221,7 +246,21 @@ discourse-ingenic-theme.zip
 
 开发者信息只需要填写一次，之后所有受限资源共用，不是每个文件填一次。审核通过后授权长期有效（授权记录没有到期时间），所以"谁下载过"以日志为准，而不是以授权记录为准。访客没有被放行的资源不会在页面上出现任何直链，列表只给出插件接口地址，由接口决定是否放行。
 
-插件目录中的 `docs/seeding.md` 仍包含三类内容的完整录入示例，适合首次导入和批量初始化。
+### 资源标价
+
+在访问级别之上，资源还可以带一个**积分价格**，在 **Ingenic → Downloads → Resources** 的同一个表单里设置。默认值 0，表示免费。
+
+价格是在访问级别**之后**才询问的，而不是替代它：一个标价 500 分、级别为 `login_form_request` 的资源，对于新访客仍然是先登录、先填开发者信息、先通过审核，然后才会提到积分。没有被放行的账号，出多少分都买不到。
+
+购买记录是一条流水，而不是在别处新增一个字段，这正是它具备幂等性的原因：买过之后，无论下载多少次都不会重复扣分；即使之后余额被花到 0，这次购买依然算数。积分足够时列表显示 **Unlock for N points**，不够时显示 **Needs N points**，所以按钮不会给出接口会拒绝的承诺。
+
+扣分只发生在文件接口中**真正把文件发出去**的那个分支，绝不会发生在"报告资源不可用"的分支——所以一个从存储里找不到的文件不会扣任何积分。
+
+积分通过贡献获得：发起讨论、回帖、帖子被点赞、回答被采纳。这四个动作也各自有对应的事件，在帖子被删除、点赞被取消、采纳被撤销时把积分收回来。成员在 **`/ingenic/points`** 可以看到自己的余额、价目表和自己的变动记录；这个页面在前端是只读的——积分靠贡献获得、靠下载消耗，这两件事都不通过这个地址发生。未登录的访客也能看到价目表，所以这个页面对他们是一个回答，而不是一扇锁着的门。
+
+积分是插件功能，页面入口由主题提供。主题自带一个"积分"入口；如果站点已经配置了自己的 `ingenic_nav_items`，需要自己补上这一项。
+
+插件目录中的 `docs/seeding.md` 包含四类内容（文档、下载、开发板、积分）的完整录入示例，适合首次导入和批量初始化。中文版见 `docs/seeding.zh-CN.md`，两份内容一致，交给实际执行录入的人用中文那份即可。
 
 进入 Rails 控制台：
 
@@ -231,7 +270,7 @@ cd /var/discourse
 rails c
 ```
 
-然后按照 `docs/seeding.md` 创建产品、版本和文档页面。
+然后按照 `docs/seeding.md`（或中文版 `docs/seeding.zh-CN.md`）创建产品、版本和文档页面。
 
 在至少创建一个已发布产品前，访问 `/ingenic/docs` 显示“文档不可用”是正常的，
 不是部署错误。
@@ -263,6 +302,13 @@ rails c
 - [ ] `/ingenic/downloads` 可以按系列、型号、分类、版本、平台筛选
 - [ ] `public_login` 资源登录后即可下载；`login_form_request` 资源会先要求提交申请
 - [ ] 在后台批准申请后，该账号可以下载，且 **Ingenic → Downloads → Download record** 中能看到该账号
+- [ ] 普通成员发帖后余额发生变化，**Ingenic → Points → Recent movements** 中能看到这条流水
+- [ ] 删除该帖后积分被收回，且原来那条奖励记录仍然留在流水账中，与收回记录并列可见
+- [ ] 给某个资源设置了积分价格后，余额足够的账号看到 **Unlock for N points**，不足的看到 **Needs N points**
+- [ ] 购买时扣一次分；同一个资源第二次下载不再扣分
+- [ ] `/ingenic/points` 向已登录成员显示自己的余额、价目表和自己的变动记录，且看不到别人的
+- [ ] 管理员手工调整某个账号后余额随之变化，填写的备注成为该条流水的原因
+- [ ] 关闭 `ingenic_points_enabled` 后，标价资源免费下载且不再发放积分；重新打开后余额仍在
 - [ ] `/ingenic/boards` 显示开发板，配置了购买链接的卡片会显示 **Buy now** 按钮
 - [ ] Ingenic 导航出现在 Discourse 侧边栏中，移动端抽屉中也能看到
 - [ ] 把文档地址复制到新浏览器标签页，可以直接打开

@@ -5,7 +5,7 @@ First version of the Ingenic English Discourse forum implementation.
 This repository contains two independent Discourse installable pieces:
 
 - `discourse-ingenic/` — plugin: documentation products, versions, pages,
-  downloads, development boards and JSON endpoints.
+  downloads, development boards, a points ledger and JSON endpoints.
 - `discourse-ingenic-theme/` — theme: Ingenic layout, native Discourse sidebar
   navigation, homepage blocks and documentation UI.
 
@@ -23,14 +23,18 @@ admin UI as a theme zip.
 
 ## Content
 
-Documentation and development-board records live in the plugin's own tables.
-Normal editing is available from **Admin → Plugins → Ingenic**; the Rails console
-workflow in [`discourse-ingenic/docs/seeding.md`](discourse-ingenic/docs/seeding.md)
-remains useful for initial imports and bulk setup.
+Documentation, download, development-board and points records live in the
+plugin's own tables. Normal editing is available from **Admin → Plugins →
+Ingenic**; the Rails console workflow in
+[`discourse-ingenic/docs/seeding.md`](discourse-ingenic/docs/seeding.md) — or its
+Chinese counterpart
+[`seeding.zh-CN.md`](discourse-ingenic/docs/seeding.zh-CN.md) — remains useful
+for initial imports and bulk setup.
 
-The management UI supports product/version/page records, development boards, and
-user/group-scoped permissions. Server-side authorization applies the assigned
-product or page scope to every write operation.
+The management UI supports product/version/page records, development boards,
+download resources with their application queue and grants, points rules and
+adjustments, and user/group-scoped permissions. Server-side authorization applies
+the assigned product or page scope to every write operation.
 
 ## Scope
 

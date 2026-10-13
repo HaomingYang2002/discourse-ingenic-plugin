@@ -21,9 +21,13 @@ built from Discourse's public theme APIs so it keeps working across upgrades.
   its chips), a version selector, full-text search, a collapsible contents tree,
   the rendered Markdown body and previous/next navigation
 - a download centre with product / type / version / platform filters, showing
-  the right prompt and button for each of the three access tiers
+  the right prompt and button for each of the three access tiers — and, for a
+  resource that is priced, **Unlock for N points** when the reader can afford it
+  and **Needs N points** when they cannot
 - a development board catalogue with series and chip filters and outbound
   application links
+- a points page at `/ingenic/points`, showing the reader their balance, what the
+  forum pays for and their own history — read-only, and nobody else's rows
 - English strings today, structured so more locales can be added later
 
 ## Installation
@@ -89,6 +93,11 @@ Navigation item shape:
 
 Use `"category": "technical-discussions"` instead of `href` to point at a
 Discourse category; it resolves to the category route automatically.
+
+Left empty, the theme ships its own list: Documentation, Downloads, Development
+Boards and Points. A configured list **replaces** that one wholesale rather than
+merging with it, so a site that configured its navigation before Points existed
+has no Points entry and will not grow one — add it, or clear the setting.
 
 A link stays highlighted for the whole subtree it points at, so
 `/ingenic/docs/t32pro/2.1.0/overview` still shows Documentation as active.

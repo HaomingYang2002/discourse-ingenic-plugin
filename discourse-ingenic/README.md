@@ -15,6 +15,8 @@ and adds a developer area below them:
 - **Development board catalogue**, with each board filed against a chip in the
   product tree and an action button that links out to the Ingenic
   application/purchase page.
+- **Points**, earned by contributing and spendable on a download, kept in an
+  append-only ledger with editable rules and a member-facing page of their own.
 - **Scoped management**: a manager can be granted one product family and edit
   only that, enforced on the server for every write.
 - Read-only JSON endpoints under `/ingenic` that the companion theme renders,
@@ -37,6 +39,36 @@ An application emails the team address in `ingenic_download_admin_email` and
 appears in the admin queue, where it is approved or rejected. Approving creates
 a grant, which can be revoked — per resource and per account, so an approval for
 one SDK does not open the rest.
+
+A resource can also carry a `point_cost`, asked *after* the level rather than
+instead of it: a `login_form_request` resource that costs 500 points still sends
+a new visitor through sign-in, developer details and approval before it mentions
+points. The purchase is a ledger entry, so it is charged once however many times
+the file is downloaded.
+
+## Points
+
+Members earn points for opening a discussion, replying, being liked and having an
+answer accepted; each of those has a matching event that takes the points back
+when the post is deleted, the like removed or the answer unmarked.
+
+`IngenicPointRule` is the price list — a table, not constants, so the amounts, the
+wording and the order are the team's and change without a deploy. Retiring an
+action is unpublishing its rule rather than deleting it, because the ledger keeps
+referring to it.
+
+`Ingenic::Points` is the only door into the ledger: `award`, `reverse`,
+`reverse_subject`, `spend`, `adjust`, `total_for`, `unlocked_download_ids` and
+`rebuild!`. Every movement writes one row in `ingenic_point_entries` and moves
+`ingenic_point_balances` by the same amount in the same transaction, so a balance
+can always be argued from the rows behind it — and recomputed from them.
+
+An entry is never edited. Taking an award back writes a second, opposite row, so
+the ledger says what happened rather than only what the current state is.
+
+Nothing here is allowed to fail a forum action: the handlers that hook into
+posting rescue everything and report to the log, because losing a point is a
+smaller harm than losing the post that earned it.
 
 ## Requirements
 
@@ -69,7 +101,12 @@ tables are created.
 ## Management
 
 Administrators can open **Admin → Plugins → Ingenic** to manage documentation,
-development boards, downloads, the application queue, grants and permissions.
+development boards, downloads, the application queue, grants, points and
+permissions. Everything but documentation and boards is administrator-only,
+reading included: the download queue decides who may have a file, the points
+screen names accounts and moves their standing, and permissions decides who else
+may edit content — none of which is filed under a product or a board, so there is
+no scope an administrator could grant over it even if they wanted to.
 
 The documentation screen edits the contents tree, decides which node an article
 belongs to, and edits articles under any version. A version that has not edited
@@ -103,6 +140,7 @@ Public, read-only except where noted:
 | POST | `/ingenic/downloads/profile` | Stores the developer information form (signed in) |
 | POST | `/ingenic/downloads/:id/request` | Applies for an access-restricted resource (signed in) |
 | GET | `/ingenic/boards` | Published development boards; accepts `series` and `chip` |
+| GET | `/ingenic/points` | The reader's own balance, the price list and their own history |
 
 The two POSTs need a signed-in account; everything else is readable signed out.
 Each GET answers two ways — JSON when the frontend asks for it with
@@ -128,6 +166,8 @@ the glob rather than a path inside it, so a chip called `search` stays usable.
 | `ingenic_download_storage_path` | Where uploaded SDKs and firmware are written. Must be outside `public/` |
 | `ingenic_download_admin_email` | Address that receives an application for a restricted download |
 | `ingenic_developer_form_fields` | JSON array describing the developer information form |
+| `ingenic_points_enabled` | Master switch for the points system; off leaves the ledger intact |
+| `ingenic_points_exclude_staff` | Whether administrators and moderators earn points |
 
 The three JSON settings accept the shapes documented inline in
 `config/settings.yml`. The locale setting offers only the languages this
@@ -141,12 +181,15 @@ ingenic_doc_products      series and chips, per locale, one tree with two levels
 ingenic_doc_versions      versions of a chip, one flagged `latest`
 ingenic_doc_pages         the pages a version actually changed, with parent_id
                           forming the contents tree
-ingenic_downloads         downloadable resources and their access level
+ingenic_downloads         downloadable resources, their access level and point_cost
 ingenic_developer_profiles  the developer information form, one per account
 ingenic_download_requests   applications, with their review state
 ingenic_download_grants     approvals, per account and per resource
 ingenic_boards            development boards, filed against a chip
 ingenic_permissions       scoped grants to a user or group
+ingenic_point_rules       what each action is worth, and what to call it
+ingenic_point_entries     the ledger: one append-only row per movement
+ingenic_point_balances    a running total per account, derived from the entries
 ```
 
 `ingenic_doc_pages` holds one row per page **per version it changed in**, not
@@ -168,7 +211,8 @@ Documentation pages are authored as Markdown in `ingenic_doc_pages.body` and are
 rendered through `PrettyText.cook`, so they support the same formatting as
 forum posts.
 
-See `docs/seeding.md` for a worked example.
+See `docs/seeding.md` for a worked example, or `docs/seeding.zh-CN.md` for the
+same document in Chinese.
 
 ## Development
 

@@ -48,7 +48,7 @@ cd /var/discourse
 ./launcher rebuild app
 ```
 
-The rebuild runs the plugin's migrations and creates its fifteen tables. It
+The rebuild runs the plugin's migrations and creates its eighteen tables. It
 takes a few minutes, and the forum is offline while it runs — there is no
 zero-downtime rebuild in `discourse_docker`.
 
@@ -93,6 +93,8 @@ The theme is not a component and does not need one.
 | `ingenic_download_admin_email` | the address that should receive download applications |
 | `ingenic_developer_form_fields` | JSON; empty uses the built-in developer form |
 | `ingenic_official_groups` | the groups whose members should wear the official badge, e.g. `admins` |
+| `ingenic_points_enabled` | on, unless you are not ready for it yet |
+| `ingenic_points_exclude_staff` | on |
 
 `ingenic_download_storage_path` holds the uploaded SDKs and firmware. It has to
 be outside `public/`: a file the web server will serve to anyone who guesses
@@ -137,9 +139,34 @@ member belongs to is the one that wins. The setting is safe to fill in before
 the artwork exists — a listed group with no flair configured grants nothing,
 and the badges appear once it is uploaded.
 
+`ingenic_points_enabled` is the whole points system's switch. Off, the forum
+stops handing points out and a resource that carries a price is free to
+whoever is cleared for it. It does not clear the ledger: the entries and the
+balances are left where they were, and switching it back on resumes from
+there. An administrator adjusting an account by hand still works while it is
+off, because that is somebody deciding on purpose rather than the forum
+deciding for them.
+
+`ingenic_points_exclude_staff` keeps administrators and moderators off the
+ledger. It is on by default, on the grounds that answering here is a member of
+staff's job rather than their contribution, and a leaderboard nobody in the
+community can reach the top of is not much of a leaderboard. Worth knowing
+while trying the feature out: a moderator posting to test it will see nothing
+happen. It does not stop staff *giving* points — a like from a moderator still
+counts for the member who wrote the post.
+
+Both settings can be changed at any time. Turning `ingenic_points_exclude_staff`
+off does not back-pay the posts staff have already written; it applies from the
+next one.
+
 `ingenic_nav_items` and `ingenic_homepage_blocks` are JSON. Both are optional —
 with `ingenic_nav_items` left empty the theme falls back to its shipped
-navigation (Home, Documentation, Downloads, Development Boards).
+navigation (Documentation, Downloads, Development Boards, Points).
+
+**A configured `ingenic_nav_items` replaces the shipped list wholesale**, it does
+not merge with it. So a site that configured its navigation before Points
+existed has no Points entry and will not grow one: add it to the JSON, or clear
+the setting and start from the list below.
 
 A starting `ingenic_nav_items`:
 
@@ -150,7 +177,8 @@ A starting `ingenic_nav_items`:
   { "key": "discuss",   "label": "Technical Discussions",  "icon": "comments", "category": "technical-discussions",  "position": 2, "enabled": true },
   { "key": "docs",      "label": "Documentation",        "icon": "book",      "href": "/ingenic/docs",   "position": 3, "enabled": true },
   { "key": "downloads", "label": "Downloads",            "icon": "download",  "href": "/ingenic/downloads", "position": 4, "enabled": true },
-  { "key": "boards",    "label": "Development Boards",   "icon": "microchip", "href": "/ingenic/boards", "position": 5, "enabled": true }
+  { "key": "boards",    "label": "Development Boards",   "icon": "microchip", "href": "/ingenic/boards", "position": 5, "enabled": true },
+  { "key": "points",    "label": "Points",               "icon": "star",      "href": "/ingenic/points", "position": 6, "enabled": true }
 ]
 ```
 
@@ -191,14 +219,14 @@ silently never appears.
 
 ## 4. Content
 
-Documentation, downloads, boards, scoped permissions and the site's own front
-page are all managed from **Admin → Plugins → Ingenic**, which has five tabs. An
-administrator is offered all five. A moderator, or anyone granted a scoped
-permission over a product or a board, is offered only the two screens that grant
-covers — Documentation and Development boards — because the other three are
-decided on the server as an administrator's, and a link to a page that refuses
-you is worse than no link. Discourse's own Plugins page is staff-only, so it is
-an administrator or a moderator who reaches these screens at all.
+Documentation, downloads, boards, points, scoped permissions and the site's own
+front page are all managed from **Admin → Plugins → Ingenic**, which has six
+tabs. An administrator is offered all six. A moderator, or anyone granted a
+scoped permission over a product or a board, is offered only the two screens
+that grant covers — Documentation and Development boards — because the other
+four are decided on the server as an administrator's, and a link to a page that
+refuses you is worse than no link. Discourse's own Plugins page is staff-only,
+so it is an administrator or a moderator who reaches these screens at all.
 
 **Documentation** — the product tree (series → chips), the versions of each
 product, and the page tree of a version. A page edited under one version can be
@@ -222,6 +250,20 @@ specifications, the documentation link and the **Buy now** link.
 inherited by its versions and pages; a page grant is limited to that page and
 its child pages. Assignments can target a user or group, and the server enforces
 every write operation.
+
+**Points** — what members earn for contributing, and what a resource can cost to
+unlock. One screen, four parts. *What earns points* is the price list: what each
+action is worth, what to call it on a member's history, the order they are shown
+in, and whether the forum still pays it at all. *Adjust one account* moves a
+balance by hand, picked by username, with a note that becomes the reason on the
+ledger row. *Repair the balances* re-derives every running total from the
+entries, for when the two have drifted — the entries are the record, the balances
+are only a cache of them. *Recent movements* is the last hundred rows, with
+*Balances* above it naming who is holding what.
+
+Reading this screen is administrator-only, not just writing it: the ledger names
+accounts, and an adjustment moves a member's standing. A product or board scoped
+permission does not reach it — there is no product a points balance belongs to.
 
 **Site** — the three parts of the site that are content rather than forum, in
 three tabs. *Promotions* are the homepage activity slots, each with a picture, a
@@ -249,9 +291,45 @@ date, so the log, not the grant, is what says a file was collected. Nothing
 hands a URL to a resource the visitor has not been cleared for; the listing
 shows the endpoint and the endpoint decides.
 
-Use `docs/seeding.md` for console examples and migration/bootstrap workflows.
-The console remains useful for bulk imports, but normal editing should use the
-management pages.
+### What a resource costs
+
+Above the level, a resource can also carry a **point cost**, set on the same
+form in **Ingenic → Downloads → Resources**. Zero is the default and means free.
+
+The price is asked *after* the level, never instead of it: a `login_form_request`
+resource that costs 500 points still asks a new visitor to sign in, fill in
+their details and be approved before it mentions points. Nothing is for sale to
+an account that has not been cleared for it.
+
+A purchase is recorded as a ledger entry, not as a new column somewhere, which
+is what makes it idempotent: once bought, the resource is never charged for
+again, however many times it is downloaded, and the purchase survives the
+visitor's balance being spent down to nothing in the meantime. The listing draws
+**Unlock for N points** when the balance suffices and **Needs N points** when it
+does not, so the button never offers what the endpoint will refuse.
+
+Charging happens in the branch of the file endpoint that actually releases the
+file, never in the one that reports a resource unavailable — so a download that
+turns out to be missing from storage costs nothing.
+
+Points are earned by contributing: opening a discussion, replying, having a post
+liked, having an answer accepted. Each of those also has a matching event that
+takes the points back when the post is deleted, the like is removed or the
+answer is unmarked. A member sees their own balance, the price list and their
+own history at **`/ingenic/points`**, which is read-only from the front end —
+points are earned by contributing and spent on a download, and neither happens
+through that address. A visitor with no account still gets the price list, so
+the page has an answer for them rather than a locked door.
+
+Points are a plugin feature; the page is reached through the theme's navigation.
+The theme ships a Points entry, and a site that has configured its own
+`ingenic_nav_items` needs to add one itself.
+
+Use `docs/seeding.md` for console examples and migration/bootstrap workflows —
+in English, or `docs/seeding.zh-CN.md` in Chinese. They cover the same ground:
+both are worth skimming, and the Chinese one is the one to hand to somebody who
+will be doing the seeding. The console remains useful for bulk imports, but
+normal editing should use the management pages.
 
 Short version:
 
@@ -279,6 +357,13 @@ Open these and check each one:
 - [ ] `/ingenic/downloads` filters by series, chip, classification, version and platform
 - [ ] a `public_login` resource downloads after signing in; a `login_form_request` one asks for an application first
 - [ ] approving an application in the queue lets that account download, and **Ingenic → Downloads → Download record** names the account
+- [ ] a post written by a member moves their balance, and **Ingenic → Points → Recent movements** shows the entry
+- [ ] deleting that post takes the points back, and the original entry is still in the ledger beside the reversal
+- [ ] a resource you gave a point cost to shows **Unlock for N points** to an account that can afford it and **Needs N points** to one that cannot
+- [ ] buying it costs the points once; downloading it a second time costs nothing
+- [ ] `/ingenic/points` shows the signed-in member their balance, the price list and their own history — and nobody else's
+- [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
+- [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
 - [ ] `/ingenic/boards` shows boards, and a board with a purchase link shows a **Buy now** button
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly

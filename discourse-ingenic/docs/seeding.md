@@ -238,6 +238,100 @@ stays a column because a board can be listed before its chip exists. Both
 draws the apply button; `purchase_url` is optional and draws **Buy now** — not
 every board is sold, and a board that is lent on application has nowhere to buy.
 
+## Points
+
+Points are what members earn by contributing, and what a resource can cost to
+unlock. Three tables: `ingenic_point_rules` (the price list),
+`ingenic_point_entries` (the ledger — one append-only row per movement) and
+`ingenic_point_balances` (a running total per account, derived from the entries
+and rebuildable from them).
+
+The migration seeds four rules, which is where the plugin starts rather than
+where it has to stay:
+
+| `event` | Points | Label |
+| --- | ---: | --- |
+| `topic_created` | 5 | Opening a discussion |
+| `post_created` | 2 | Answering in one |
+| `like_received` | 1 | A post of yours being liked |
+| `solution_accepted` | 15 | Your answer being accepted |
+
+The list of events is the plugin's — each one needs somewhere in Discourse that
+reports it — and the numbers, the wording and the order are yours. All four are
+editable on **Ingenic → Points**, and the usual way to change them is there
+rather than here:
+
+```ruby
+IngenicPointRule.for(IngenicPointRule::SOLUTION_ACCEPTED).update!(points: 25)
+
+# Retire an action without deleting its row: the ledger keeps referring to it.
+IngenicPointRule.for(IngenicPointRule::LIKE_RECEIVED).update!(published: false)
+```
+
+`IngenicPointRule.amount_for(event)` is what one occurrence is worth right now,
+and reads as `0` for a retired rule or one that was never seeded, which is what
+makes retiring an action safe.
+
+### The ledger
+
+Nothing writes an entry by hand. Every movement goes through `Ingenic::Points`,
+which writes the entry and moves the balance in the same transaction:
+
+```ruby
+Ingenic::Points.award(user: someone, event: IngenicPointRule::TOPIC_CREATED, subject: post)
+Ingenic::Points.reverse(entry, reason: "the post went away", by: admin)
+Ingenic::Points.reverse_subject(post, reason: "the post went away")
+Ingenic::Points.spend(user: someone, points: 50, subject: resource, reason: "unlocked")
+Ingenic::Points.adjust(user: someone, points: 25, note: "helped with a bug", by: admin)
+Ingenic::Points.total_for(someone)          # their balance
+Ingenic::Points.unlocked_download_ids(someone)
+Ingenic::Points.rebuild!                    # re-derives every balance
+```
+
+An award is recorded once per subject: the thing it is for is part of the unique
+index, so the same event arriving twice produces nothing the second time rather
+than a second helping. `award` returns the entry, or `nil` when there was
+nothing to record — no rule, a rule priced at nothing, points switched off, or
+this exact thing already rewarded. `nil` is the ordinary answer, not a failure.
+
+`spend` answers rather than raises, because the caller is a download and "you
+have not got enough" is a state to show: `:spent`, `:already` (bought before, so
+nothing more is owed) or `:insufficient` (nothing written).
+
+An entry is never edited. Taking an award back writes a second, opposite entry,
+so the ledger says what happened — points were given, and then taken back — and
+the original award is still there to be read.
+
+`ingenic_point_balances` is a cache. If it ever disagrees with the entries —
+after a restore, or after somebody has been editing rows — `Ingenic::Points.rebuild!`
+puts it back and reports how many rows it corrected. That is also why a balance
+can be trusted without being the authority.
+
+### What a resource costs
+
+Pricing a resource is a column on the resource itself. Zero, the default, means
+free:
+
+```ruby
+resource.update!(point_cost: 50)
+```
+
+The price is asked *after* the access level, never instead of it: a
+`login_form_request` resource that costs 50 points still sends a new visitor
+through sign-in, developer details and approval before it mentions points. The
+listing draws **Unlock for N points** for an account that can afford it and
+**Needs N points** for one that cannot, and the purchase is recorded as an entry,
+so a second download of the same resource costs nothing.
+
+### The member's page
+
+`/ingenic/points` shows the signed-in member their balance, the price list and
+their own history. It is read-only from the front end, and it shows nobody
+else's rows. Reaching it from the navigation is the theme's job, not the
+plugin's: the theme ships a Points entry, and a site that has configured its own
+`ingenic_nav_items` needs to add one itself, because a configured list replaces
+the shipped one wholesale.
+
 ## Adding a second language
 
 Every row carries `locale`. To add Chinese documentation for the same product,
