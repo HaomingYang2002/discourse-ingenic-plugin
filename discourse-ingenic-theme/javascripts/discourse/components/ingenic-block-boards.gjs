@@ -24,6 +24,16 @@ export default class IngenicBlockBoards extends Component {
     return this.args.block?.title || i18n(themePrefix("ingenic.boards.title"));
   }
 
+  // The same two-call-to-action card the catalogue draws, including which of the
+  // two leads. Kept in step with ingenic-boards rather than left to the markup,
+  // because the two are the same card at two lengths.
+  get cards() {
+    return this.boards.map((board) => ({
+      ...board,
+      applyClass: board.purchase_url ? "btn" : "btn btn-primary",
+    }));
+  }
+
   @action
   async load() {
     if (this.loaded) {
@@ -54,7 +64,7 @@ export default class IngenicBlockBoards extends Component {
 
       {{#if this.boards.length}}
         <div class="ingenic-card-grid">
-          {{#each this.boards as |board|}}
+          {{#each this.cards as |board|}}
             <article class="ingenic-card">
               {{#if board.image_url}}
                 <img
@@ -69,14 +79,28 @@ export default class IngenicBlockBoards extends Component {
                 <div class="ingenic-card__meta">{{board.chip}}</div>
               {{/if}}
               <div class="ingenic-card__actions">
-                <a
-                  class="btn btn-primary"
-                  href={{board.application_url}}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{i18n (themePrefix "ingenic.boards.apply")}}
-                </a>
+                {{#if board.purchase_url}}
+                  <a
+                    class="btn btn-primary"
+                    href={{board.purchase_url}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{i18n (themePrefix "ingenic.boards.buy")}}
+                  </a>
+                {{/if}}
+
+                {{#if board.application_url}}
+                  <a
+                    class={{board.applyClass}}
+                    href={{board.application_url}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{i18n (themePrefix "ingenic.boards.apply")}}
+                  </a>
+                {{/if}}
+
                 {{#if board.documentation_url}}
                   <a
                     class="btn"

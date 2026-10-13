@@ -221,6 +221,7 @@ class IngenicDownloadsController < ::ApplicationController
             .where(locale: [I18n.locale.to_s, SiteSetting.ingenic_default_locale].uniq)
 
         rows = rows.where(product_slug: params[:product]) if params[:product].present?
+        rows = rows.where(product_slug: series_slugs) if params[:series].present?
         rows = rows.where(category_id: params[:category]) if params[:category].present?
         rows = rows.where(version: params[:version]) if params[:version].present?
         rows = rows.where(platform: params[:platform]) if params[:platform].present?
@@ -264,6 +265,11 @@ class IngenicDownloadsController < ::ApplicationController
   # Options come from the unfiltered set so a narrowed selection can be widened
   # again without a reload.
   #
+  # The products are the product tree rather than the slugs on the resources, so
+  # a chip is offered under its name and not as the string that happens to be in
+  # the row. That also gives the page its second level: choosing a series narrows
+  # the chips, which is how the same catalogue is browsed in the documentation.
+  #
   # The classifications are sent only when something is filed under them. The
   # list is editable and grows, and a filter whose every option returns an empty
   # page is worse than no filter — it reads as a broken page rather than an
@@ -271,11 +277,39 @@ class IngenicDownloadsController < ::ApplicationController
   def filters
     all = IngenicDownload.published
     {
-      products: all.distinct.order(:product_slug).pluck(:product_slug),
+      series: product_tree[:series],
+      chips: product_tree[:chips],
       categories: used_categories,
       versions: all.distinct.order(version: :desc).pluck(:version).compact,
       platforms: all.distinct.pluck(:platform).compact.sort,
     }
+  end
+
+  def product_tree
+    @product_tree ||=
+      {
+        series:
+          IngenicDocProduct.series.published.ordered.map do |record|
+            { "slug" => record.slug, "name" => record.name }
+          end,
+        chips:
+          IngenicDocProduct.chips.published.ordered.map do |record|
+            { "slug" => record.slug, "name" => record.name, "series_slug" => record.parent&.slug }
+          end,
+      }
+  end
+
+  # A series filter matches a resource filed against the series itself and one
+  # filed against any chip under it. Both are reasonable filings — a series-wide
+  # SDK has no single chip to sit under — and an editor who chose one cannot be
+  # expected to know which of the two the page will honour.
+  def series_slugs
+    @series_slugs ||=
+      begin
+        series = IngenicDocProduct.series.published.find_by(slug: params[:series])
+        slugs = series ? IngenicDocProduct.chips.published.where(parent_id: series.id).pluck(:slug) : []
+        ([params[:series]] + slugs).uniq
+      end
   end
 
   def used_categories

@@ -8,6 +8,7 @@ import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { themePrefix } from "virtual:theme";
 import getURL from "discourse/lib/get-url";
 import { ajax } from "discourse/lib/ajax";
+import DNativeSelect from "discourse/ui-kit/d-native-select";
 import { i18n } from "discourse-i18n";
 
 const ENDPOINT = "/ingenic/downloads";
@@ -49,8 +50,8 @@ const ACTION_FOR = {
  */
 export default class IngenicDownloads extends Component {
   @tracked downloads = [];
-  @tracked filters = { products: [], categories: [], versions: [], platforms: [] };
-  @tracked selected = { product: "", category: "", version: "", platform: "" };
+  @tracked filters = { series: [], chips: [], categories: [], versions: [], platforms: [] };
+  @tracked selected = { series: "", product: "", category: "", version: "", platform: "" };
   @tracked form = { fields: [], values: {}, completed: false };
   @tracked signedIn = false;
   @tracked loading = true;
@@ -61,6 +62,20 @@ export default class IngenicDownloads extends Component {
 
   get loginPath() {
     return getURL("/login");
+  }
+
+  // A chip belongs to exactly one series, so choosing a series narrows the chip
+  // list rather than offering every chip on the site and then rejecting most of
+  // them. Without a series chosen, every chip is offered — a visitor who knows
+  // the part number should not have to find its family first.
+  get chipOptions() {
+    if (!this.selected.series) {
+      return this.filters.chips;
+    }
+
+    return this.filters.chips.filter(
+      (chip) => chip.series_slug === this.selected.series
+    );
   }
 
   // Every label and decision the card needs, worked out here so the template
@@ -97,9 +112,18 @@ export default class IngenicDownloads extends Component {
     await this.#fetch();
   }
 
+  // Choosing a series drops a chip that does not belong to it: the control would
+  // otherwise be showing a value that is not in its own list, and a filter the
+  // visitor cannot see the reason for reads as an empty catalogue.
   @action
-  async selectProduct(event) {
-    await this.#applyFilter("product", event.target.value);
+  async selectSeries(value) {
+    this.selected = { ...this.selected, series: value ?? "", product: "" };
+    await this.#fetch();
+  }
+
+  @action
+  async selectProduct(value) {
+    await this.#applyFilter("product", value ?? "");
   }
 
   @action
@@ -264,13 +288,31 @@ export default class IngenicDownloads extends Component {
 
       <div class="ingenic-downloads__filters">
         <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_products")}}</span>
-          <select {{on "change" this.selectProduct}}>
-            <option value="">{{i18n (themePrefix "ingenic.downloads.all_products")}}</option>
-            {{#each this.filters.products as |product|}}
-              <option value={{product}}>{{product}}</option>
+          <span>{{i18n (themePrefix "ingenic.downloads.all_series")}}</span>
+          <DNativeSelect
+            @value={{this.selected.series}}
+            @nonePlaceholder={{i18n (themePrefix "ingenic.downloads.all_series")}}
+            @onChange={{this.selectSeries}}
+            as |select|
+          >
+            {{#each this.filters.series as |series|}}
+              <select.Option @value={{series.slug}}>{{series.name}}</select.Option>
             {{/each}}
-          </select>
+          </DNativeSelect>
+        </label>
+
+        <label class="ingenic-docs__field">
+          <span>{{i18n (themePrefix "ingenic.downloads.all_products")}}</span>
+          <DNativeSelect
+            @value={{this.selected.product}}
+            @nonePlaceholder={{i18n (themePrefix "ingenic.downloads.all_products")}}
+            @onChange={{this.selectProduct}}
+            as |select|
+          >
+            {{#each this.chipOptions as |chip|}}
+              <select.Option @value={{chip.slug}}>{{chip.name}}</select.Option>
+            {{/each}}
+          </DNativeSelect>
         </label>
 
         <label class="ingenic-docs__field">

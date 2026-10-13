@@ -65,6 +65,7 @@ require_relative "app/controllers/admin/ingenic_controller"
 require_relative "app/controllers/ingenic_docs_controller"
 require_relative "app/controllers/ingenic_downloads_controller"
 require_relative "app/controllers/ingenic_boards_controller"
+require_relative "app/controllers/ingenic_site_controller"
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 register_svg_icon "book"
@@ -178,5 +179,11 @@ after_initialize do
     get "/ingenic/downloads/:id/file", to: "ingenic_downloads#deliver", as: :ingenic_download_file
 
     get "/ingenic/boards", to: "ingenic_boards#index", as: :ingenic_boards
+
+    # The homepage slots, the footer's partner strip and the footer's link
+    # columns. One address because the theme asks for them together, and there is
+    # no page here: every one of them is drawn inside a layout the theme already
+    # owns.
+    get "/ingenic/site", to: "ingenic_site#show", as: :ingenic_site
   end
 end

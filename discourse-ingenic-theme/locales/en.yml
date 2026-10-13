@@ -14,6 +14,11 @@ en:
       quick_links: "Ingenic quick links"
       search_placeholder: "Search the community"
       empty: "Nothing here yet."
+    promotions:
+      title: "What's on"
+    footer:
+      platforms: "Find us"
+      close: "Close"
     docs:
       version: "Version"
       latest: "latest"
@@ -38,6 +43,7 @@ en:
     downloads:
       title: "Downloads"
       subtitle: "SDKs, firmware, manuals and tools. Some resources ask who you are before they hand over a file."
+      all_series: "All series"
       all_products: "All products"
       all_types: "All types"
       all_versions: "All versions"
@@ -72,7 +78,8 @@ en:
     boards:
       title: "Development Boards"
       subtitle: "Boards for evaluating and building on Ingenic chips. Apply for one or buy it from the Ingenic team."
-      apply: "Apply / Buy"
+      apply: "Apply"
+      buy: "Buy now"
       documentation: "Documentation"
       all_series: "All series"
       all_chips: "All chips"

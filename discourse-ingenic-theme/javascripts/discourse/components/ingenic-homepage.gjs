@@ -5,10 +5,12 @@ import IngenicBlockTopics from "./ingenic-block-topics";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
 import IngenicBlockSearch from "./ingenic-block-search";
+import IngenicPromotions from "./ingenic-promotions";
 import { i18n } from "discourse-i18n";
 
 const BLOCK_COMPONENTS = {
   search: IngenicBlockSearch,
+  promotions: IngenicPromotions,
   announcements: IngenicBlockTopics,
   discussions: IngenicBlockTopics,
   downloads: IngenicBlockDownloads,

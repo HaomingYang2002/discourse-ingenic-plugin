@@ -41,6 +41,10 @@ export default class IngenicBoards extends Component {
 
   // Worked out here so the template stays a description of the layout. The
   // specification list is free text, one item per line.
+  //
+  // A board that is sold leads with the price and one that is not leads with the
+  // application: a card whose only button is a plain one reads as an
+  // afterthought, and only one of the two can be the thing to do first.
   get cards() {
     return this.boards.map((board) => ({
       ...board,
@@ -48,6 +52,7 @@ export default class IngenicBoards extends Component {
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean),
+      applyClass: board.purchase_url ? "btn" : "btn btn-primary",
     }));
   }
 
@@ -192,9 +197,20 @@ export default class IngenicBoards extends Component {
               {{/if}}
 
               <div class="ingenic-card__actions">
-                {{#if board.application_url}}
+                {{#if board.purchase_url}}
                   <a
                     class="btn btn-primary"
+                    href={{board.purchase_url}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{i18n (themePrefix "ingenic.boards.buy")}}
+                  </a>
+                {{/if}}
+
+                {{#if board.application_url}}
+                  <a
+                    class={{board.applyClass}}
                     href={{board.application_url}}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -202,6 +218,7 @@ export default class IngenicBoards extends Component {
                     {{i18n (themePrefix "ingenic.boards.apply")}}
                   </a>
                 {{/if}}
+
                 {{#if board.documentation_url}}
                   <a
                     class="btn"

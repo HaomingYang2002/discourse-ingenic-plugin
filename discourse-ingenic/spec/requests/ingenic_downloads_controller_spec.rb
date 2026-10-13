@@ -72,6 +72,70 @@ describe IngenicDownloadsController do
 
       expect(response.status).to eq(200)
     end
+
+    # The two levels of the product filter. The options come from the product
+    # tree rather than from the slugs on the resources, so a chip is offered
+    # under its name and not as the string that happens to be in the row.
+    describe "the product filters" do
+      fab!(:series) do
+        IngenicDocProduct.create!(slug: "t-series", name: "T Series", locale: "en")
+      end
+
+      fab!(:chip) do
+        IngenicDocProduct.create!(
+          slug: "t33",
+          name: "T33",
+          kind: IngenicDocProduct::CHIP,
+          parent: series,
+          locale: "en",
+        )
+      end
+
+      it "offers the series, and each chip under the series it belongs to" do
+        chip
+
+        get "/ingenic/downloads.json"
+
+        filters = response.parsed_body["filters"]
+        expect(filters["series"]).to eq([{ "slug" => "t-series", "name" => "T Series" }])
+        expect(filters["chips"]).to eq(
+          [{ "slug" => "t33", "name" => "T33", "series_slug" => "t-series" }],
+        )
+      end
+
+      it "matches a resource filed against a chip when its series is chosen" do
+        chip
+        resource(IngenicDownload::LOGIN_ONLY, name: "Chip SDK", product_slug: "t33")
+        resource(IngenicDownload::LOGIN_ONLY, name: "Other SDK", product_slug: "c-series")
+
+        get "/ingenic/downloads.json?series=t-series"
+
+        expect(response.parsed_body["downloads"].map { |row| row["name"] }).to eq(["Chip SDK"])
+      end
+
+      # A series-wide SDK has no single chip to be filed under, and an editor who
+      # filed it that way cannot be expected to know the page would not honour it.
+      it "matches a resource filed against the series itself" do
+        chip
+        resource(IngenicDownload::LOGIN_ONLY, name: "Series-wide SDK", product_slug: "t-series")
+
+        get "/ingenic/downloads.json?series=t-series"
+
+        expect(response.parsed_body["downloads"].map { |row| row["name"] }).to eq(
+          ["Series-wide SDK"],
+        )
+      end
+
+      it "still narrows by a named chip" do
+        chip
+        resource(IngenicDownload::LOGIN_ONLY, name: "Chip SDK", product_slug: "t33")
+        resource(IngenicDownload::LOGIN_ONLY, name: "Other SDK", product_slug: "c-series")
+
+        get "/ingenic/downloads.json?product=t33"
+
+        expect(response.parsed_body["downloads"].map { |row| row["name"] }).to eq(["Chip SDK"])
+      end
+    end
   end
 
   describe "POST /ingenic/downloads/profile" do
