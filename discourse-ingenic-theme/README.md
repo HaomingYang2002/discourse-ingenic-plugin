@@ -9,16 +9,21 @@ built from Discourse's public theme APIs so it keeps working across upgrades.
 
 ## What it provides
 
-- navigation registered as a real Discourse sidebar section, so it inherits the
-  mobile drawer, the section filter, the collapse state and active-link handling
-  that core already implements
+- a **Developer Center** group in the sidebar, registered as a real Discourse
+  sidebar section, so it inherits the mobile drawer, the section filter, the
+  collapse state and active-link handling that core already implements — and so
+  it can sit inside the sidebar rather than beside it. Discourse's own Topics,
+  More and All categories sections are left exactly as they are.
 - admin-configurable navigation items (label, icon, target, order, visibility)
 - a sidebar that can be moved to either side and resized from theme settings
 - an admin-configurable homepage assembled from blocks
-- a documentation browser: version picker, nested page tree, page body,
-  previous/next navigation
-- a download centre with product / type / version / platform filters
-- development board cards with outbound application links
+- a documentation reader: a two-level product picker (series, then a flyout of
+  its chips), a version selector, full-text search, a collapsible contents tree,
+  the rendered Markdown body and previous/next navigation
+- a download centre with product / type / version / platform filters, showing
+  the right prompt and button for each of the three access tiers
+- a development board catalogue with series and chip filters and outbound
+  application links
 - English strings today, structured so more locales can be added later
 
 ## Installation
