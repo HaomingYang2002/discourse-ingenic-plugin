@@ -5,8 +5,10 @@ import getURL from "discourse/lib/get-url";
 // Shipped so the navigation is not empty before the Ingenic team fills in the
 // plugin's setting. Anything configured on the plugin side replaces this list
 // wholesale rather than merging with it, so order and labels have one owner.
+//
+// These are the three entries of the Developer Center group. Discourse's own
+// Topics and Categories sections sit above this one and are left alone.
 const DEFAULT_ITEMS = [
-  { key: "home", icon: "house", labelKey: "ingenic.nav.home", href: "/" },
   { key: "docs", icon: "book", labelKey: "ingenic.nav.docs", href: "/ingenic/docs" },
   {
     key: "downloads",

@@ -11,49 +11,39 @@ class IngenicDocVersion < ActiveRecord::Base
            foreign_key: :version_id,
            dependent: :destroy
 
-  validates :slug, presence: true, uniqueness: { scope: [:product_id, :locale] }
+  validates :slug, presence: true, uniqueness: { scope: %i[product_id locale] }
   validates :label, presence: true
 
   scope :published, -> { where(published: true) }
   scope :ordered, -> { order(position: :asc, released_on: :desc) }
 
-  # The version's pages in the reading language, one entry per slug.
-  #
-  # A page can exist twice under one version — once in the reader's language and
-  # once in the site default — so the rows are collapsed here rather than in the
-  # controller. Without this a partially translated version would show every
-  # translated page twice in the tree, once per locale.
+  # The version's pages as a reader sees them, which includes everything
+  # inherited from earlier versions. See Ingenic::DocumentationResolver.
   def published_pages
-    reading = I18n.locale.to_s
-    rows =
-      pages.where(
-        published: true,
-        locale: [reading, SiteSetting.ingenic_default_locale],
-      ).to_a
-
-    rows.sort_by { |page| page.locale == reading ? 0 : 1 }.uniq(&:slug).sort_by(&:position)
+    resolver.effective_pages(self)
   end
 
-  # Returns the previous/next page in the flattened reading order so that the
-  # theme can render footer navigation without recomputing the tree.
+  def find_readable_page(slug)
+    resolver.find_page(self, slug)
+  end
+
+  # Every page the version resolves to, drafts included. Used by the management
+  # page, which has to show what a reader cannot yet see.
+  def page_tree
+    resolver.effective_pages(self, published_only: false)
+  end
+
+  # The row this version owns for a slug, if any. Its absence is what makes a
+  # page inherited.
+  def own_page(slug)
+    pages.find_by(slug: slug)
+  end
+
   def navigation_for(page)
-    flat = flatten_pages(published_pages)
-    index = flat.index { |item| item.id == page.id }
-
-    {
-      previous: index && index.positive? ? IngenicPageListSerializer.new(flat[index - 1], root: false) : nil,
-      next: index && index < flat.length - 1 ? IngenicPageListSerializer.new(flat[index + 1], root: false) : nil,
-    }
+    resolver.navigation_for(self, page)
   end
 
-  private
-
-  # Depth-first walk so that nested pages read in the same order they appear in
-  # the sidebar tree.
-  def flatten_pages(page_list, parent_id = nil)
-    page_list
-      .select { |item| item.parent_id == parent_id }
-      .sort_by(&:position)
-      .flat_map { |item| [item] + flatten_pages(page_list, item.id) }
+  def resolver
+    @resolver ||= Ingenic::DocumentationResolver.new(product)
   end
 end

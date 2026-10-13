@@ -1,5 +1,5 @@
 import DPageSubheader from "discourse/ui-kit/d-page-subheader";
-import IngenicAdminPanel from "../../../../admin/components/ingenic-admin-panel";
+import IngenicBoardPanel from "../../../../admin/components/ingenic-board-panel";
 import { i18n } from "discourse-i18n";
 
 const Boards = <template>
@@ -8,7 +8,7 @@ const Boards = <template>
       @titleLabel={{i18n "admin.ingenic.boards.title"}}
       @descriptionLabel={{i18n "admin.ingenic.boards.description"}}
     />
-    <IngenicAdminPanel @kind="boards" @model={{@model}} />
+    <IngenicBoardPanel @boards={{@model.boards}} />
   </div>
 </template>;
 

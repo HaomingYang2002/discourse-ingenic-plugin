@@ -10,98 +10,227 @@ class IngenicDocsController < ::ApplicationController
   # before we ever get to render the app shell.
   skip_before_action :check_xhr, only: %i[show]
 
-  # Paths are /<product>/<version>/<page>; version and page are optional so
-  # /ingenic/docs/<product> lands on the product's latest default version.
-  MAX_PATH_SEGMENTS = 3
+  # Paths are /<series>/<chip>/<version>/<page>. Everything after the series is
+  # optional: /ingenic/docs opens the first series and its first chip, and
+  # /ingenic/docs/t-series opens that series' first chip.
+  MAX_PATH_SEGMENTS = 4
+
+  # One-character queries match nearly every page and cost a full scan of the
+  # resolved tree, so they are answered with an empty result instead.
+  MIN_SEARCH_LENGTH = 2
+
+  # Enough to fill the results pane without shipping the whole manual over the
+  # wire when a query is broad.
+  SEARCH_LIMIT = 50
+
+  # Characters on each side of the match shown in a result excerpt.
+  EXCERPT_RADIUS = 90
 
   def show
     return render_app_shell unless request.format.json?
 
-    product = find_product
-    return render_not_found(:product_not_found) unless product
+    series = find_series
+    chip = series && find_chip(series)
+    version = chip && find_version(chip)
+    page = version && find_page(version)
 
-    version = find_version(product)
-    return render_not_found(:version_not_found) unless version
+    # A version that exists but not the requested page is a real 404. No chip,
+    # or no chips at all, is not — a site whose documentation has not been
+    # written yet still has to be able to render the reader.
+    return render_not_found(:page_not_found) if version && page_slug.present? && page.nil?
 
-    page = find_page(version)
-    return render_not_found(:page_not_found) if page_slug.present? && page.nil?
+    render_json_dump(payload(series, chip, version, page))
+  end
 
-    render_json_dump(documentation_payload(product, version, page))
+  # Full-text search across the pages of one chip at one version.
+  #
+  # Matching happens in Ruby over the *resolved* page set rather than in SQL
+  # over `ingenic_doc_pages`, because the set a reader sees is assembled from
+  # several versions by Ingenic::DocumentationResolver — a SQL query would have
+  # to reimplement the inheritance walk and would drift from it. Documentation
+  # sets are small enough that this is the cheaper correctness trade.
+  def search
+    query = params[:q].to_s.strip
+    return render_json_dump(results: []) if query.length < MIN_SEARCH_LENGTH
+
+    series = find_series
+    chip = series && find_chip(series)
+    version = chip && find_version(chip)
+    return render_json_dump(results: []) if version.nil?
+
+    render_json_dump(results: search_results(version, query))
   end
 
   private
 
-  def documentation_payload(product, version, page)
-    payload = {
-      product: IngenicProductSerializer.new(product, root: false),
-      version: IngenicVersionSerializer.new(version, root: false),
-      pages:
-        ActiveModel::ArraySerializer.new(
-          version.published_pages,
-          each_serializer: IngenicPageListSerializer,
-        ),
+  def payload(series, chip, version, page)
+    data = {
+      series: series_list,
+      series_slug: series&.slug,
+      chip_slug: chip&.slug,
+      product: chip && IngenicProductSerializer.new(chip, root: false),
+      versions: available_versions(chip),
     }
 
+    return data if version.nil?
+
+    data[:version] = IngenicVersionSerializer.new(version, root: false)
+    data[:pages] =
+      ActiveModel::ArraySerializer.new(
+        version.published_pages,
+        each_serializer: IngenicPageListSerializer,
+      )
+
     if page
-      payload[:page] = IngenicPageSerializer.new(page, root: false)
-      payload[:navigation] = version.navigation_for(page)
+      data[:page] = IngenicPageSerializer.new(page, root: false)
+      data[:navigation] = navigation_json(version, page)
     end
 
-    payload
+    data
   end
 
-  def segments
-    @segments ||= params[:path].to_s.split("/").reject(&:blank?).first(MAX_PATH_SEGMENTS)
+  def navigation_json(version, page)
+    links = version.navigation_for(page)
+
+    {
+      previous: links[:previous] && IngenicPageListSerializer.new(links[:previous], root: false),
+      next: links[:next] && IngenicPageListSerializer.new(links[:next], root: false),
+    }
   end
 
-  def product_slug
-    segments[0]
+  # The selector's data. Sent with every documentation response so switching
+  # series or chip does not need a second round trip.
+  def series_list
+    in_reading_locale(IngenicDocProduct.series.published.ordered).map do |series|
+      {
+        id: series.id,
+        slug: series.slug,
+        name: series.name,
+        chips:
+          in_reading_locale(series.children.published.ordered).map do |chip|
+            { id: chip.id, slug: chip.slug, name: chip.name }
+          end,
+      }
+    end
+  end
+
+  def search_results(version, query)
+    needle = query.downcase
+
+    version.published_pages.filter_map do |resolved|
+      body = resolved.body.to_s
+      title = resolved.title.to_s
+
+      if title.downcase.include?(needle)
+        { slug: resolved.slug, title: title, excerpt: excerpt_for(body, needle), matched: "title" }
+      elsif body.downcase.include?(needle)
+        { slug: resolved.slug, title: title, excerpt: excerpt_for(body, needle), matched: "body" }
+      end
+    end.first(SEARCH_LIMIT)
+  end
+
+  # Documentation is authored in Markdown, so the excerpt is taken from the
+  # source and flattened rather than from cooked HTML — the reader wants the
+  # sentence, not the markup around it.
+  def excerpt_for(body, needle)
+    text = body
+      .gsub(/```.*?```/m, " ")
+      .gsub(/<[^>]*>/, " ")
+      .gsub(/!?\[([^\]]*)\]\([^)]*\)/, '\1')
+      .gsub(/[#*_>`~]/, " ")
+      .gsub(/\s+/, " ")
+      .strip
+
+    index = text.downcase.index(needle)
+    return text.first(EXCERPT_RADIUS * 2) if index.nil?
+
+    start = [index - EXCERPT_RADIUS, 0].max
+    finish = [index + needle.length + EXCERPT_RADIUS, text.length].min
+    fragment = text[start...finish]
+    fragment = "…#{fragment}" if start.positive?
+    fragment = "#{fragment}…" if finish < text.length
+    fragment
+  end
+
+  def available_versions(chip)
+    return [] if chip.nil?
+
+    chip
+      .versions
+      .published
+      .ordered
+      .map { |record| IngenicVersionSerializer.new(record, root: false) }
+  end
+
+  # Read from the path segments on `show`, and from query parameters on
+  # `search` — both funnel through the same resolvers, so a search is always
+  # scoped to the chip and version the reader is actually looking at.
+  def series_slug
+    @series_slug ||= path_segments[0].presence || params[:series].presence
+  end
+
+  def chip_slug
+    @chip_slug ||= path_segments[1].presence || params[:chip].presence
   end
 
   def version_slug
-    segments[1]
+    @version_slug ||= path_segments[2].presence || params[:version].presence
   end
 
   def page_slug
-    segments[2]
+    @page_slug ||= path_segments[3].presence || params[:page].presence
   end
 
-  # Resolves the product named in the path, or — when the visitor has not chosen
-  # one yet, which is every request to a bare /ingenic/docs — the first published
-  # product. That is what lets the navigation's Documentation entry point at one
-  # stable URL: the client asks the plugin where documentation starts and then
-  # replaces the address with the canonical product path.
-  def find_product
-    scope = IngenicDocProduct.published.ordered
-    scope = scope.where(slug: product_slug) if product_slug.present?
-
-    in_reading_locale(scope)
+  def path_segments
+    @path_segments ||= params[:path].to_s.split("/").reject(&:blank?).first(MAX_PATH_SEGMENTS)
   end
 
-  # Versions hang off a product row and a product row belongs to a single
-  # locale, so the product lookup has already settled the language. An explicit
-  # `latest` is an alias for the version flagged latest, not a slug of its own.
-  def find_version(product)
-    return product.default_version if version_slug.blank? || version_slug == "latest"
+  # Resolves the series named in the path, or the first one when the visitor has
+  # not chosen yet. That is what lets the navigation point every "Documentation"
+  # entry at one stable URL.
+  def find_series
+    scope = IngenicDocProduct.series.published.ordered
+    scope = scope.where(slug: series_slug) if series_slug.present?
 
-    product.versions.published.find_by(slug: version_slug)
+    in_reading_locale(scope).first
+  end
+
+  def find_chip(series)
+    scope = series.children.published.ordered
+    scope = scope.where(slug: chip_slug) if chip_slug.present?
+
+    in_reading_locale(scope).first
+  end
+
+  # Versions hang off a chip row and a chip row belongs to a single locale, so
+  # the chip lookup has already settled the language. An explicit `latest` is an
+  # alias for the version flagged latest, not a slug of its own.
+  def find_version(chip)
+    return chip.default_version if version_slug.blank? || version_slug == "latest"
+
+    chip.versions.published.find_by(slug: version_slug)
   end
 
   # The version already resolves the reading language per slug, so matching the
-  # slug is all that is left; the locale-based fallback lives there rather than
-  # here, which keeps one page per slug instead of one per translation.
+  # slug is all that is left.
   def find_page(version)
     return if page_slug.blank?
 
-    version.published_pages.find { |page| page.slug == page_slug }
+    version.find_readable_page(page_slug)
   end
 
   # The visitor's language wins over the site default. The two locales are
-  # queried separately on purpose: `where(locale: [a, b]).first` returns whichever
-  # row the database happens to hand back first, and which page a URL opens
-  # should not depend on that.
+  # queried separately on purpose: `where(locale: [a, b]).first` returns
+  # whichever row the database happens to hand back first, and which page a URL
+  # opens should not depend on that.
+  #
+  # Returns rows rather than a relation — the fallback is decided by whether the
+  # first query found anything, which a relation cannot express.
   def in_reading_locale(scope)
-    scope.where(locale: locale).first || scope.where(locale: default_locale).first
+    rows = scope.where(locale: locale).to_a
+    return rows if rows.any? || locale == default_locale
+
+    scope.where(locale: default_locale).to_a
   end
 
   def locale

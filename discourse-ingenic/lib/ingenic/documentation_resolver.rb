@@ -1,0 +1,134 @@
+# frozen_string_literal: true
+
+module Ingenic
+  # Turns the sparse per-version page rows into the complete document a reader
+  # sees at one version.
+  #
+  # A version only stores the pages that were actually edited for it. Anything
+  # untouched is inherited from the versions before it, so publishing a new
+  # version does not mean duplicating the whole manual and then keeping every
+  # copy in sync.
+  #
+  # Version order is the `position` column, lowest first, so moving a version
+  # changes what inherits from what. Ties fall back to insertion order.
+  class DocumentationResolver
+    def initialize(product)
+      @product = product
+    end
+
+    def versions
+      @versions ||= product.versions.published.to_a.sort_by { |version| [version.position, version.id] }
+    end
+
+    # Every version that contributes to `version`, oldest first and including
+    # the version itself.
+    def chain_for(version)
+      versions.select { |candidate| candidate.position <= version.position }
+    end
+
+    # The version's pages in reading order: depth-first, parents before their
+    # children, each carrying the depth the tree renders at.
+    #
+    # `published_only: false` is for the management page, which has to show
+    # drafts that a reader would not see.
+    def effective_pages(version, published_only: true)
+      build_tree(effective_rows(version, published_only: published_only))
+    end
+
+    def find_page(version, slug)
+      effective_pages(version).find { |resolved| resolved.slug == slug }
+    end
+
+    # Previous and next in the flattened reading order, so the theme can render
+    # footer navigation without rebuilding the tree.
+    def navigation_for(version, page)
+      flat = effective_pages(version)
+      index = flat.index { |resolved| resolved.slug == page.slug }
+
+      {
+        previous: index && index.positive? ? flat[index - 1] : nil,
+        next: index && index < flat.length - 1 ? flat[index + 1] : nil,
+      }
+    end
+
+    private
+
+    attr_reader :product
+
+    # Newest definition of each slug wins, so walking the chain oldest-first and
+    # overwriting gives the inherited value for anything the target version left
+    # alone.
+    def effective_rows(version, published_only:)
+      chain = chain_for(version)
+      pages_by_version =
+        chain.index_with { |source| readable_pages(source, published_only: published_only) }
+      rows_by_id = pages_by_version.values.flatten.index_by(&:id)
+      target_id = version.id
+
+      chain.each_with_object({}) do |source, result|
+        pages_by_version[source].each do |page|
+          result[page.slug] = ResolvedPage.new(
+            page,
+            inherited_from: (source.id == target_id ? nil : source),
+            parent_slug: parent_slug_for(page, rows_by_id),
+          )
+        end
+      end
+    end
+
+    # A page can be defined in one version while its parent is only defined in
+    # an earlier one, so the parent is resolved by identity first and by a plain
+    # lookup second.
+    def parent_slug_for(page, rows_by_id)
+      return if page.parent_id.nil?
+
+      (rows_by_id[page.parent_id] || page.parent)&.slug
+    end
+
+    # The reader's language wins over the site default, and a slug appears once
+    # even when both languages define it.
+    def readable_pages(version, published_only:)
+      reading = I18n.locale.to_s
+      fallback = SiteSetting.ingenic_default_locale
+
+      scope = version.pages.where(locale: [reading, fallback].uniq)
+      scope = scope.where(published: true) if published_only
+
+      scope.to_a.sort_by { |page| page.locale == reading ? 0 : 1 }.uniq(&:slug)
+    end
+
+    # A depth-ordered flat list is enough to render the tree, and it keeps the
+    # navigation order and the sidebar order from drifting apart.
+    def build_tree(rows)
+      children_by_parent = Hash.new { |hash, key| hash[key] = [] }
+      rows.each_value { |resolved| children_by_parent[resolved.parent_slug] << resolved }
+      children_by_parent.each_value { |list| list.sort_by! { |page| [page.position, page.id] } }
+
+      ordered = []
+      seen = {}
+      walk(children_by_parent, nil, 0, ordered, seen)
+
+      # A page whose parent is unpublished or missing is not reachable from the
+      # root. Showing it at the top level beats dropping it silently.
+      rows.each_value do |resolved|
+        next if seen[resolved.slug]
+
+        resolved.depth = 0
+        ordered << resolved
+      end
+
+      ordered
+    end
+
+    def walk(children_by_parent, parent_slug, depth, ordered, seen)
+      children_by_parent[parent_slug].each do |resolved|
+        next if seen[resolved.slug]
+
+        seen[resolved.slug] = true
+        resolved.depth = depth
+        ordered << resolved
+        walk(children_by_parent, resolved.slug, depth + 1, ordered, seen)
+      end
+    end
+  end
+end

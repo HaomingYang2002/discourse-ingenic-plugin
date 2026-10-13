@@ -90,11 +90,12 @@ export function registerIngenicSidebarSection(api) {
         return settings.ingenic_nav_title || i18n(themePrefix("ingenic.nav.title"));
       }
 
-      // The default is a header-less list: for a site whose main navigation this
-      // is, a "Navigation" label above it is noise. Naming the section in the
-      // theme settings brings the header back.
+      // The header stays. This section sits below Discourse's Topics and
+      // Categories groups, which both carry headers, so an unlabelled list of
+      // three links underneath them reads as a continuation of Categories
+      // rather than as its own group. The setting only renames it.
       get hideSectionHeader() {
-        return !settings.ingenic_nav_title;
+        return false;
       }
 
       get links() {

@@ -9,6 +9,7 @@
 enabled_site_setting :ingenic_enabled
 
 register_asset "stylesheets/common/ingenic.scss"
+register_asset "stylesheets/common/ingenic-admin.scss"
 
 module ::DiscourseIngenic
   PLUGIN_NAME = "discourse-ingenic"
@@ -19,6 +20,8 @@ require_relative "lib/discourse_ingenic/app_shell"
 require_relative "lib/discourse_ingenic/guardian_extensions"
 require_relative "lib/discourse_ingenic/management_constraint"
 require_relative "lib/ingenic/permission_resolver"
+require_relative "lib/ingenic/resolved_page"
+require_relative "lib/ingenic/documentation_resolver"
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 register_svg_icon "book"
@@ -63,6 +66,9 @@ after_initialize do
       post "/documentation/versions" => "admin/ingenic#create_version", format: false
       put "/documentation/versions/:id" => "admin/ingenic#update_version", format: false
       delete "/documentation/versions/:id" => "admin/ingenic#destroy_version", format: false
+      get "/documentation/versions/:id/tree" => "admin/ingenic#version_tree", format: false
+      post "/documentation/versions/:version_id/pages/:slug/override" => "admin/ingenic#override_page", format: false
+      delete "/documentation/versions/:version_id/pages/:slug" => "admin/ingenic#revert_page", format: false
       post "/documentation/pages" => "admin/ingenic#create_page", format: false
       put "/documentation/pages/:id" => "admin/ingenic#update_page", format: false
       delete "/documentation/pages/:id" => "admin/ingenic#destroy_page", format: false
@@ -78,6 +84,11 @@ after_initialize do
 
     get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root
     get "/ingenic/docs/*path", to: "ingenic_docs#show", as: :ingenic_documentation
+
+    # A sibling of the documentation glob rather than a path inside it: a route
+    # like /ingenic/docs/search would be swallowed by the glob above, and
+    # reordering to avoid that would make a chip called "search" unusable.
+    get "/ingenic/docs-search", to: "ingenic_docs#search", as: :ingenic_documentation_search
     get "/ingenic/downloads", to: "ingenic_downloads#index", as: :ingenic_downloads
     get "/ingenic/boards", to: "ingenic_boards#index", as: :ingenic_boards
   end

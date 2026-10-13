@@ -1,0 +1,207 @@
+// Management screens for the Ingenic plugin.
+//
+// Only the admin surface lives here. Colours come from Discourse's own CSS
+// variables so these pages follow whatever theme the site is using rather than
+// hard-coding a palette into the plugin.
+
+.ingenic-doc-manager {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+
+  @media screen and (max-width: 924px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ingenic-doc-manager__products {
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: var(--secondary);
+}
+
+.ingenic-doc-manager__series {
+  margin-top: 0.75rem;
+
+  h4 {
+    margin: 0 0 0.35rem;
+    font-size: var(--font-down-1);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-medium);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.ingenic-doc-manager__chip,
+.ingenic-doc-manager__version {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--primary-low);
+  }
+
+  &.is-selected {
+    background: var(--tertiary-low);
+    color: var(--tertiary-hover);
+    font-weight: 600;
+  }
+}
+
+.ingenic-doc-manager__versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.ingenic-doc-manager__version {
+  width: auto;
+  border: 1px solid var(--primary-low);
+}
+
+.ingenic-doc-manager__columns {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+
+  @media screen and (max-width: 924px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ingenic-doc-manager__editor {
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--secondary);
+}
+
+// The page tree is a flat, depth-ordered list. Indentation is expressed as
+// classes rather than inline styles so the markup stays free of style
+// attributes.
+.ingenic-admin-tree {
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: var(--secondary);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.ingenic-admin-tree__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--primary);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--primary-low);
+  }
+
+  &.is-selected {
+    background: var(--tertiary-low);
+    font-weight: 600;
+  }
+}
+
+.ingenic-admin-tree__row--depth-1 { padding-left: 1.4rem; }
+.ingenic-admin-tree__row--depth-2 { padding-left: 2.4rem; }
+.ingenic-admin-tree__row--depth-3 { padding-left: 3.4rem; }
+.ingenic-admin-tree__row--depth-4 { padding-left: 4.4rem; }
+
+.ingenic-admin-tree__badge {
+  flex: 0 0 auto;
+  font-size: var(--font-down-2);
+  color: var(--primary-medium);
+  border: 1px solid var(--primary-low);
+  border-radius: 10px;
+  padding: 0 0.45rem;
+}
+
+.ingenic-admin-tree__empty {
+  margin: 0.5rem;
+  color: var(--primary-medium);
+}
+
+.ingenic-admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1 1 200px;
+
+    span {
+      font-size: var(--font-down-1);
+      color: var(--primary-medium);
+    }
+  }
+
+  input[type="text"],
+  input:not([type]),
+  select,
+  textarea {
+    width: 100%;
+  }
+}
+
+.ingenic-admin-form--inline {
+  label,
+  input {
+    flex: 0 1 auto;
+  }
+
+  input {
+    min-width: 8rem;
+  }
+}
+
+.ingenic-admin-form__wide {
+  flex: 1 1 100%;
+}
+
+.ingenic-admin-form__notice {
+  border-left: 3px solid var(--tertiary);
+  background: var(--tertiary-low);
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+}
+
+.ingenic-admin-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ingenic-admin-panel__form {
+  margin-bottom: 1rem;
+}

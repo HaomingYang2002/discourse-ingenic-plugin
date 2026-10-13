@@ -12,113 +12,179 @@ import { i18n } from "discourse-i18n";
 import getURL from "discourse/lib/get-url";
 
 const ROUTE_PREFIX = "/ingenic/docs";
-const MAX_SEGMENTS = 3;
+const SEARCH_ENDPOINT = "/ingenic/docs-search";
+
+// The URL is /<series>/<chip>/<version>/<page>. Only the series is required:
+// the plugin fills in the series' first chip and that chip's default version,
+// so a navigation entry can point at /ingenic/docs and still land somewhere
+// real.
+const SEGMENT = { series: 0, chip: 1, version: 2, page: 3 };
 
 /**
- * Documentation browser: version picker on top, page tree on the left and the
- * rendered page body on the right.
+ * Documentation reader.
  *
- * Chip selection is intentionally absent — each chip gets its own forum section
- * and its own documentation entry point — so this component only deals with
- * version and page navigation for a single product.
+ * The left column is the control strip — a two-level product picker (series,
+ * then a flyout of chips), the version dropdown, search across the
+ * documentation, and the collapsible table of contents. The right column is
+ * the rendered page.
  *
- * The URL is the only navigation state. Picking a version or a page transitions
- * the router, `@path` changes, and the refetch happens in one place, which keeps
- * deep links, the browser back button and shared URLs consistent.
+ * The URL is the only navigation state. Choosing a chip or a version
+ * transitions the router, `@path` changes, and the single refetch in `load`
+ * follows. Deep links, the back button and shared addresses therefore agree
+ * without any state to reconcile.
+ *
+ * The page tree arrives flattened and depth-ordered from the plugin, because
+ * the plugin has to run the version-inheritance walk to produce it anyway.
+ * Rebuilding the tree here from `parent_id` would mean reimplementing that walk
+ * on the client, where it would drift.
+ *
+ * Every link is computed in JS rather than composed in the template: the paths
+ * depend on several pieces of resolved state, and building them in one place
+ * keeps the markup from carrying navigation logic.
  */
 export default class IngenicDocs extends Component {
   @service router;
-  @tracked product = null;
+
+  @tracked series = [];
+  @tracked chip = null;
+  @tracked chipSlug = null;
+  @tracked versions = [];
   @tracked version = null;
   @tracked pages = [];
   @tracked page = null;
   @tracked navigation = { previous: null, next: null };
   @tracked loading = true;
   @tracked notFound = false;
+
+  @tracked pickerOpen = false;
+  @tracked openSeriesSlug = null;
   @tracked treeOpen = true;
 
+  @tracked searchQuery = "";
+  @tracked searchResults = null;
+  @tracked searching = false;
+
   get segments() {
-    return (this.args.path ?? "")
-      .split("/")
-      .filter(Boolean)
-      .slice(0, MAX_SEGMENTS);
+    return (this.args.path ?? "").split("/").filter(Boolean).slice(0, 4);
   }
 
-  get productSlug() {
-    return this.segments[0];
-  }
-
-  // The product the page is actually showing. On a bare /ingenic/docs the URL
-  // has no product yet, so building links from the path would produce
-  // "/ingenic/docs/undefined/..." during the first paint — the payload's slug is
-  // the authoritative one as soon as it arrives.
-  get resolvedProductSlug() {
-    return this.product?.slug || this.segments[0];
+  get seriesSlug() {
+    return this.segments[SEGMENT.series];
   }
 
   get versionSlug() {
-    return this.segments[1] || "latest";
+    return this.segments[SEGMENT.version] || "latest";
   }
 
-  get pageSlug() {
-    return this.segments[2];
+  get urlPageSlug() {
+    return this.segments[SEGMENT.page];
   }
 
-  get versions() {
-    return this.product?.versions ?? [];
+  get currentPath() {
+    return this.segments.length
+      ? `${ROUTE_PREFIX}/${this.segments.join("/")}`
+      : ROUTE_PREFIX;
   }
 
-  // Flattened with a depth so the template can render nesting without
-  // recursive components.
+  // Annotated rather than compared in the template, so "which series is open"
+  // is one tracked value and the markup carries no equality logic.
+  get seriesList() {
+    return this.series.map((entry) => ({
+      slug: entry.slug,
+      name: entry.name,
+      isOpen: entry.slug === this.openSeriesSlug,
+      isCurrent: entry.slug === this.seriesSlug,
+      chips: entry.chips.map((chip) => ({
+        slug: chip.slug,
+        name: chip.name,
+        isCurrent: entry.slug === this.seriesSlug && chip.slug === this.chipSlug,
+      })),
+    }));
+  }
+
+  get hasProducts() {
+    return this.series.some((entry) => entry.chips.length > 0);
+  }
+
+  get showingSearch() {
+    return this.searchResults !== null;
+  }
+
   get tree() {
-    return this.#flatten(this.pages, null, 0);
+    return this.pages.map((entry) => ({
+      slug: entry.slug,
+      title: entry.title,
+      depth: entry.depth ?? 0,
+      isActive: entry.slug === this.urlPageSlug,
+      href: this.hrefFor(entry.slug),
+    }));
   }
 
-  #flatten(pages, parentId, depth) {
-    return pages
-      .filter((item) => (item.parent_id ?? null) === parentId)
-      .sort((a, b) => a.position - b.position)
-      .flatMap((item) => [
-        { page: item, depth, active: item.slug === this.pageSlug },
-        ...this.#flatten(pages, item.id, depth + 1),
-      ]);
+  get searchHits() {
+    return (this.searchResults ?? []).map((result) => ({
+      slug: result.slug,
+      title: result.title,
+      excerpt: result.excerpt,
+      href: this.hrefFor(result.slug),
+    }));
   }
 
-  // Matches against the version the plugin resolved, not the raw path segment:
-  // `/ingenic/docs/<product>` has no version in the URL but does show one, and
-  // the picker should say so.
-  isCurrentVersion(version) {
-    return version.slug === (this.version?.slug || this.versionSlug);
+  get previousLink() {
+    return this.#stepLink(this.navigation.previous);
   }
 
-  // Returns a router path, deliberately without the deployment prefix: the
-  // router applies rootURL itself, so a prefixed path would break on a
-  // subfolder install. Wrap it in `getURL` wherever it becomes an href.
-  urlFor(versionSlug, pageSlug, productSlug = this.resolvedProductSlug) {
-    const parts = [ROUTE_PREFIX, productSlug, versionSlug];
+  get nextLink() {
+    return this.#stepLink(this.navigation.next);
+  }
 
-    if (pageSlug) {
-      parts.push(pageSlug);
+  #stepLink(resolved) {
+    if (!resolved) {
+      return null;
     }
 
-    return parts.join("/");
+    return { slug: resolved.slug, title: resolved.title, href: this.hrefFor(resolved.slug) };
+  }
+
+  // A router path, deliberately without the deployment prefix: the router
+  // applies rootURL itself, so a prefixed path would break on a subfolder
+  // install. `getURL` adds it back wherever the path becomes an href or a
+  // fetch target.
+  urlFor({ series, chip, version, page }) {
+    const parts = [ROUTE_PREFIX, series, chip];
+
+    if (version) {
+      parts.push(version);
+    }
+
+    if (version && page) {
+      parts.push(page);
+    }
+
+    return parts.filter(Boolean).join("/");
+  }
+
+  hrefFor(pageSlug) {
+    return getURL(
+      this.urlFor({
+        series: this.seriesSlug,
+        chip: this.chipSlug,
+        version: this.version?.slug ?? this.versionSlug,
+        page: pageSlug,
+      }),
+    );
   }
 
   @action
   async load() {
     this.loading = true;
     this.notFound = false;
-
-    // The plugin answers the same URL with JSON when asked for it and with the
-    // app shell otherwise, so a page refresh lands here without a second route.
-    // With no path at all we still ask: the plugin resolves the product, which
-    // is what lets a navigation entry point at /ingenic/docs alone.
-    const url = this.segments.length
-      ? `${ROUTE_PREFIX}/${this.segments.join("/")}`
-      : ROUTE_PREFIX;
+    this.pickerOpen = false;
+    this.openSeriesSlug = null;
 
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      const response = await fetch(getURL(this.currentPath), {
+        headers: { Accept: "application/json" },
+      });
 
       if (!response.ok) {
         this.notFound = true;
@@ -127,20 +193,16 @@ export default class IngenicDocs extends Component {
 
       const payload = await response.json();
 
-      this.product = payload.product;
-      this.version = payload.version;
+      this.series = payload.series ?? [];
+      this.chip = payload.product ?? null;
+      this.chipSlug = payload.chip_slug ?? null;
+      this.versions = payload.versions ?? [];
+      this.version = payload.version ?? null;
       this.pages = payload.pages ?? [];
       this.page = payload.page ?? null;
       this.navigation = payload.navigation ?? { previous: null, next: null };
 
-      // A bare /ingenic/docs means "wherever the documentation starts". Now
-      // that the plugin has said which product that is, replace the address so
-      // the URL a visitor copies and shares is the canonical one.
-      if (!this.segments.length) {
-        this.router.replaceWith(
-          this.urlFor(payload.version.slug, null, payload.product.slug),
-        );
-      }
+      this.#canonicalize(payload);
     } catch {
       this.notFound = true;
     } finally {
@@ -148,14 +210,81 @@ export default class IngenicDocs extends Component {
     }
   }
 
+  // The plugin resolves a partial path to a concrete chip and version.
+  // Rewriting the address to what was actually resolved keeps the version
+  // dropdown, the tree links and the URL in agreement, and makes the address a
+  // visitor copies the one that reproduces the page.
+  //
+  // Guarded on inequality: an unconditional replace would transition on every
+  // load, and that transition re-enters `load`.
+  #canonicalize(payload) {
+    if (!payload.series_slug || !payload.chip_slug || !payload.version) {
+      return;
+    }
+
+    const canonical = this.urlFor({
+      series: payload.series_slug,
+      chip: payload.chip_slug,
+      version: payload.version.slug,
+      page: payload.page?.slug,
+    });
+
+    if (canonical !== this.currentPath) {
+      this.router.replaceWith(canonical);
+    }
+  }
+
   @action
-  toggleTree() {
-    this.treeOpen = !this.treeOpen;
+  togglePicker() {
+    this.pickerOpen = !this.pickerOpen;
+  }
+
+  // Hovering a series opens its flyout, which is what the reference layout
+  // does. Touch devices never fire mouseenter, so a tap opens it too — and a
+  // tap then goes on to select that series' first chip, which is the only
+  // outcome a tap can be aiming for.
+  @action
+  openSeries(series, event) {
+    event?.preventDefault();
+    this.openSeriesSlug = series.slug;
+
+    if (event?.type === "click") {
+      this.selectChip(series, series.chips[0]);
+    }
+  }
+
+  @action
+  closeSeries() {
+    this.openSeriesSlug = null;
+  }
+
+  @action
+  selectChip(series, chip, event) {
+    event?.preventDefault();
+
+    if (!chip) {
+      return;
+    }
+
+    this.pickerOpen = false;
+    this.openSeriesSlug = null;
+    this.searchResults = null;
+
+    // No version and no page: the plugin supplies this chip's default version
+    // and `#canonicalize` rewrites the address once it has.
+    this.router.transitionTo(this.urlFor({ series: series.slug, chip: chip.slug }));
   }
 
   @action
   selectVersion(event) {
-    this.router.transitionTo(this.urlFor(event.target.value, this.pageSlug));
+    this.router.transitionTo(
+      this.urlFor({
+        series: this.seriesSlug,
+        chip: this.chipSlug || this.segments[SEGMENT.chip],
+        version: event.target.value,
+        page: this.urlPageSlug,
+      }),
+    );
   }
 
   @action
@@ -165,135 +294,277 @@ export default class IngenicDocs extends Component {
     }
 
     event.preventDefault();
-    this.router.transitionTo(this.urlFor(this.versionSlug, page.slug));
+    this.router.transitionTo(
+      this.urlFor({
+        series: this.seriesSlug,
+        chip: this.chipSlug,
+        version: this.version?.slug ?? this.versionSlug,
+        page: page.slug,
+      }),
+    );
   }
 
   @action
-  search(event) {
+  toggleTree() {
+    this.treeOpen = !this.treeOpen;
+  }
+
+  @action
+  updateQuery(event) {
+    this.searchQuery = event.target.value;
+  }
+
+  @action
+  async search(event) {
     event.preventDefault();
 
-    const query = event.target.elements.query.value.trim();
+    const query = this.searchQuery.trim();
 
-    if (query) {
-      this.router.transitionTo(`/search?q=${encodeURIComponent(query)}`);
+    if (query.length < 2) {
+      this.searchResults = null;
+      return;
     }
+
+    this.searching = true;
+
+    const params = new URLSearchParams({
+      q: query,
+      series: this.seriesSlug ?? "",
+      chip: this.chipSlug ?? "",
+      version: this.version?.slug ?? "",
+    });
+
+    try {
+      const response = await fetch(getURL(`${SEARCH_ENDPOINT}?${params}`), {
+        headers: { Accept: "application/json" },
+      });
+
+      this.searchResults = response.ok ? (await response.json()).results : [];
+    } catch {
+      this.searchResults = [];
+    } finally {
+      this.searching = false;
+    }
+  }
+
+  @action
+  clearSearch() {
+    this.searchQuery = "";
+    this.searchResults = null;
   }
 
   <template>
     <div class="ingenic-docs" {{didInsert this.load}} {{didUpdate this.load @path}}>
-      <header class="ingenic-docs__header">
-        <div class="ingenic-docs__identity">
-          {{#if this.product}}
-            <span class="ingenic-docs__product">{{this.product.name}}</span>
-          {{/if}}
-          {{#if this.version}}
-            <span class="ingenic-docs__version">{{this.version.label}}</span>
-          {{/if}}
-        </div>
-
-        <form class="ingenic-search ingenic-docs__search" {{on "submit" this.search}}>
-          <input
-            type="search"
-            name="query"
-            class="ingenic-search__input"
-            placeholder={{i18n (themePrefix "ingenic.docs.search_placeholder")}}
-          />
-        </form>
-      </header>
-
       {{#if this.loading}}
-        <p class="ingenic-card__meta">…</p>
+        <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.loading")}}</p>
       {{else if this.notFound}}
         <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.not_found")}}</p>
-      {{else}}
+      {{else if this.hasProducts}}
         <div class="ingenic-docs__panes">
-          <aside class="ingenic-docs__tree {{if this.treeOpen "is-open"}}">
-            <button class="btn btn-flat ingenic-docs__tree-toggle" type="button" {{on "click" this.toggleTree}}>
-              {{i18n (themePrefix "ingenic.docs.contents")}}
-            </button>
-            {{#if this.versions.length}}
-              <label class="ingenic-docs__version-label" for="ingenic-version">
-                {{i18n (themePrefix "ingenic.docs.version")}}
-              </label>
-              <select
-                id="ingenic-version"
-                class="ingenic-docs__version-select"
-                {{on "change" this.selectVersion}}
+          <aside class="ingenic-docs__controls">
+            <div class="ingenic-picker" {{on "mouseleave" this.closeSeries}}>
+              <button
+                type="button"
+                class="ingenic-picker__trigger"
+                aria-expanded={{if this.pickerOpen "true" "false"}}
+                {{on "click" this.togglePicker}}
               >
-                {{#each this.versions as |version|}}
-                  <option
-                    value={{version.slug}}
-                    selected={{if (this.isCurrentVersion version) "selected"}}
-                  >
-                    {{version.label}}{{#if version.latest}} ({{i18n (themePrefix "ingenic.docs.latest")}}){{/if}}
-                  </option>
-                {{/each}}
-              </select>
+                <span class="ingenic-picker__value">
+                  {{#if this.chip}}
+                    {{this.chip.name}}
+                  {{else}}
+                    {{i18n (themePrefix "ingenic.docs.pick_product")}}
+                  {{/if}}
+                </span>
+                <span class="ingenic-picker__caret" aria-hidden="true">▾</span>
+              </button>
+
+              {{#if this.pickerOpen}}
+                <div class="ingenic-picker__panel">
+                  <p class="ingenic-picker__heading">
+                    {{i18n (themePrefix "ingenic.docs.series")}}
+                  </p>
+                  <ul class="ingenic-picker__series">
+                    {{#each this.seriesList as |series|}}
+                      <li
+                        class="ingenic-picker__series-item {{if series.isOpen 'is-open'}}"
+                        {{on "mouseenter" (fn this.openSeries series)}}
+                      >
+                        <button
+                          type="button"
+                          class="ingenic-picker__series-button {{if series.isCurrent 'is-current'}}"
+                          {{on "click" (fn this.openSeries series)}}
+                        >
+                          <span>{{series.name}}</span>
+                          <span class="ingenic-picker__arrow" aria-hidden="true">›</span>
+                        </button>
+
+                        {{#if series.isOpen}}
+                          <ul class="ingenic-picker__chips">
+                            {{#each series.chips as |chip|}}
+                              <li>
+                                <button
+                                  type="button"
+                                  class="ingenic-picker__chip {{if chip.isCurrent 'is-current'}}"
+                                  {{on "click" (fn this.selectChip series chip)}}
+                                >
+                                  {{chip.name}}
+                                </button>
+                              </li>
+                            {{else}}
+                              <li class="ingenic-picker__empty">
+                                {{i18n (themePrefix "ingenic.docs.no_chips")}}
+                              </li>
+                            {{/each}}
+                          </ul>
+                        {{/if}}
+                      </li>
+                    {{/each}}
+                  </ul>
+                </div>
+              {{/if}}
+            </div>
+
+            {{#if this.versions.length}}
+              <label class="ingenic-docs__field" for="ingenic-version">
+                <span>{{i18n (themePrefix "ingenic.docs.version")}}</span>
+                <select
+                  id="ingenic-version"
+                  class="ingenic-docs__select"
+                  value={{this.versionSlug}}
+                  {{on "change" this.selectVersion}}
+                >
+                  {{#each this.versions as |version|}}
+                    <option value={{version.slug}}>
+                      {{version.label}}{{#if version.latest}} · {{i18n (themePrefix "ingenic.docs.latest")}}{{/if}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
             {{/if}}
 
+            <form class="ingenic-search ingenic-docs__search" {{on "submit" this.search}}>
+              <input
+                type="search"
+                name="query"
+                class="ingenic-search__input"
+                value={{this.searchQuery}}
+                placeholder={{i18n (themePrefix "ingenic.docs.search_placeholder")}}
+                {{on "input" this.updateQuery}}
+              />
+            </form>
+
             {{#if this.version.deprecated}}
-              <p class="ingenic-docs__notice ingenic-card__meta">
+              <p class="ingenic-docs__notice ingenic-docs__notice--inline">
                 {{i18n (themePrefix "ingenic.docs.deprecated")}}
               </p>
             {{/if}}
 
             <nav class="ingenic-docs__nav">
-              <p class="ingenic-docs__nav-title">{{i18n (themePrefix "ingenic.docs.contents")}}</p>
-              <ul class="ingenic-nav">
-                {{#each this.tree as |entry|}}
-                  <li class="ingenic-nav__item">
-                    <a
-                      class="ingenic-nav__link ingenic-nav__link--depth-{{entry.depth}} {{if entry.active 'is-active'}}"
-                      href={{getURL (this.urlFor this.versionSlug entry.page.slug)}}
-                      {{on "click" (fn this.openPage entry.page)}}
-                    >
-                      {{entry.page.title}}
-                    </a>
-                  </li>
-                {{/each}}
-              </ul>
+              <button
+                type="button"
+                class="ingenic-docs__tree-toggle"
+                aria-expanded={{if this.treeOpen "true" "false"}}
+                {{on "click" this.toggleTree}}
+              >
+                {{#if this.showingSearch}}
+                  {{i18n (themePrefix "ingenic.docs.search_results")}}
+                {{else}}
+                  {{i18n (themePrefix "ingenic.docs.contents")}}
+                {{/if}}
+              </button>
+
+              {{#if this.treeOpen}}
+                {{#if this.showingSearch}}
+                  <p class="ingenic-docs__search-summary">
+                    <span>
+                      {{i18n (themePrefix "ingenic.docs.result_count")}}
+                      {{this.searchHits.length}}
+                    </span>
+                    <button type="button" class="ingenic-docs__link" {{on "click" this.clearSearch}}>
+                      {{i18n (themePrefix "ingenic.docs.clear_search")}}
+                    </button>
+                  </p>
+                  <ul class="ingenic-nav">
+                    {{#each this.searchHits as |hit|}}
+                      <li class="ingenic-nav__item">
+                        <a class="ingenic-nav__link" href={{hit.href}} {{on "click" (fn this.openPage hit)}}>
+                          {{hit.title}}
+                          <span class="ingenic-nav__excerpt">{{hit.excerpt}}</span>
+                        </a>
+                      </li>
+                    {{else}}
+                      <li class="ingenic-nav__empty">
+                        {{i18n (themePrefix "ingenic.docs.no_results")}}
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{else}}
+                  <ul class="ingenic-nav">
+                    {{#each this.tree as |entry|}}
+                      <li class="ingenic-nav__item">
+                        <a
+                          class="ingenic-nav__link ingenic-nav__link--depth-{{entry.depth}} {{if entry.isActive 'is-active'}}"
+                          href={{entry.href}}
+                          {{on "click" (fn this.openPage entry)}}
+                        >
+                          {{entry.title}}
+                        </a>
+                      </li>
+                    {{else}}
+                      <li class="ingenic-nav__empty">
+                        {{i18n (themePrefix "ingenic.docs.empty")}}
+                      </li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
+              {{/if}}
             </nav>
           </aside>
 
           <article class="ingenic-docs__body">
             {{#if this.page}}
-              <h1>{{this.page.title}}</h1>
+              <h1 class="ingenic-docs__title">{{this.page.title}}</h1>
               <div class="ingenic-docs__content">{{trustHTML this.page.body}}</div>
 
               <footer class="ingenic-docs__footer">
-                {{#if this.navigation.previous}}
-                  <a
-                    class="ingenic-docs__step"
-                    href={{getURL (this.urlFor this.versionSlug this.navigation.previous.slug)}}
-                    {{on "click" (fn this.openPage this.navigation.previous)}}
-                  >
-                    ← {{this.navigation.previous.title}}
+                {{#if this.previousLink}}
+                  <a class="ingenic-docs__step" href={{this.previousLink.href}} {{on "click" (fn this.openPage this.previousLink)}}>
+                    <span class="ingenic-docs__step-label">
+                      {{i18n (themePrefix "ingenic.docs.previous")}}
+                    </span>
+                    {{this.previousLink.title}}
                   </a>
                 {{else}}
                   <span></span>
                 {{/if}}
 
-                {{#if this.navigation.next}}
-                  <a
-                    class="ingenic-docs__step ingenic-docs__step--next"
-                    href={{getURL (this.urlFor this.versionSlug this.navigation.next.slug)}}
-                    {{on "click" (fn this.openPage this.navigation.next)}}
-                  >
-                    {{this.navigation.next.title}} →
+                {{#if this.nextLink}}
+                  <a class="ingenic-docs__step ingenic-docs__step--next" href={{this.nextLink.href}} {{on "click" (fn this.openPage this.nextLink)}}>
+                    <span class="ingenic-docs__step-label">
+                      {{i18n (themePrefix "ingenic.docs.next")}}
+                    </span>
+                    {{this.nextLink.title}}
                   </a>
                 {{/if}}
               </footer>
 
               {{#if this.page.discussion_url}}
                 <p class="ingenic-docs__discuss">
-                  <a href={{getURL this.page.discussion_url}}>{{i18n (themePrefix "ingenic.docs.discuss")}}</a>
+                  <a href={{getURL this.page.discussion_url}}>
+                    {{i18n (themePrefix "ingenic.docs.discuss")}}
+                  </a>
                 </p>
               {{/if}}
             {{else}}
-              <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.pick_page")}}</p>
+              <p class="ingenic-docs__notice">
+                {{i18n (themePrefix "ingenic.docs.pick_page")}}
+              </p>
             {{/if}}
           </article>
         </div>
+      {{else}}
+        <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.no_products")}}</p>
       {{/if}}
     </div>
   </template>
