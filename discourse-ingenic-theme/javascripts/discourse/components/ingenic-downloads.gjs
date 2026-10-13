@@ -49,8 +49,8 @@ const ACTION_FOR = {
  */
 export default class IngenicDownloads extends Component {
   @tracked downloads = [];
-  @tracked filters = { products: [], kinds: [], versions: [], platforms: [] };
-  @tracked selected = { product: "", kind: "", version: "", platform: "" };
+  @tracked filters = { products: [], categories: [], versions: [], platforms: [] };
+  @tracked selected = { product: "", category: "", version: "", platform: "" };
   @tracked form = { fields: [], values: {}, completed: false };
   @tracked signedIn = false;
   @tracked loading = true;
@@ -103,8 +103,8 @@ export default class IngenicDownloads extends Component {
   }
 
   @action
-  async selectKind(event) {
-    await this.#applyFilter("kind", event.target.value);
+  async selectCategory(event) {
+    await this.#applyFilter("category", event.target.value);
   }
 
   @action
@@ -275,10 +275,10 @@ export default class IngenicDownloads extends Component {
 
         <label class="ingenic-docs__field">
           <span>{{i18n (themePrefix "ingenic.downloads.all_types")}}</span>
-          <select {{on "change" this.selectKind}}>
+          <select {{on "change" this.selectCategory}}>
             <option value="">{{i18n (themePrefix "ingenic.downloads.all_types")}}</option>
-            {{#each this.filters.kinds as |kind|}}
-              <option value={{kind}}>{{kind}}</option>
+            {{#each this.filters.categories as |category|}}
+              <option value={{category.id}}>{{category.name}}</option>
             {{/each}}
           </select>
         </label>
@@ -376,7 +376,7 @@ export default class IngenicDownloads extends Component {
             <article class="ingenic-card ingenic-card--download">
               <div class="ingenic-card__title">{{card.name}}</div>
               <div class="ingenic-card__meta">
-                {{card.kind}}
+                {{#if card.category_name}}{{card.category_name}}{{/if}}
                 {{#if card.version}}· {{card.version}}{{/if}}
                 {{#if card.platform}}· {{card.platform}}{{/if}}
               </div>

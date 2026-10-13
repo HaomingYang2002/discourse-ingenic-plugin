@@ -6,6 +6,7 @@ require "tmpdir"
 describe IngenicDownloadsController do
   fab!(:user) { Fabricate(:user) }
   fab!(:admin) { Fabricate(:admin) }
+  fab!(:category) { IngenicDownloadCategory.find_or_create_by!(name: "sdk", locale: "en") }
 
   before { SiteSetting.ingenic_download_admin_email = "team@example.com" }
 
@@ -14,7 +15,7 @@ describe IngenicDownloadsController do
       {
         name: name,
         product_slug: "t33",
-        kind: "sdk",
+        category: category,
         locale: "en",
         access_level: level,
         file_url: "https://example.com/sdk.tgz",

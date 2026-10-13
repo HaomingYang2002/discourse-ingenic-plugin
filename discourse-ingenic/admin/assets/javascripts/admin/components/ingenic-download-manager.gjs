@@ -13,7 +13,7 @@ const ENDPOINT = "/admin/plugins/discourse-ingenic/downloads";
 // the ones that cannot leak a file by accident.
 const BLANK = {
   product_slug: "",
-  kind: "sdk",
+  category_id: "",
   version: "",
   locale: "en",
   name: "",
@@ -45,8 +45,11 @@ export default class IngenicDownloadManager extends Component {
   @tracked message = null;
   @tracked error = null;
 
-  get kinds() {
-    return this.args.kinds ?? [];
+  // The classification list is editable, so it arrives with the listing rather
+  // than being a fixed set here. An empty list is a normal state: nothing has
+  // been filed yet, and the field offers "none" until the list is populated.
+  get categories() {
+    return this.args.categories ?? [];
   }
 
   get accessLevels() {
@@ -91,8 +94,8 @@ export default class IngenicDownloadManager extends Component {
   // it owns are kept in step here. They are still submitted as form fields: the
   // select carries a name and the browser reads the chosen option back out.
   @action
-  pickKind(value) {
-    this.draft = { ...this.draft, kind: value };
+  pickCategory(value) {
+    this.draft = { ...this.draft, category_id: value };
   }
 
   @action
@@ -202,14 +205,15 @@ export default class IngenicDownloadManager extends Component {
                 `selected` attribute does not survive re-rendering, which is the
                 bug DNativeSelect exists to work around. }}
             <DNativeSelect
-              name="kind"
-              @includeNone={{false}}
-              @value={{this.draft.kind}}
-              @onChange={{this.pickKind}}
+              name="category_id"
+              @includeNone={{true}}
+              @nonePlaceholder={{i18n "admin.ingenic.downloads.fields.no_category"}}
+              @value={{this.draft.category_id}}
+              @onChange={{this.pickCategory}}
               as |select|
             >
-              {{#each this.kinds as |kind|}}
-                <select.Option @value={{kind}}>{{kind}}</select.Option>
+              {{#each this.categories as |category|}}
+                <select.Option @value={{category.id}}>{{category.name}}</select.Option>
               {{/each}}
             </DNativeSelect>
           </label>
@@ -316,7 +320,8 @@ export default class IngenicDownloadManager extends Component {
             <div>
               <strong>{{record.name}}</strong>
               <div class="ingenic-admin-list__meta">
-                {{record.product_slug}} · {{record.kind}}
+                {{record.product_slug}}
+                {{#if record.category_name}}· {{record.category_name}}{{/if}}
                 {{#if record.version}}· {{record.version}}{{/if}}
                 · {{i18n (get this.accessLevelKeys record.access_level)}}
                 {{#if record.stored}}

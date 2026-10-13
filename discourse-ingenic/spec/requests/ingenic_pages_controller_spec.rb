@@ -9,10 +9,12 @@ require "rails_helper"
 describe "Ingenic pages" do
   before { SiteSetting.ingenic_enabled = true }
 
+  fab!(:category) { IngenicDownloadCategory.find_or_create_by!(name: "sdk", locale: "en") }
+
   fab!(:download) do
     IngenicDownload.create!(
       product_slug: "t32pro",
-      kind: "sdk",
+      category: category,
       version: "2.1.0",
       locale: "en",
       name: "T32Pro SDK",
@@ -36,7 +38,7 @@ describe "Ingenic pages" do
 
       json = response.parsed_body
       expect(json["downloads"].map { |item| item["name"] }).to eq(["T32Pro SDK"])
-      expect(json["filters"]["kinds"]).to include("sdk")
+      expect(json["filters"]["categories"].map { |item| item["name"] }).to include("sdk")
     end
 
     it "serves the app shell on browser navigation" do

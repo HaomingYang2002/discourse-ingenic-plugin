@@ -221,13 +221,13 @@ class IngenicDownloadsController < ::ApplicationController
             .where(locale: [I18n.locale.to_s, SiteSetting.ingenic_default_locale].uniq)
 
         rows = rows.where(product_slug: params[:product]) if params[:product].present?
-        rows = rows.where(kind: params[:kind]) if params[:kind].present?
+        rows = rows.where(category_id: params[:category]) if params[:category].present?
         rows = rows.where(version: params[:version]) if params[:version].present?
         rows = rows.where(platform: params[:platform]) if params[:platform].present?
 
         rows
           .ordered
-          .group_by { |row| [row.product_slug, row.kind, row.version, row.platform, row.name] }
+          .group_by { |row| [row.product_slug, row.category_id, row.version, row.platform, row.name] }
           .map { |_, group| group.find { |row| row.locale == I18n.locale.to_s } || group.first }
       end
   end
@@ -242,7 +242,8 @@ class IngenicDownloadsController < ::ApplicationController
     {
       "id" => download.id,
       "product_slug" => download.product_slug,
-      "kind" => download.kind,
+      "category_id" => download.category_id,
+      "category_name" => download.category_name,
       "version" => download.version,
       "platform" => download.platform,
       "architecture" => download.architecture,
@@ -262,14 +263,24 @@ class IngenicDownloadsController < ::ApplicationController
 
   # Options come from the unfiltered set so a narrowed selection can be widened
   # again without a reload.
+  #
+  # The classifications are sent only when something is filed under them. The
+  # list is editable and grows, and a filter whose every option returns an empty
+  # page is worse than no filter — it reads as a broken page rather than an
+  # unused label.
   def filters
     all = IngenicDownload.published
     {
       products: all.distinct.order(:product_slug).pluck(:product_slug),
-      kinds: all.distinct.order(:kind).pluck(:kind),
+      categories: used_categories,
       versions: all.distinct.order(version: :desc).pluck(:version).compact,
       platforms: all.distinct.pluck(:platform).compact.sort,
     }
+  end
+
+  def used_categories
+    ids = IngenicDownload.published.distinct.pluck(:category_id).compact
+    IngenicDownloadCategory.where(id: ids).ordered.map { |category| { "id" => category.id, "name" => category.name } }
   end
 
   def form_json

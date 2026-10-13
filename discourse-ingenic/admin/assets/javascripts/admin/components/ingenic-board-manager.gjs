@@ -22,6 +22,7 @@ const BLANK = {
   image_url: "",
   documentation_url: "",
   application_url: "",
+  purchase_url: "",
   published: false,
   position: 0,
 };
@@ -211,6 +212,15 @@ export default class IngenicBoardManager extends Component {
             <span>{{i18n "admin.ingenic.boards.fields.documentation_url"}}</span>
             <input name="documentation_url" value={{this.draft.documentation_url}} />
           </label>
+
+          <label>
+            <span>{{i18n "admin.ingenic.boards.fields.purchase_url"}}</span>
+            <input name="purchase_url" value={{this.draft.purchase_url}} />
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.boards.fields.purchase_url_hint"}}
+          </p>
 
           <label>
             <span>{{i18n "admin.ingenic.boards.fields.image_url"}}</span>

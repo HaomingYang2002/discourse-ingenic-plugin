@@ -86,7 +86,7 @@ export default class AdminPluginsShowDownloads extends Component {
       {{else}}
         <IngenicDownloadManager
           @downloads={{this.args.model.resources.downloads}}
-          @kinds={{this.args.model.resources.kinds}}
+          @categories={{this.args.model.resources.categories}}
           @accessLevels={{this.args.model.resources.access_levels}}
           @storageWritable={{this.args.model.resources.storage_writable}}
         />

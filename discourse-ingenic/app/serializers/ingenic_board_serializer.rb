@@ -14,6 +14,7 @@ class IngenicBoardSerializer < ActiveModel::Serializer
              :image_url,
              :documentation_url,
              :application_url,
+             :purchase_url,
              :locale
 
   # The slugs are what the filter controls compare against, and they come back

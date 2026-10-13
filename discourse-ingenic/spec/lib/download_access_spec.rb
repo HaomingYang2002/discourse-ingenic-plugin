@@ -11,12 +11,13 @@ require "rails_helper"
 describe Ingenic::DownloadAccess do
   fab!(:user) { Fabricate(:user) }
   fab!(:admin) { Fabricate(:admin) }
+  fab!(:category) { IngenicDownloadCategory.find_or_create_by!(name: "sdk", locale: "en") }
 
   def resource(level, name: "SDK")
     IngenicDownload.create!(
       name: name,
       product_slug: "t33",
-      kind: "sdk",
+      category: category,
       locale: "en",
       access_level: level,
       file_url: "https://example.com/sdk.tgz",

@@ -3,8 +3,6 @@
 class IngenicDownload < ActiveRecord::Base
   self.table_name = "ingenic_downloads"
 
-  KINDS = %w[sdk firmware manual datasheet toolchain example release_notes other].freeze
-
   # The three tiers, in the order the Ingenic team describes them.
   #
   # public_login        signed in is enough
@@ -23,9 +21,18 @@ class IngenicDownload < ActiveRecord::Base
            class_name: "IngenicDownloadGrant",
            foreign_key: :download_id,
            dependent: :destroy
+  has_many :logs,
+           class_name: "IngenicDownloadLog",
+           foreign_key: :download_id,
+           dependent: :destroy
+
+  # Optional on purpose. The classification is Ingenic's own list and they can
+  # retire an entry, which leaves the resources filed under it unfiled rather
+  # than deleted; a resource in that state has to remain valid so it can be
+  # reclassified instead of refusing to save.
+  belongs_to :category, class_name: "IngenicDownloadCategory", optional: true
 
   validates :name, presence: true
-  validates :kind, inclusion: { in: KINDS }
   validates :access_level, inclusion: { in: ACCESS_LEVELS }
   validates :product_slug, presence: true
   validate :has_somewhere_to_download_from
@@ -44,6 +51,13 @@ class IngenicDownload < ActiveRecord::Base
 
   def approval_required?
     access_level == APPROVAL_REQUIRED
+  end
+
+  # What the listing prints on the card. Null for a resource whose category has
+  # been retired or was never set, which the callers treat as "show no label"
+  # rather than as an error.
+  def category_name
+    category&.name
   end
 
   # True when the bytes live on this server rather than behind a URL, which is

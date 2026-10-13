@@ -169,7 +169,10 @@ module Admin
             admin_download_json(download, pending[download.id] || 0, granted[download.id] || 0)
           end,
         access_levels: IngenicDownload::ACCESS_LEVELS,
-        kinds: IngenicDownload::KINDS,
+        # Sent with the listing so the editor can offer the classification
+        # without a second request. Includes retired entries, because a resource
+        # filed under one has to keep showing it until it is reclassified.
+        categories: IngenicDownloadCategory.ordered.map { |category| category_json(category) },
         storage_writable: Ingenic::DownloadStorage.writable?,
       )
     end
@@ -335,6 +338,7 @@ module Admin
           :image_url,
           :documentation_url,
           :application_url,
+          :purchase_url,
           :published,
           :position,
         )
@@ -346,23 +350,29 @@ module Admin
     end
 
     def download_params
-      params.permit(
-        :product_slug,
-        :kind,
-        :version,
-        :locale,
-        :name,
-        :description,
-        :platform,
-        :architecture,
-        :file_url,
-        :file_size,
-        :sha256,
-        :released_on,
-        :published,
-        :position,
-        :access_level,
-      )
+      permitted =
+        params.permit(
+          :product_slug,
+          :category_id,
+          :version,
+          :locale,
+          :name,
+          :description,
+          :platform,
+          :architecture,
+          :file_url,
+          :file_size,
+          :sha256,
+          :released_on,
+          :published,
+          :position,
+          :access_level,
+        )
+
+      # "No category" comes back from the picker as an empty string, which the
+      # foreign key would refuse; null is the value that means unfiled.
+      permitted[:category_id] = permitted[:category_id].presence
+      permitted
     end
 
     def permission_params
@@ -420,7 +430,7 @@ module Admin
         .slice(
           "id",
           "product_slug",
-          "kind",
+          "category_id",
           "version",
           "locale",
           "name",
@@ -438,9 +448,17 @@ module Admin
         )
         .merge(
           "stored" => download.stored?,
+          # Read through the association rather than off a column, because the
+          # name can be corrected in the category list without touching every
+          # resource filed under it.
+          "category_name" => download.category_name,
           "pending_requests" => pending,
           "active_grants" => granted,
         )
+    end
+
+    def category_json(category)
+      category.attributes.slice("id", "name", "locale", "position", "published")
     end
 
     def download_request_json(request)
@@ -548,6 +566,7 @@ module Admin
           "image_url",
           "documentation_url",
           "application_url",
+          "purchase_url",
           "published",
           "position",
         )

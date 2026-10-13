@@ -58,7 +58,7 @@ export default class IngenicBlockDownloads extends Component {
             <article class="ingenic-card">
               <div class="ingenic-card__title">{{download.name}}</div>
               <div class="ingenic-card__meta">
-                {{download.kind}}
+                {{#if download.category_name}}{{download.category_name}}{{/if}}
                 {{#if download.version}}· {{download.version}}{{/if}}
               </div>
               <div class="ingenic-card__actions">

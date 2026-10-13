@@ -17,6 +17,7 @@ class IngenicBoard < ActiveRecord::Base
   validates :name, presence: true
   validates :application_url, presence: true
   validate :product_is_a_chip
+  validate :purchase_link_is_usable
 
   # Setting the link is what says which chip a board is for, so the label
   # follows it rather than being a second thing to keep correct by hand. The
@@ -52,7 +53,25 @@ class IngenicBoard < ActiveRecord::Base
     series&.name
   end
 
+  # The card draws a Buy button only when there is somewhere to buy. Not every
+  # board is sold — some are lent to developers on application — so an absent
+  # link is a normal state rather than an unfinished record.
+  def purchase?
+    purchase_url.present?
+  end
+
   private
+
+  # A purchase link is only ever sent to a browser as a Location or an href, so
+  # the same two shapes the download centre accepts are accepted here. A typo
+  # caught on save is one the admin can still fix, rather than a dead button.
+  def purchase_link_is_usable
+    return if purchase_url.blank?
+
+    return if purchase_url.start_with?("/") || purchase_url.match?(%r{\Ahttps?://}i)
+
+    errors.add(:purchase_url, "must be a site path or an http(s) address")
+  end
 
   def take_chip_name_from_product
     self.chip = product.name if product.present?
