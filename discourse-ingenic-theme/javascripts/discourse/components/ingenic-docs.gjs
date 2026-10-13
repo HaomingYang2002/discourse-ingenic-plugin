@@ -35,6 +35,7 @@ export default class IngenicDocs extends Component {
   @tracked navigation = { previous: null, next: null };
   @tracked loading = true;
   @tracked notFound = false;
+  @tracked treeOpen = true;
 
   get segments() {
     return (this.args.path ?? "")
@@ -148,6 +149,11 @@ export default class IngenicDocs extends Component {
   }
 
   @action
+  toggleTree() {
+    this.treeOpen = !this.treeOpen;
+  }
+
+  @action
   selectVersion(event) {
     this.router.transitionTo(this.urlFor(event.target.value, this.pageSlug));
   }
@@ -201,7 +207,10 @@ export default class IngenicDocs extends Component {
         <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.not_found")}}</p>
       {{else}}
         <div class="ingenic-docs__panes">
-          <aside class="ingenic-docs__tree">
+          <aside class="ingenic-docs__tree {{if this.treeOpen "is-open"}}">
+            <button class="btn btn-flat ingenic-docs__tree-toggle" type="button" {{on "click" this.toggleTree}}>
+              {{i18n (themePrefix "ingenic.docs.contents")}}
+            </button>
             {{#if this.versions.length}}
               <label class="ingenic-docs__version-label" for="ingenic-version">
                 {{i18n (themePrefix "ingenic.docs.version")}}

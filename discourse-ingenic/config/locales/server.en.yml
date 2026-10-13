@@ -13,3 +13,5 @@ en:
       page_not_found: "Documentation page not found."
       invalid_nav_items: "ingenic_nav_items is not valid JSON: %{message}"
       invalid_homepage_blocks: "ingenic_homepage_blocks is not valid JSON: %{message}"
+    admin_errors:
+      has_children: "This record has child records and cannot be deleted."

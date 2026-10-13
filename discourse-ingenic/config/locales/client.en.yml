@@ -1,0 +1,35 @@
+en:
+  admin:
+    ingenic:
+      documentation:
+        title: "Documentation"
+        description: "Manage products, versions, and Markdown pages."
+        empty: "No documentation products are available in your scope."
+        versions: "Versions and pages"
+        no_versions: "No versions have been created yet."
+        version_slug: "Version slug"
+        version_label: "Version label"
+        locale: "Locale"
+        latest: "Latest version"
+        add_version: "Add version"
+        page_title: "Page title"
+        page_slug: "Page slug"
+        page_body: "Markdown body"
+        add_page: "Add page"
+        no_pages: "No pages have been created yet."
+      boards:
+        title: "Development boards"
+        description: "Manage development board links and publication state."
+        empty: "No development boards are available in your scope."
+        edit_description: "Board details"
+      permissions:
+        title: "Permissions"
+        description: "Assign product or page management scopes to users and groups."
+        empty: "No scoped permissions have been assigned."
+      create: "Create"
+      saved: "Saved."
+      save_failed: "The record could not be saved."
+      save: "Save changes"
+      assign: "Assign permission"
+      revoke: "Revoke"
+      empty: "No records are available."

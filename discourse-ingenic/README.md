@@ -8,6 +8,7 @@ Ingenic community extension for Discourse. Adds:
 - development board listings whose action button links out to the Ingenic
   application/purchase page
 - read-only JSON endpoints under `/ingenic` that the companion theme renders
+- web management pages for documentation, development boards, and scoped content permissions
 
 It intentionally does **not** touch authentication. Google, GitHub and email
 login stay exactly as configured in Discourse core.
@@ -39,6 +40,20 @@ cd /var/discourse
 
 After the rebuild the plugin runs its migrations automatically and the new
 tables are created.
+
+## Management
+
+Administrators can open **Admin → Plugins → Ingenic** to manage documentation,
+development boards, and permissions. A product permission is inherited by its
+versions and pages; a page permission is inherited only by that page's children.
+Permissions can be assigned to a user or group. The server checks every create,
+read, update, delete, and permission mutation, so hiding a button in the admin UI
+is not the authorization boundary.
+
+The documentation model supports explicit product families and child products:
+for example, create `T Series` as a parent product and `T33` as its child. Granting
+`T Series` lets a manager edit its descendants, while granting `T33` does not grant
+access to sibling products or the parent.
 
 ## Endpoints
 

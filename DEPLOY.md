@@ -138,9 +138,16 @@ A starting `ingenic_homepage_blocks`:
 
 ## 4. Content
 
-Documentation, downloads and boards are database rows. `docs/seeding.md` in the
-plugin has worked examples for all three, plus the rules for adding a second
-language.
+Documentation, downloads and boards can now be managed from the Discourse admin
+plugin page rather than only from Rails Console. Open **Admin → Plugins → Ingenic**
+to manage products, versions, Markdown pages, development boards, and scoped
+permissions. A product-family grant is inherited by its versions and pages; a
+page grant is limited to that page and its child pages. Assignments can target a
+user or group, and the server enforces every write operation.
+
+Use `docs/seeding.md` for console examples and migration/bootstrap workflows.
+The console remains useful for bulk imports, but normal editing should use the
+management pages.
 
 Short version:
 
@@ -167,7 +174,7 @@ Open these and check each one:
 - [ ] `/ingenic/boards` shows boards, and the apply button opens a new tab
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
-- [ ] `/` shows the homepage blocks above the topic list
+- [ ] `/` shows the Chinese-forum-style hero, quick links and homepage blocks above the topic list
 - [ ] Google, GitHub and email sign-in all still work
 - [ ] **Admin → Customize → Themes** shows no theme errors
 

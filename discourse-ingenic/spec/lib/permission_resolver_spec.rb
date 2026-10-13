@@ -1,0 +1,55 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+describe Ingenic::PermissionResolver do
+  fab!(:user) { Fabricate(:user) }
+  fab!(:group) { Fabricate(:group) }
+  fab!(:family) { IngenicDocProduct.create!(slug: "t-series", name: "T Series", locale: "en") }
+  fab!(:child) do
+    IngenicDocProduct.create!(
+      slug: "t33",
+      name: "T33",
+      locale: "en",
+      parent: family,
+    )
+  end
+  fab!(:other_family) { IngenicDocProduct.create!(slug: "c-series", name: "C Series", locale: "en") }
+  fab!(:version) do
+    IngenicDocVersion.create!(product: child, slug: "latest", label: "Latest", locale: "en")
+  end
+  fab!(:page) do
+    IngenicDocPage.create!(version: version, slug: "overview", title: "Overview", locale: "en")
+  end
+
+  it "inherits product grants through versions and pages" do
+    IngenicPermission.create!(user: user, resource_type: "IngenicDocProduct", resource_id: family.id)
+    resolver = described_class.new(user)
+
+    expect(resolver.can_manage?(child)).to eq(true)
+    expect(resolver.can_manage?(version)).to eq(true)
+    expect(resolver.can_manage?(page)).to eq(true)
+    expect(resolver.can_manage?(other_family)).to eq(false)
+  end
+
+  it "supports group grants" do
+    group.add(user)
+    IngenicPermission.create!(group: group, resource_type: "IngenicDocProduct", resource_id: family.id)
+
+    expect(described_class.new(user).can_manage?(child)).to eq(true)
+  end
+
+  it "limits a page grant to that page subtree" do
+    IngenicPermission.create!(user: user, resource_type: "IngenicDocPage", resource_id: page.id)
+
+    expect(described_class.new(user).can_manage?(page)).to eq(true)
+    expect(described_class.new(user).can_manage?(family)).to eq(false)
+  end
+
+  it "lets administrators manage every record" do
+    user.update!(admin: true)
+
+    expect(described_class.new(user).can_manage?(other_family)).to eq(true)
+    expect(described_class.new(user).can_manage_permissions?).to eq(true)
+  end
+end

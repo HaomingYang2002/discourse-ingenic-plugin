@@ -16,8 +16,18 @@ end
 
 require_relative "lib/discourse_ingenic/config_parser"
 require_relative "lib/discourse_ingenic/app_shell"
+require_relative "lib/discourse_ingenic/guardian_extensions"
+require_relative "lib/discourse_ingenic/management_constraint"
+require_relative "lib/ingenic/permission_resolver"
+
+add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
+register_svg_icon "book"
 
 after_initialize do
+  reloadable_patch do
+    Guardian.prepend DiscourseIngenic::GuardianExtensions
+  end
+
   # Navigation and homepage layout are admin-editable, so they are shipped to
   # the client through the site serializer rather than baked into the theme.
   add_to_serializer(:site, :ingenic_nav_items, include_condition: -> { SiteSetting.ingenic_enabled }) do
@@ -26,6 +36,10 @@ after_initialize do
 
   add_to_serializer(:site, :ingenic_homepage_blocks, include_condition: -> { SiteSetting.ingenic_enabled }) do
     DiscourseIngenic::ConfigParser.homepage_blocks
+  end
+
+  add_to_serializer(:current_user, :can_manage_ingenic_content) do
+    scope.can_manage_ingenic_content?
   end
 
   # Keep the public surface under /ingenic so the plugin can coexist with
@@ -40,6 +54,28 @@ after_initialize do
   # slash is present — without this line /ingenic/docs is a 404 at the routing
   # layer, before any controller sees it.
   Discourse::Application.routes.append do
+    scope "/admin/plugins/discourse-ingenic", constraints: DiscourseIngenic::ManagementConstraint.new do
+      get "/documentation" => "admin/ingenic#documentation", format: false
+      get "/documentation/products/:id" => "admin/ingenic#product", format: false
+      post "/documentation/products" => "admin/ingenic#create_product", format: false
+      put "/documentation/products/:id" => "admin/ingenic#update_product", format: false
+      delete "/documentation/products/:id" => "admin/ingenic#destroy_product", format: false
+      post "/documentation/versions" => "admin/ingenic#create_version", format: false
+      put "/documentation/versions/:id" => "admin/ingenic#update_version", format: false
+      delete "/documentation/versions/:id" => "admin/ingenic#destroy_version", format: false
+      post "/documentation/pages" => "admin/ingenic#create_page", format: false
+      put "/documentation/pages/:id" => "admin/ingenic#update_page", format: false
+      delete "/documentation/pages/:id" => "admin/ingenic#destroy_page", format: false
+      get "/boards" => "admin/ingenic#board_list", format: false
+      get "/boards/:id" => "admin/ingenic#board", format: false
+      post "/boards" => "admin/ingenic#create_board", format: false
+      put "/boards/:id" => "admin/ingenic#update_board", format: false
+      delete "/boards/:id" => "admin/ingenic#destroy_board", format: false
+      get "/permissions" => "admin/ingenic#permissions", format: false
+      post "/permissions" => "admin/ingenic#create_permission", format: false
+      delete "/permissions/:id" => "admin/ingenic#destroy_permission", format: false
+    end
+
     get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root
     get "/ingenic/docs/*path", to: "ingenic_docs#show", as: :ingenic_documentation
     get "/ingenic/downloads", to: "ingenic_downloads#index", as: :ingenic_downloads

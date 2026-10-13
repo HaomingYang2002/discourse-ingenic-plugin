@@ -1,9 +1,11 @@
+import { themePrefix } from "virtual:theme";
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
-import IngenicBlockSearch from "./ingenic-block-search";
 import IngenicBlockTopics from "./ingenic-block-topics";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
+import IngenicBlockSearch from "./ingenic-block-search";
+import { i18n } from "discourse-i18n";
 
 const BLOCK_COMPONENTS = {
   search: IngenicBlockSearch,
@@ -13,56 +15,56 @@ const BLOCK_COMPONENTS = {
   boards: IngenicBlockBoards,
 };
 
-/**
- * Custom homepage composed from admin-configured blocks.
- *
- * Order and visibility come from the `ingenic_homepage_blocks` site setting, so
- * the Ingenic team can rearrange the homepage from the admin UI. Unknown block
- * types are ignored rather than rendered as broken sections.
- */
 export default class IngenicHomepage extends Component {
   @service site;
   @service router;
 
-  // The outlet this renders into sits above the topic list on every discovery
-  // route, but the blocks are a homepage, not a banner — so only show them at
-  // the root.
   get onHomepage() {
     return (this.router.currentURL ?? "/").split("?")[0] === "/";
   }
 
   get blocks() {
     return (this.site.ingenic_homepage_blocks ?? [])
-      .map((block) => ({
-        block,
-        Component: BLOCK_COMPONENTS[block.type],
-      }))
+      .map((block) => ({ block, Component: BLOCK_COMPONENTS[block.type] }))
       .filter((entry) => entry.Component);
   }
 
   get heroTitle() {
-    return settings.ingenic_hero_title;
+    return settings.ingenic_hero_title || i18n(themePrefix("ingenic.home.title"));
   }
 
   get heroSubtitle() {
-    return settings.ingenic_hero_subtitle;
+    return settings.ingenic_hero_subtitle || i18n(themePrefix("ingenic.home.subtitle"));
   }
 
   <template>
     {{#if this.onHomepage}}
       <div class="ingenic-homepage">
-        {{#if this.heroTitle}}
-          <section class="ingenic-hero">
-            <h1 class="ingenic-hero__title">{{this.heroTitle}}</h1>
-            {{#if this.heroSubtitle}}
-              <p class="ingenic-hero__subtitle">{{this.heroSubtitle}}</p>
-            {{/if}}
-          </section>
-        {{/if}}
+        <section class="ingenic-homepage__hero">
+          <div>
+            <p class="ingenic-homepage__eyebrow">Ingenic developer community</p>
+            <h1>{{this.heroTitle}}</h1>
+            <p>{{this.heroSubtitle}}</p>
+          </div>
+          <div class="ingenic-homepage__hero-actions">
+            <a class="btn btn-primary" href="/ingenic/docs">{{i18n (themePrefix "ingenic.nav.docs")}}</a>
+            <a class="btn" href="/c/technical-discussions">{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
+          </div>
+        </section>
 
-        {{#each this.blocks as |entry|}}
-          <entry.Component @block={{entry.block}} />
-        {{/each}}
+        <nav class="ingenic-homepage__quick-links" aria-label={{i18n (themePrefix "ingenic.home.quick_links")}}>
+          <a href="/c/official-announcements"><span class="d-icon d-icon-bullhorn"></span>{{i18n (themePrefix "ingenic.nav.announcements")}}</a>
+          <a href="/c/technical-discussions"><span class="d-icon d-icon-comments"></span>{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
+          <a href="/ingenic/docs"><span class="d-icon d-icon-book"></span>{{i18n (themePrefix "ingenic.nav.docs")}}</a>
+          <a href="/ingenic/downloads"><span class="d-icon d-icon-download"></span>{{i18n (themePrefix "ingenic.nav.downloads")}}</a>
+          <a href="/ingenic/boards"><span class="d-icon d-icon-microchip"></span>{{i18n (themePrefix "ingenic.nav.boards")}}</a>
+        </nav>
+
+        <div class="ingenic-homepage__blocks">
+          {{#each this.blocks as |entry|}}
+            <entry.Component @block={{entry.block}} />
+          {{/each}}
+        </div>
       </div>
     {{/if}}
   </template>

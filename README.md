@@ -23,12 +23,14 @@ admin UI as a theme zip.
 
 ## Content
 
-The first version stores documentation and development-board records in the
-plugin's own tables. The initial content workflow uses the Rails console; see
-[`discourse-ingenic/docs/seeding.md`](discourse-ingenic/docs/seeding.md).
+Documentation and development-board records live in the plugin's own tables.
+Normal editing is available from **Admin → Plugins → Ingenic**; the Rails console
+workflow in [`discourse-ingenic/docs/seeding.md`](discourse-ingenic/docs/seeding.md)
+remains useful for initial imports and bulk setup.
 
-The current version does not yet include an admin CRUD interface for editing
-products, versions, pages or boards. That is a planned next-stage improvement.
+The management UI supports product/version/page records, development boards, and
+user/group-scoped permissions. Server-side authorization applies the assigned
+product or page scope to every write operation.
 
 ## Scope
 
