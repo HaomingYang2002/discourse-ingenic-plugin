@@ -292,7 +292,7 @@ describe IngenicDownloadsController do
       with_profile
       IngenicDownloadRequest.create!(user: user, download: download, message: "hello")
 
-      get "/admin/plugins/discourse-ingenic/download-requests.json"
+      get "/admin/plugins/discourse-ingenic/download-requests"
 
       expect(response.status).to eq(200)
       entry = response.parsed_body["requests"].first
@@ -308,7 +308,7 @@ describe IngenicDownloadsController do
       request = IngenicDownloadRequest.create!(user: user, download: download)
 
       expect {
-        put "/admin/plugins/discourse-ingenic/download-requests/#{request.id}/approve.json",
+        put "/admin/plugins/discourse-ingenic/download-requests/#{request.id}/approve",
             params: {
               note: "welcome",
             }
@@ -325,7 +325,7 @@ describe IngenicDownloadsController do
       grant = IngenicDownloadGrant.issue!(user, download, granted_by: admin)
       expect(Ingenic::DownloadAccess.new(user, download).result.state).to eq(:granted)
 
-      delete "/admin/plugins/discourse-ingenic/download-grants/#{grant.id}.json"
+      delete "/admin/plugins/discourse-ingenic/download-grants/#{grant.id}"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["grant"]["active"]).to eq(false)
@@ -341,7 +341,7 @@ describe IngenicDownloadsController do
       # the exception settings in play; neither reaches the controller.
       outcome =
         begin
-          get "/admin/plugins/discourse-ingenic/download-requests.json"
+          get "/admin/plugins/discourse-ingenic/download-requests"
           response.status
         rescue ActionController::RoutingError
           :unrouted

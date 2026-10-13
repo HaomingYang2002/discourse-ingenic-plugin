@@ -1,0 +1,250 @@
+import Component from "@glimmer/component";
+import { tracked } from "@glimmer/tracking";
+import { action } from "@ember/object";
+import { on } from "@ember/modifier";
+import { fn } from "@ember/helper";
+import { ajax } from "discourse/lib/ajax";
+import DNativeSelect from "discourse/ui-kit/d-native-select";
+import { i18n } from "discourse-i18n";
+
+const ENDPOINT = "/admin/plugins/discourse-ingenic/social-links";
+
+const LINK = "link";
+const QR = "qr";
+
+const BLANK = {
+  label: "",
+  kind: LINK,
+  href: "",
+  image_url: "",
+  qr_image_url: "",
+  qr_caption: "",
+  position: 0,
+  published: true,
+};
+
+/**
+ * The partner platforms in the footer strip.
+ *
+ * Two shapes, and the form shows the fields for the one that was chosen: a link
+ * needs somewhere to go, a QR code needs an image. The server refuses an entry
+ * that has neither, so what this screen does is make the requirement visible
+ * before it is submitted rather than after.
+ */
+export default class IngenicSocialLinkManager extends Component {
+  @tracked records = this.args.socialLinks ?? [];
+  @tracked draft = null;
+  @tracked busy = false;
+  @tracked message = null;
+  @tracked error = null;
+
+  get kinds() {
+    return [LINK, QR];
+  }
+
+  get kindKeys() {
+    return {
+      link: "admin.ingenic.social_links.kinds.link",
+      qr: "admin.ingenic.social_links.kinds.qr",
+    };
+  }
+
+  get isQr() {
+    return this.draft?.kind === QR;
+  }
+
+  @action
+  startNew() {
+    this.draft = { ...BLANK };
+    this.message = null;
+    this.error = null;
+  }
+
+  @action
+  edit(record) {
+    this.draft = { ...record };
+    this.message = null;
+    this.error = null;
+  }
+
+  @action
+  cancel() {
+    this.draft = null;
+    this.message = null;
+    this.error = null;
+  }
+
+  @action
+  pickKind(value) {
+    this.draft = { ...this.draft, kind: value };
+  }
+
+  @action
+  async save(event) {
+    event.preventDefault();
+    this.busy = true;
+    this.message = null;
+    this.error = null;
+
+    const form = new FormData(event.target);
+    form.set("published", String(event.target.elements.published.checked));
+
+    const id = this.draft.id;
+
+    try {
+      const response = await ajax(id ? `${ENDPOINT}/${id}` : ENDPOINT, {
+        type: id ? "PUT" : "POST",
+        data: form,
+        processData: false,
+        contentType: false,
+      });
+
+      const saved = response.social_link;
+      this.records = id
+        ? this.records.map((record) => (record.id === saved.id ? saved : record))
+        : [...this.records, saved];
+      this.draft = null;
+      this.message = i18n("admin.ingenic.saved");
+    } catch (failure) {
+      this.error = this.#errorMessage(failure);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  @action
+  async remove(record, event) {
+    event.preventDefault();
+    this.error = null;
+
+    try {
+      await ajax(`${ENDPOINT}/${record.id}`, { type: "DELETE" });
+      this.records = this.records.filter((item) => item.id !== record.id);
+    } catch (failure) {
+      this.error = this.#errorMessage(failure);
+    }
+  }
+
+  #errorMessage(failure) {
+    const errors = failure?.jqXHR?.responseJSON?.errors;
+    return errors?.join(", ") || i18n("admin.ingenic.save_failed");
+  }
+
+  <template>
+    <div class="ingenic-admin-panel">
+      {{#if this.error}}<p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>{{/if}}
+      {{#if this.message}}<p class="ingenic-admin-note">{{this.message}}</p>{{/if}}
+
+      <div class="ingenic-admin__toolbar">
+        <button class="btn btn-primary" type="button" {{on "click" this.startNew}}>
+          {{i18n "admin.ingenic.social_links.add"}}
+        </button>
+      </div>
+
+      {{#if this.draft}}
+        <form class="ingenic-admin-form" {{on "submit" this.save}}>
+          <h3>
+            {{#if this.draft.id}}
+              {{i18n "admin.ingenic.social_links.edit_title"}}
+            {{else}}
+              {{i18n "admin.ingenic.social_links.new_title"}}
+            {{/if}}
+          </h3>
+
+          <label>
+            <span>{{i18n "admin.ingenic.social_links.fields.label"}}</span>
+            <input name="label" value={{this.draft.label}} required />
+          </label>
+
+          <label>
+            <span>{{i18n "admin.ingenic.social_links.fields.kind"}}</span>
+            <DNativeSelect
+              name="kind"
+              @includeNone={{false}}
+              @value={{this.draft.kind}}
+              @onChange={{this.pickKind}}
+              as |select|
+            >
+              {{#each this.kinds as |kind|}}
+                <select.Option @value={{kind}}>{{i18n (get this.kindKeys kind)}}</select.Option>
+              {{/each}}
+            </DNativeSelect>
+          </label>
+
+          {{#if this.isQr}}
+            <label>
+              <span>{{i18n "admin.ingenic.social_links.fields.qr_image_url"}}</span>
+              <input name="qr_image_url" value={{this.draft.qr_image_url}} />
+            </label>
+
+            <label>
+              <span>{{i18n "admin.ingenic.social_links.fields.qr_caption"}}</span>
+              <input name="qr_caption" value={{this.draft.qr_caption}} />
+            </label>
+          {{else}}
+            <label>
+              <span>{{i18n "admin.ingenic.social_links.fields.href"}}</span>
+              <input name="href" value={{this.draft.href}} />
+            </label>
+          {{/if}}
+
+          <label>
+            <span>{{i18n "admin.ingenic.social_links.fields.image_url"}}</span>
+            <input name="image_url" value={{this.draft.image_url}} />
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.social_links.fields.image_hint"}}
+          </p>
+
+          <label>
+            <span>{{i18n "admin.ingenic.social_links.fields.position"}}</span>
+            <input type="number" name="position" value={{this.draft.position}} />
+          </label>
+
+          <label class="checkbox-label">
+            <input type="checkbox" name="published" checked={{this.draft.published}} />
+            <span>{{i18n "admin.ingenic.social_links.fields.published"}}</span>
+          </label>
+
+          <div class="ingenic-admin__toolbar">
+            <button class="btn btn-primary" type="submit" disabled={{this.busy}}>
+              {{i18n "admin.ingenic.save"}}
+            </button>
+            <button class="btn" type="button" {{on "click" this.cancel}}>
+              {{i18n "admin.ingenic.cancel"}}
+            </button>
+          </div>
+        </form>
+      {{/if}}
+
+      <div class="ingenic-admin-list">
+        {{#each this.records as |record|}}
+          <section class="ingenic-admin-list__row">
+            <div>
+              <strong>{{record.label}}</strong>
+              <div class="ingenic-admin-list__meta">
+                {{i18n (get this.kindKeys record.kind)}}
+                {{#if record.href}}· {{record.href}}{{/if}}
+                {{#if record.position}}· {{record.position}}{{/if}}
+                {{#unless record.published}}
+                  · {{i18n "admin.ingenic.social_links.unpublished"}}
+                {{/unless}}
+              </div>
+            </div>
+            <div class="ingenic-admin__toolbar">
+              <button class="btn" type="button" {{on "click" (fn this.edit record)}}>
+                {{i18n "admin.ingenic.edit"}}
+              </button>
+              <button class="btn btn-danger" type="button" {{on "click" (fn this.remove record)}}>
+                {{i18n "admin.ingenic.delete"}}
+              </button>
+            </div>
+          </section>
+        {{else}}
+          <p>{{i18n "admin.ingenic.social_links.empty"}}</p>
+        {{/each}}
+      </div>
+    </div>
+  </template>
+}

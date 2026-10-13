@@ -132,6 +132,33 @@ after_initialize do
       put "/download-requests/:id/reject" => "admin/ingenic#reject_request", format: false
       get "/download-grants" => "admin/ingenic#download_grants", format: false
       delete "/download-grants/:id" => "admin/ingenic#revoke_grant", format: false
+
+      get "/download-logs" => "admin/ingenic#download_logs", format: false
+
+      post "/download-categories" => "admin/ingenic#create_download_category", format: false
+      put "/download-categories/:id" => "admin/ingenic#update_download_category", format: false
+      delete "/download-categories/:id" => "admin/ingenic#destroy_download_category", format: false
+
+      # The homepage and footer lists. One path returns all three because they
+      # are drawn on one screen; the writes are separate because each list has
+      # its own fields.
+      get "/site" => "admin/ingenic#site", format: false
+
+      post "/promotions" => "admin/ingenic#create_promotion", format: false
+      put "/promotions/:id" => "admin/ingenic#update_promotion", format: false
+      delete "/promotions/:id" => "admin/ingenic#destroy_promotion", format: false
+
+      post "/social-links" => "admin/ingenic#create_social_link", format: false
+      put "/social-links/:id" => "admin/ingenic#update_social_link", format: false
+      delete "/social-links/:id" => "admin/ingenic#destroy_social_link", format: false
+
+      post "/footer-columns" => "admin/ingenic#create_footer_column", format: false
+      put "/footer-columns/:id" => "admin/ingenic#update_footer_column", format: false
+      delete "/footer-columns/:id" => "admin/ingenic#destroy_footer_column", format: false
+
+      post "/footer-links" => "admin/ingenic#create_footer_link", format: false
+      put "/footer-links/:id" => "admin/ingenic#update_footer_link", format: false
+      delete "/footer-links/:id" => "admin/ingenic#destroy_footer_link", format: false
     end
 
     get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root

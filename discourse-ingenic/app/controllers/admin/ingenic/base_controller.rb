@@ -26,6 +26,15 @@ module Admin
         raise Discourse::NotFound unless allowed
       end
 
+      # Site-wide content — the homepage slots, the footer, the classification
+      # list, the download record — is not filed under a product or a board, so
+      # there is no scope for a content manager to be granted over it. It is an
+      # administrator's, and this says so rather than leaving each action to
+      # discover that a record it cannot describe falls through to nobody.
+      def authorize_admin_only!
+        raise Discourse::NotFound unless current_user.admin?
+      end
+
       def render_record_error(record)
         render_json_error(record)
       end

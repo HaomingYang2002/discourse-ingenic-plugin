@@ -343,3 +343,77 @@
   color: var(--primary-medium);
   vertical-align: middle;
 }
+
+// A checkbox with its label beside it. Every other field in the form is a
+// column — label above control — and without this the box and its caption
+// would be stacked too.
+.ingenic-admin-form .checkbox-label {
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+// Site content ----------------------------------------------------------------
+
+// Links inside a footer column's row. Indented and unbulleted, because a
+// column's links are part of that column rather than siblings of it.
+.ingenic-admin-sublist {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ingenic-admin-sublist__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-left: 2px solid var(--primary-low);
+  border-radius: 0 4px 4px 0;
+
+  > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+// The download record. A table rather than the row list: its whole purpose is
+// to be read down a column ("everything this account took"), which a list of
+// blocks cannot be.
+.ingenic-admin-table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+  font-size: var(--font-down-1);
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--primary-low);
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--primary-medium);
+  }
+
+  td {
+    overflow-wrap: anywhere;
+  }
+}
+
+// A labelled control that sits in a toolbar rather than in the form grid.
+.ingenic-admin-inline-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--font-down-1);
+  color: var(--primary-medium);
+}

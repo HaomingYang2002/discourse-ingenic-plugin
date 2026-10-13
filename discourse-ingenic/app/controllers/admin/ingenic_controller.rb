@@ -26,6 +26,7 @@ module Admin
 
     def update_product
       record = IngenicDocProduct.find(params[:id])
+      record.assign_attributes(product_params)
       authorize_ingenic!(record)
       save_or_error(record) { render_json_dump(product: product_json(record, include_versions: true)) }
     end
@@ -47,6 +48,7 @@ module Admin
 
     def update_version
       record = IngenicDocVersion.find(params[:id])
+      record.assign_attributes(version_params)
       authorize_ingenic!(record)
       save_or_error(record) { render_json_dump(version: version_json(record)) }
     end
@@ -80,6 +82,7 @@ module Admin
 
     def update_page
       record = IngenicDocPage.find(params[:id])
+      record.assign_attributes(page_params)
       authorize_ingenic!(record.version)
       save_or_error(record) { render_json_dump(page: page_json(record)) }
     end
@@ -145,6 +148,7 @@ module Admin
 
     def update_board
       record = IngenicBoard.find(params[:id])
+      record.assign_attributes(board_params)
       authorize_ingenic!(record)
       save_or_error(record) { render_json_dump(board: board_json(record)) }
     end
@@ -172,8 +176,50 @@ module Admin
         # Sent with the listing so the editor can offer the classification
         # without a second request. Includes retired entries, because a resource
         # filed under one has to keep showing it until it is reclassified.
-        categories: IngenicDownloadCategory.ordered.map { |category| category_json(category) },
+        categories: download_categories_json,
         storage_writable: Ingenic::DownloadStorage.writable?,
+        # The log names accounts, so a scoped content manager is not offered the
+        # tab. Sent as a flag rather than letting the page ask and be refused,
+        # because a refused request per page load is a worse way to say no.
+        can_read_log: current_user.admin?,
+      )
+    end
+
+    # Categories ------------------------------------------------------------
+
+    def create_download_category
+      authorize_admin_only!
+      record = IngenicDownloadCategory.new(download_category_params)
+      save_or_error(record) { render_json_dump(category: category_json(record)) }
+    end
+
+    def update_download_category
+      authorize_admin_only!
+      record = IngenicDownloadCategory.find(params[:id])
+      record.assign_attributes(download_category_params)
+      save_or_error(record) { render_json_dump(category: category_json(record)) }
+    end
+
+    # The resources filed under it survive as unfiled. Retiring a label is not a
+    # reason to lose the files someone spent a week uploading and classifying.
+    def destroy_download_category
+      authorize_admin_only!
+      IngenicDownloadCategory.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # The record of what was actually taken. Read-only: this is evidence, and an
+    # edit surface over it would be one more thing to trust.
+    def download_logs
+      authorize_admin_only!
+
+      logs = IngenicDownloadLog.includes(:user, :download).recent
+      logs = logs.where(download_id: params[:download_id]) if params[:download_id].present?
+
+      render_json_dump(
+        logs: logs.limit(500).map { |log| download_log_json(log) },
+        total: IngenicDownloadLog.count,
+        by_resource: download_log_summary,
       )
     end
 
@@ -196,6 +242,7 @@ module Admin
 
     def update_download
       record = IngenicDownload.find(params[:id])
+      record.assign_attributes(download_params)
       authorize_ingenic!(record)
 
       replaced = record.storage_path
@@ -267,6 +314,112 @@ module Admin
       render_json_dump(grant: download_grant_json(grant))
     end
 
+    # Site content ----------------------------------------------------------
+
+    # One request for the whole page. All three lists are short and all three are
+    # drawn together, so fetching them separately would only add three round
+    # trips to a screen whose entire content is what comes back.
+    def site
+      authorize_admin_only!
+
+      render_json_dump(
+        promotions: IngenicPromotion.ordered.map { |record| promotion_json(record) },
+        social_links: IngenicSocialLink.ordered.map { |record| social_link_json(record) },
+        footer_columns:
+          IngenicFooterColumn.includes(:links).ordered.map { |record| footer_column_json(record) },
+      )
+    end
+
+    # Promotions ------------------------------------------------------------
+
+    def create_promotion
+      authorize_admin_only!
+      record = IngenicPromotion.new(promotion_params)
+      save_or_error(record) { render_json_dump(promotion: promotion_json(record)) }
+    end
+
+    def update_promotion
+      authorize_admin_only!
+      record = IngenicPromotion.find(params[:id])
+      record.assign_attributes(promotion_params)
+      save_or_error(record) { render_json_dump(promotion: promotion_json(record)) }
+    end
+
+    # Deleted rather than withdrawn, unlike a download or a board. Nothing
+    # refers to a promotion, so there is no history to keep and an editor who
+    # says "remove this" means remove it. Unpublishing is the way to take one
+    # down without losing the wording.
+    def destroy_promotion
+      authorize_admin_only!
+      IngenicPromotion.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # Partner platforms -----------------------------------------------------
+
+    def create_social_link
+      authorize_admin_only!
+      record = IngenicSocialLink.new(social_link_params)
+      save_or_error(record) { render_json_dump(social_link: social_link_json(record)) }
+    end
+
+    def update_social_link
+      authorize_admin_only!
+      record = IngenicSocialLink.find(params[:id])
+      record.assign_attributes(social_link_params)
+      save_or_error(record) { render_json_dump(social_link: social_link_json(record)) }
+    end
+
+    def destroy_social_link
+      authorize_admin_only!
+      IngenicSocialLink.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # Footer columns --------------------------------------------------------
+
+    def create_footer_column
+      authorize_admin_only!
+      record = IngenicFooterColumn.new(footer_column_params)
+      save_or_error(record) { render_json_dump(footer_column: footer_column_json(record)) }
+    end
+
+    def update_footer_column
+      authorize_admin_only!
+      record = IngenicFooterColumn.find(params[:id])
+      record.assign_attributes(footer_column_params)
+      save_or_error(record) { render_json_dump(footer_column: footer_column_json(record)) }
+    end
+
+    # Takes its links with it. They have no meaning apart from the heading, and
+    # leaving them behind would make them unreachable rather than preserved.
+    def destroy_footer_column
+      authorize_admin_only!
+      IngenicFooterColumn.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # Footer links ----------------------------------------------------------
+
+    def create_footer_link
+      authorize_admin_only!
+      record = IngenicFooterLink.new(footer_link_params)
+      save_or_error(record) { render_json_dump(footer_link: footer_link_json(record)) }
+    end
+
+    def update_footer_link
+      authorize_admin_only!
+      record = IngenicFooterLink.find(params[:id])
+      record.assign_attributes(footer_link_params)
+      save_or_error(record) { render_json_dump(footer_link: footer_link_json(record)) }
+    end
+
+    def destroy_footer_link
+      authorize_admin_only!
+      IngenicFooterLink.find(params[:id]).destroy!
+      head :no_content
+    end
+
     # Permissions -----------------------------------------------------------
 
     def permissions
@@ -294,6 +447,12 @@ module Admin
 
     private
 
+    # Saves and renders, or reports why not.
+    #
+    # Every update action assigns the form to its record before it authorizes,
+    # rather than after: the form may move a record to a different parent — a
+    # page to another version, a chip to another series — and the scope that has
+    # to permit the write is the one the record is moving into.
     def save_or_error(record)
       if record.save
         yield
@@ -379,6 +538,54 @@ module Admin
       params.permit(:user_id, :group_id, :resource_type, :resource_id, :permission)
     end
 
+    def download_category_params
+      params.permit(:name, :locale, :position, :published)
+    end
+
+    def promotion_params
+      permitted =
+        params.permit(
+          :corner_label,
+          :title,
+          :description,
+          :button_label,
+          :button_href,
+          :button_external,
+          :image_url,
+          :locale,
+          :position,
+          :published,
+        )
+
+      # The two dates come from datetime inputs, which submit an empty string
+      # when cleared. Assigning the strings directly would leave the column set
+      # to a value Rails parses on write and a validation cannot read.
+      permitted[:starts_at] = parse_time(params[:starts_at])
+      permitted[:ends_at] = parse_time(params[:ends_at])
+      permitted
+    end
+
+    def social_link_params
+      params.permit(
+        :label,
+        :kind,
+        :href,
+        :image_url,
+        :qr_image_url,
+        :qr_caption,
+        :position,
+        :published,
+      )
+    end
+
+    def footer_column_params
+      params.permit(:title, :position, :published)
+    end
+
+    def footer_link_params
+      params.permit(:column_id, :label, :href, :external, :position, :published)
+    end
+
     # Writes the uploaded file, if the request carries one, and returns where it
     # went. The path is returned rather than read back off the record so that a
     # refused save can clean up the file it just wrote.
@@ -459,6 +666,96 @@ module Admin
 
     def category_json(category)
       category.attributes.slice("id", "name", "locale", "position", "published")
+    end
+
+    # Counted in one query rather than one per row: the management page shows
+    # every category, and a count per category is the classic way to turn a
+    # screen that loads instantly into one that does not.
+    def download_categories_json
+      counts = IngenicDownload.group(:category_id).count
+      IngenicDownloadCategory.ordered.map do |category|
+        category_json(category).merge("download_count" => counts[category.id] || 0)
+      end
+    end
+
+    def download_log_json(log)
+      {
+        "id" => log.id,
+        "created_at" => log.created_at.iso8601,
+        "user_id" => log.user_id,
+        "username" => log.user&.username,
+        "download_id" => log.download_id,
+        "resource_name" => log.resource_name,
+        "version" => log.version,
+        "ip_address" => log.ip_address,
+        "locale" => log.locale,
+      }
+    end
+
+    # Counted over the whole log rather than over the slice on screen, and
+    # capped: this is the answer to "which files are being taken", which the
+    # first few dozen rows already give.
+    def download_log_summary
+      counts = IngenicDownloadLog.group(:download_id).count
+      names = IngenicDownload.where(id: counts.keys).pluck(:id, :name).to_h
+
+      counts
+        .sort_by { |download_id, count| [-count, download_id] }
+        .first(50)
+        .map do |download_id, count|
+          { "download_id" => download_id, "name" => names[download_id], "count" => count }
+        end
+    end
+
+    def promotion_json(promotion)
+      promotion
+        .attributes
+        .slice(
+          "id",
+          "corner_label",
+          "title",
+          "description",
+          "button_label",
+          "button_href",
+          "button_external",
+          "image_url",
+          "locale",
+          "position",
+          "published",
+        )
+        .merge(
+          "starts_at" => promotion.starts_at&.iso8601,
+          "ends_at" => promotion.ends_at&.iso8601,
+          # Sent as well as the dates: the list has to say whether an entry is
+          # on the page right now, and working that out from two timestamps in
+          # the browser is a second implementation of the same rule.
+          "live" => promotion.live?,
+        )
+    end
+
+    def social_link_json(link)
+      link.attributes.slice(
+        "id",
+        "label",
+        "kind",
+        "href",
+        "image_url",
+        "qr_image_url",
+        "qr_caption",
+        "position",
+        "published",
+      )
+    end
+
+    def footer_column_json(column)
+      column
+        .attributes
+        .slice("id", "title", "position", "published")
+        .merge("links" => column.links.map { |link| footer_link_json(link) })
+    end
+
+    def footer_link_json(link)
+      link.attributes.slice("id", "column_id", "label", "href", "external", "position", "published")
     end
 
     def download_request_json(request)

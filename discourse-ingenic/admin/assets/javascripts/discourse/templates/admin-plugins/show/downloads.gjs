@@ -7,19 +7,23 @@ import DPageSubheader from "discourse/ui-kit/d-page-subheader";
 import IngenicDownloadManager from "../../../../admin/components/ingenic-download-manager";
 import IngenicDownloadQueue from "../../../../admin/components/ingenic-download-queue";
 import IngenicGrantList from "../../../../admin/components/ingenic-grant-list";
+import IngenicCategoryManager from "../../../../admin/components/ingenic-category-manager";
+import IngenicDownloadLog from "../../../../admin/components/ingenic-download-log";
 import { i18n } from "discourse-i18n";
 
 /**
- * The three surfaces of the download centre on one page.
+ * The surfaces of the download centre on one page.
  *
  * They sit together because they are read together: a resource's access level
- * is the reason its queue exists, and the queue is the reason a grant exists.
- * Switching between them does not refetch, so a decision made in one is visible
- * in the others.
+ * is the reason its queue exists, the queue is the reason a grant exists, and
+ * the log is what says whether the grant was ever used. Switching between them
+ * does not refetch, so a decision made in one is visible in the others.
  *
- * A scoped content manager is refused the queue and the grant list — deciding
- * an application is an administrative act rather than a content edit — so those
- * two arrive as null and their tabs are not offered.
+ * A scoped content manager is refused the queue, the grant list and the log —
+ * deciding an application is an administrative act rather than a content edit,
+ * and the log names accounts — so those arrive as null and their tabs are not
+ * offered. The classification list is content, so it is offered to everyone who
+ * can reach this page.
  */
 export default class AdminPluginsShowDownloads extends Component {
   @tracked tab = "resources";
@@ -28,8 +32,18 @@ export default class AdminPluginsShowDownloads extends Component {
     return Boolean(this.args.model.requests) && Boolean(this.args.model.grants);
   }
 
+  // Not read from the model: the log is fetched by its own component when the
+  // tab is opened, so a page load does not pull five hundred rows nobody asked
+  // for. What the model carries is whether this account may read it at all.
+  get canReadLog() {
+    return this.args.model.resources.can_read_log === true;
+  }
+
+  // The fallback as well as the default: a tab that is not offered cannot be
+  // the one on screen, and showing the resource list is better than showing
+  // nothing if a tab is somehow selected without permission.
   get isResources() {
-    return this.tab === "resources" || !this.canReview;
+    return !this.isRequests && !this.isGrants && !this.isCategories && !this.isLog;
   }
 
   get isRequests() {
@@ -38,6 +52,14 @@ export default class AdminPluginsShowDownloads extends Component {
 
   get isGrants() {
     return this.tab === "grants" && this.canReview;
+  }
+
+  get isCategories() {
+    return this.tab === "categories";
+  }
+
+  get isLog() {
+    return this.tab === "log" && this.canReadLog;
   }
 
   @action
@@ -76,13 +98,33 @@ export default class AdminPluginsShowDownloads extends Component {
           >
             {{i18n "admin.ingenic.downloads.tab_grants"}}
           </button>
+          {{#if this.canReadLog}}
+            <button
+              class="btn {{if this.isLog 'btn-primary'}}"
+              type="button"
+              {{on "click" (fn this.show "log")}}
+            >
+              {{i18n "admin.ingenic.downloads.tab_log"}}
+            </button>
+          {{/if}}
         {{/if}}
+        <button
+          class="btn {{if this.isCategories 'btn-primary'}}"
+          type="button"
+          {{on "click" (fn this.show "categories")}}
+        >
+          {{i18n "admin.ingenic.downloads.tab_categories"}}
+        </button>
       </div>
 
       {{#if this.isRequests}}
         <IngenicDownloadQueue @requests={{this.args.model.requests.requests}} />
       {{else if this.isGrants}}
         <IngenicGrantList @grants={{this.args.model.grants.grants}} />
+      {{else if this.isCategories}}
+        <IngenicCategoryManager @categories={{this.args.model.resources.categories}} />
+      {{else if this.isLog}}
+        <IngenicDownloadLog />
       {{else}}
         <IngenicDownloadManager
           @downloads={{this.args.model.resources.downloads}}
