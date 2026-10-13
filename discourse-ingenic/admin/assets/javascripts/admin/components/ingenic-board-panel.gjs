@@ -45,11 +45,11 @@ export default class IngenicBoardPanel extends Component {
         <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.create"}}</button>
       </form>
 
-      {{#if this.message}}<p class="admin-config-area__message">{{this.message}}</p>{{/if}}
+      {{#if this.message}}<p class="ingenic-admin-note">{{this.message}}</p>{{/if}}
 
-      <div class="admin-config-list">
+      <div class="ingenic-admin-list">
         {{#each this.boards as |board|}}
-          <section class="admin-config-list__row">
+          <section class="ingenic-admin-list__row">
             <LinkTo @route="adminPlugins.show.boards.show" @model={{board.id}}>{{board.name}}</LinkTo>
             <span>{{if board.published "Published" "Draft"}}</span>
           </section>

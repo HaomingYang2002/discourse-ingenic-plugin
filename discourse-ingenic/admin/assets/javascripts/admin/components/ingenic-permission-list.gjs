@@ -26,13 +26,13 @@ export default class IngenicPermissionList extends Component {
   }
 
   <template>
-    {{#if this.error}}<p class="admin-config-area__message">{{this.error}}</p>{{/if}}
-    <div class="admin-config-list">
+    {{#if this.error}}<p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>{{/if}}
+    <div class="ingenic-admin-list">
       {{#each this.permissions as |permission|}}
-        <section class="admin-config-list__row">
+        <section class="ingenic-admin-list__row">
           <div>
             <strong>{{permission.resource_type}} #{{permission.resource_id}}</strong>
-            <div class="admin-config-list__meta">
+            <div class="ingenic-admin-list__meta">
               {{permission.permission}} ·
               {{#if permission.user_id}}User {{permission.user_id}}{{else}}Group {{permission.group_id}}{{/if}}
             </div>

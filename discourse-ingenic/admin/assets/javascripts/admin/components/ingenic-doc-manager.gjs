@@ -229,7 +229,7 @@ export default class IngenicDocManager extends Component {
   }
 
   <template>
-    {{#if this.error}}<p class="admin-config-area__message">{{this.error}}</p>{{/if}}
+    {{#if this.error}}<p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>{{/if}}
 
     <div class="ingenic-doc-manager">
       <aside class="ingenic-doc-manager__products">

@@ -8,7 +8,9 @@
 
 enabled_site_setting :ingenic_enabled
 
-register_asset "stylesheets/common/ingenic.scss"
+# Only the management screens. The public pages are drawn entirely by the
+# companion theme's components, so their styles live with those components and
+# there is no second copy here to fight over load order.
 register_asset "stylesheets/common/ingenic-admin.scss"
 
 module ::DiscourseIngenic
@@ -22,6 +24,9 @@ require_relative "lib/discourse_ingenic/management_constraint"
 require_relative "lib/ingenic/permission_resolver"
 require_relative "lib/ingenic/resolved_page"
 require_relative "lib/ingenic/documentation_resolver"
+require_relative "lib/ingenic/developer_form"
+require_relative "lib/ingenic/download_access"
+require_relative "lib/ingenic/download_storage"
 
 # A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
 # behind a Rails::Engine or expects the plugin to require each file, and this
@@ -33,6 +38,9 @@ require_relative "app/models/ingenic_doc_product"
 require_relative "app/models/ingenic_doc_version"
 require_relative "app/models/ingenic_doc_page"
 require_relative "app/models/ingenic_download"
+require_relative "app/models/ingenic_download_request"
+require_relative "app/models/ingenic_download_grant"
+require_relative "app/models/ingenic_developer_profile"
 require_relative "app/models/ingenic_board"
 require_relative "app/models/ingenic_permission"
 
@@ -40,8 +48,11 @@ require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_version_serializer"
 require_relative "app/serializers/ingenic_page_serializer"
 require_relative "app/serializers/ingenic_page_list_serializer"
-require_relative "app/serializers/ingenic_download_serializer"
 require_relative "app/serializers/ingenic_board_serializer"
+
+require_relative "app/mailers/ingenic_download_mailer"
+require_relative "app/jobs/regular/ingenic_download_request_email"
+require_relative "app/jobs/regular/ingenic_download_decision_email"
 
 require_relative "app/controllers/admin/ingenic/base_controller"
 require_relative "app/controllers/admin/ingenic_controller"
@@ -106,6 +117,16 @@ after_initialize do
       get "/permissions" => "admin/ingenic#permissions", format: false
       post "/permissions" => "admin/ingenic#create_permission", format: false
       delete "/permissions/:id" => "admin/ingenic#destroy_permission", format: false
+
+      get "/downloads" => "admin/ingenic#download_list", format: false
+      post "/downloads" => "admin/ingenic#create_download", format: false
+      put "/downloads/:id" => "admin/ingenic#update_download", format: false
+      delete "/downloads/:id" => "admin/ingenic#destroy_download", format: false
+      get "/download-requests" => "admin/ingenic#download_requests", format: false
+      put "/download-requests/:id/approve" => "admin/ingenic#approve_request", format: false
+      put "/download-requests/:id/reject" => "admin/ingenic#reject_request", format: false
+      get "/download-grants" => "admin/ingenic#download_grants", format: false
+      delete "/download-grants/:id" => "admin/ingenic#revoke_grant", format: false
     end
 
     get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root
@@ -116,6 +137,14 @@ after_initialize do
     # reordering to avoid that would make a chip called "search" unusable.
     get "/ingenic/docs-search", to: "ingenic_docs#search", as: :ingenic_documentation_search
     get "/ingenic/downloads", to: "ingenic_downloads#index", as: :ingenic_downloads
+
+    # The developer information is a sibling of the listing rather than a path
+    # under a resource: it belongs to the account, and one copy of it serves
+    # every gated resource.
+    post "/ingenic/downloads/profile", to: "ingenic_downloads#save_profile", as: :ingenic_download_profile
+    post "/ingenic/downloads/:id/request", to: "ingenic_downloads#request_access", as: :ingenic_download_request
+    get "/ingenic/downloads/:id/file", to: "ingenic_downloads#deliver", as: :ingenic_download_file
+
     get "/ingenic/boards", to: "ingenic_boards#index", as: :ingenic_boards
   end
 end

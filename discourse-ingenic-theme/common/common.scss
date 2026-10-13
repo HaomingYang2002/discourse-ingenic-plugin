@@ -155,6 +155,66 @@ html.ingenic-nav-first .sidebar-sections {
       font-size: var(--font-up-1);
     }
   }
+
+  &__subtitle {
+    max-width: 46rem;
+    margin: -0.25rem 0 0.75rem;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+  }
+}
+
+// The site-wide search block at the top of the homepage. It is a section like
+// any other, so it keeps that section's frame and only adds the emphasis that
+// makes it read as the first thing to do on the page.
+.ingenic-hero {
+  background: var(--tertiary-low);
+  padding: 2rem 1.25rem;
+}
+
+.ingenic-search {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.ingenic-search__input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--ingenic-radius);
+  background: var(--secondary);
+}
+
+// Feedback for an action the visitor just took. Kept apart from the inline
+// notices the documentation reader uses: this one is about the page as a whole
+// and carries a dismiss control.
+.ingenic-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--primary-low);
+  border-left: 3px solid var(--tertiary);
+  border-radius: var(--ingenic-radius);
+  background: var(--primary-very-low);
+  font-size: var(--font-down-1);
+
+  &--error {
+    border-left-color: var(--danger);
+  }
+
+  &__close {
+    padding: 0 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--primary-medium);
+    font-size: var(--font-up-1);
+    line-height: 1;
+    cursor: pointer;
+  }
 }
 
 .ingenic-topic-list {
@@ -211,6 +271,89 @@ html.ingenic-nav-first .sidebar-sections {
 
   &__actions {
     margin-top: 0.8rem;
+  }
+
+  &__state {
+    color: var(--primary-medium);
+    font-weight: 500;
+  }
+
+  // The hint explains why the control is what it is — which tier of access this
+  // resource is behind — so it sits under the button rather than in a tooltip.
+  &__hint {
+    margin: 0.5rem 0 0;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+    line-height: 1.4;
+  }
+
+  // Cards in one row are rarely the same height — a resource with a checksum
+  // and a release date is taller than one without — so the button is pushed to
+  // the bottom and the row of buttons lines up.
+  &--download {
+    display: flex;
+    flex-direction: column;
+
+    .ingenic-card__actions {
+      margin-top: auto;
+      padding-top: 0.8rem;
+    }
+  }
+}
+
+.ingenic-downloads {
+  &__filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  // Shown once per visitor rather than per resource: the developer information
+  // is theirs, and answering it is what unlocks the middle tier everywhere.
+  &__prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--primary-low);
+    border-radius: var(--ingenic-radius);
+    background: var(--primary-very-low);
+
+    p {
+      margin: 0.2rem 0 0;
+      color: var(--primary-medium);
+      font-size: var(--font-down-1);
+    }
+  }
+
+  // In place, above the grid: the visitor keeps the resource they are asking
+  // about in view while they answer.
+  &__panel {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--tertiary-low);
+    border-radius: var(--ingenic-radius);
+    background: var(--secondary);
+
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: var(--font-up-1);
+    }
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  &__panel-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
   }
 }
 
@@ -579,6 +722,26 @@ html.ingenic-nav-first .sidebar-sections {
 
     &__body {
       padding: 1.25rem;
+    }
+  }
+
+  .ingenic-downloads {
+    // One column: four filter selects side by side would each be narrower than
+    // the option text they have to show.
+    &__filters {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__prompt {
+      display: block;
+
+      .btn {
+        margin-top: 0.75rem;
+      }
+    }
+
+    &__fields {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

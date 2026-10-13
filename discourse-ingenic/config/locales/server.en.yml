@@ -5,6 +5,9 @@ en:
     ingenic_homepage_blocks: "Homepage blocks as a JSON array. Controls which blocks render and in what order."
     ingenic_default_locale: "Locale used when documentation has no entry in the reader's language. Only languages this site can serve are offered; content rows must use the same code (zh_CN, not zh-CN)."
     ingenic_docs_discussion_category: "Category slug used for the 'Discuss in forum' link when a documentation page has no linked topic."
+    ingenic_download_storage_path: "Directory holding uploaded SDK and firmware files. Empty uses <app>/ingenic-downloads. Must be outside public/."
+    ingenic_download_admin_email: "Address notified when a developer applies for an access-restricted download."
+    ingenic_developer_form_fields: "JSON array describing the developer information form. Empty uses the built-in fields."
 
   ingenic:
     errors:
@@ -15,3 +18,60 @@ en:
       invalid_homepage_blocks: "ingenic_homepage_blocks is not valid JSON: %{message}"
     admin_errors:
       has_children: "This record has child records and cannot be deleted."
+      storage_unavailable: "Uploaded files cannot be written. Check the download storage path."
+    developer_form:
+      missing: "%{field} is required."
+    downloads:
+      not_available: "This file is not available."
+      not_signed_in: "Sign in to download this file."
+      profile_required: "Complete your developer information to download this file."
+      request_required: "This file needs approval before you can download it."
+      request_pending: "Your request is waiting for review."
+      request_rejected: "Your request was declined."
+      already_requested: "You already have a request waiting for review."
+      request_created: "Your request has been sent to the Ingenic team."
+      profile_saved: "Your developer information has been saved."
+      not_published: "This resource is not published."
+      request_not_needed: "This resource does not need an application."
+
+  # Bodies and subjects for the download centre's emails. Email::MessageBuilder
+  # reads these keys by name, so they have to live under the template name the
+  # mailer passes.
+  ingenic_download_request_received:
+    subject_template: "[%{site_name}] Download access request: %{resource_name}"
+    text_body_template: |
+      %{applicant_name} (%{applicant_username}) has applied for access to a restricted download.
+
+      Resource: %{resource_name}
+      Product: %{resource_product}
+      Version: %{resource_version}
+
+      Developer information:
+      %{profile_summary}
+
+      Message from the applicant:
+      %{applicant_message}
+
+      Review the request: %{review_url}
+
+  ingenic_download_request_approved:
+    subject_template: "[%{site_name}] Download access approved: %{resource_name}"
+    text_body_template: |
+      Hello %{recipient_username},
+
+      Your request for access to %{resource_name} has been approved.
+
+      You can download it now: %{downloads_url}
+
+      Notes from the team:
+      %{review_note}
+
+  ingenic_download_request_rejected:
+    subject_template: "[%{site_name}] Download access request: %{resource_name}"
+    text_body_template: |
+      Hello %{recipient_username},
+
+      Your request for access to %{resource_name} was not approved.
+
+      Notes from the team:
+      %{review_note}

@@ -202,6 +202,119 @@
   margin-top: 1rem;
 }
 
+.ingenic-admin-panel {
+  padding: 1rem;
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  background: var(--secondary);
+}
+
 .ingenic-admin-panel__form {
   margin-bottom: 1rem;
+}
+
+// The row list every management screen is built from, and the one-line note
+// above it.
+//
+// These are the plugin's own names rather than Discourse's: core has no list
+// markup to borrow, and a class named after another product's component would
+// be a claim on a name a future version is free to define differently.
+.ingenic-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ingenic-admin-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  background: var(--secondary);
+
+  > div:first-child {
+    min-width: 0;
+  }
+}
+
+.ingenic-admin-list__meta {
+  margin-top: 0.2rem;
+  font-size: var(--font-down-1);
+  color: var(--primary-medium);
+  overflow-wrap: anywhere;
+}
+
+.ingenic-admin-note {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--primary-low);
+  border-radius: 4px;
+  background: var(--primary-very-low);
+  color: var(--primary-medium);
+}
+
+// A failure the manager has to act on reads differently from a line reporting
+// what just happened, and both are shown in the same place.
+.ingenic-admin-note--error {
+  border-left-color: var(--danger);
+  background: var(--danger-low);
+  color: var(--danger);
+}
+
+@media screen and (max-width: 924px) {
+  .ingenic-admin-list__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// Download centre management --------------------------------------------------
+
+.ingenic-admin__toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+// The three surfaces of the download centre. Tabs rather than links because
+// they share the data they were loaded with, and a decision made in one is
+// meant to be visible in the others without a reload.
+.ingenic-admin__tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--primary-low);
+  padding-bottom: 0.75rem;
+}
+
+.ingenic-admin__downloads-page .ingenic-admin-list__row {
+  align-items: flex-start;
+}
+
+.ingenic-admin__queue .ingenic-admin-form--inline {
+  flex: 0 0 auto;
+  max-width: 22rem;
+}
+
+.ingenic-admin-form__hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--font-down-1);
+  color: var(--primary-medium);
+}
+
+.ingenic-admin-list__badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--primary-low);
+  border-radius: 10px;
+  font-size: var(--font-down-2);
+  color: var(--primary-medium);
+  vertical-align: middle;
 }

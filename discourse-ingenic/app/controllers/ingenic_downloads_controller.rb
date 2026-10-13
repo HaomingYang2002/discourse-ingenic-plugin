@@ -1,44 +1,294 @@
 # frozen_string_literal: true
 
+# The SDK and firmware download centre.
+#
+# Every resource answers one question — may this account have the bytes right
+# now — and the answer comes from a single place, Ingenic::DownloadAccess. The
+# listing asks it to decide which control to draw and the file endpoint asks it
+# before serving, so the button and the file cannot disagree.
+#
+# Nothing here hands out a URL to a file the visitor has not been cleared for.
+# A resource with an external URL is redirected to from the endpoint rather than
+# published in the listing, because a link in the page is a link in the page
+# source.
 class IngenicDownloadsController < ::ApplicationController
   requires_plugin DiscourseIngenic::PLUGIN_NAME
 
   include DiscourseIngenic::AppShell
 
-  # Direct navigations to /ingenic/downloads must reach the app shell; the
-  # filter requests the download centre makes stay AJAX and keep hitting JSON.
-  skip_before_action :check_xhr, only: %i[index]
+  # A download is followed as an ordinary browser navigation, so the XHR check
+  # would answer a click with an empty body.
+  skip_before_action :check_xhr, only: %i[index deliver]
+
+  before_action :find_download, only: %i[request_access deliver]
+  before_action :ensure_logged_in, only: %i[save_profile request_access]
 
   def index
     return render_app_shell unless request.format.json?
 
-    scope = IngenicDownload.published.where(locale: [locale, default_locale])
-
-    scope = scope.where(product_slug: params[:product]) if params[:product].present?
-    scope = scope.where(kind: params[:kind]) if params[:kind].present?
-    scope = scope.where(version: params[:version]) if params[:version].present?
-    scope = scope.where(platform: params[:platform]) if params[:platform].present?
-
-    downloads = scope.ordered
-
     render_json_dump(
-      downloads: ActiveModel::ArraySerializer.new(downloads, each_serializer: IngenicDownloadSerializer),
-      filters: {
-        products: IngenicDownload.published.distinct.order(:product_slug).pluck(:product_slug),
-        kinds: IngenicDownload.published.distinct.order(:kind).pluck(:kind),
-        versions: IngenicDownload.published.distinct.order(version: :desc).pluck(:version).compact,
-        platforms: IngenicDownload.published.distinct.pluck(:platform).compact.sort,
-      },
+      downloads: downloads_json,
+      filters: filters,
+      form: form_json,
+      signed_in: current_user.present?,
     )
+  end
+
+  # The developer information is asked for once and reused by every gated
+  # resource, which is why it has its own endpoint rather than being part of an
+  # application for one file.
+  def save_profile
+    answers = Ingenic::DeveloperForm.normalize(params[:profile])
+    errors = Ingenic::DeveloperForm.errors_for(answers)
+    return render_json_error(errors.join(" "), status: 422) if errors.any?
+
+    profile =
+      IngenicDeveloperProfile.for(current_user) ||
+        IngenicDeveloperProfile.new(user: current_user)
+    # Merged rather than replaced: the form is admin-configurable, and dropping
+    # a field from the configuration later should not erase what was already
+    # answered under it.
+    profile.data = profile.data.to_h.merge(answers)
+    profile.save!
+
+    render_json_dump(form: form_json, notice: I18n.t("ingenic.downloads.profile_saved"))
+  end
+
+  def request_access
+    return render_json_error(I18n.t("ingenic.downloads.not_published"), status: 404) if !@download.published?
+    if !@download.approval_required?
+      return render_json_error(I18n.t("ingenic.downloads.request_not_needed"), status: 422)
+    end
+
+    access = access_for(@download)
+    # Already cleared: there is nothing to apply for and nothing to report. The
+    # caller reloads the list and finds the download button where Apply was.
+    return render_json_dump(allowed: true) if access.allowed?
+    if access.state == :needs_profile
+      return render_json_error(I18n.t("ingenic.downloads.profile_required"), status: 422)
+    end
+    if access.state == :pending
+      return render_json_error(I18n.t("ingenic.downloads.already_requested"), status: 422)
+    end
+
+    request =
+      IngenicDownloadRequest.new(
+        user: current_user,
+        download: @download,
+        message: params[:message].to_s.strip.first(2_000).presence,
+      )
+
+    begin
+      request.save!
+    rescue ActiveRecord::RecordNotUnique
+      # The unique index on open applications is the real guard: two submissions
+      # arriving together both pass the check above, and one of them lands here.
+      return render_json_error(I18n.t("ingenic.downloads.already_requested"), status: 422)
+    end
+
+    # Mailed from a job so a slow mail server cannot turn "the applicant pressed
+    # Apply" into an error page. The application is already recorded, and the
+    # admin queue shows it whether or not the message ever leaves.
+    Jobs.enqueue(:ingenic_download_request_email, request_id: request.id)
+
+    # The listing is not sent back with this: it would be the unfiltered one,
+    # and the caller is holding a filter the applicant chose. It reloads.
+    render_json_dump(notice: I18n.t("ingenic.downloads.request_created"))
+  end
+
+  # The one place bytes leave the server.
+  def deliver
+    return render_json_error(I18n.t("ingenic.downloads.not_published"), status: 404) if !@download.published?
+
+    access = access_for(@download)
+    return render_denied(access) unless access.allowed?
+
+    if @download.stored?
+      stream_stored_file
+    elsif @download.file_url.present?
+      deliver_external(@download.file_url)
+    else
+      # Allowed, but there is nowhere to send them. A row like this should not
+      # exist, and saying so is more useful than a redirect that looks like a
+      # permission problem.
+      render_unavailable
+    end
   end
 
   private
 
-  def locale
-    @locale ||= I18n.locale.to_s
+  def find_download
+    @download = IngenicDownload.find_by(id: params[:id])
+    raise Discourse::NotFound if @download.nil?
   end
 
-  def default_locale
-    SiteSetting.ingenic_default_locale
+  def access_for(download)
+    Ingenic::DownloadAccess.new(current_user, download).result
+  end
+
+  # A visitor refused the file lands back on the centre, where the card for that
+  # resource shows the same state and the control that moves it forward. A JSON
+  # caller gets the reason instead, because there is no page to land on.
+  def render_denied(access)
+    if request.format.json?
+      render_json_error(state_message(access.state), status: 403)
+    else
+      redirect_to "/ingenic/downloads"
+    end
+  end
+
+  def state_message(state)
+    key =
+      {
+        anonymous: "not_signed_in",
+        needs_profile: "profile_required",
+        needs_request: "request_required",
+        pending: "request_pending",
+        rejected: "request_rejected",
+      }[
+        state
+      ]
+    I18n.t("ingenic.downloads.#{key || "not_available"}")
+  end
+
+  # Cleared to download, but there is nothing to hand over: the row points at a
+  # file that is no longer on disk. The visitor has not done anything wrong, so
+  # this is not the refusal path with its redirect back to the listing.
+  def render_unavailable
+    if request.format.json?
+      render_json_error(I18n.t("ingenic.downloads.not_available"), status: 404)
+    else
+      redirect_to "/ingenic/downloads"
+    end
+  end
+
+  def stream_stored_file
+    relative = @download.storage_path
+    if !Ingenic::DownloadStorage.exist?(relative)
+      Rails.logger.warn(
+        "Ingenic: download #{@download.id} is missing from storage at #{relative.inspect}",
+      )
+      return render_unavailable
+    end
+
+    path = Ingenic::DownloadStorage.absolute_path(relative)
+    response.headers["Content-Type"] = "application/octet-stream"
+    response.headers["Content-Length"] = path.size.to_s
+    response.headers["Content-Disposition"] =
+      ActionDispatch::Http::ContentDisposition.format(
+        disposition: "attachment",
+        filename: @download.original_filename.presence || "#{@download.name}",
+      )
+
+    # Streamed through the controller rather than handed to the web server: the
+    # storage root deliberately sits outside public/, so there is no URL for the
+    # web server to serve. An Enumerator body is also what keeps this from
+    # reading a firmware image into memory — Rack::Sendfile leaves a body that
+    # does not respond to #to_path alone.
+    self.response_body =
+      Enumerator.new do |yielder|
+        File.open(path, "rb") do |file|
+          while (chunk = file.read(Ingenic::DownloadStorage::CHUNK))
+            yielder << chunk
+          end
+        end
+      end
+  end
+
+  # Only two shapes of value are sent to a browser: a path on this site, and an
+  # http(s) address. Anything else is a typo or worse, and neither deserves a
+  # Location header.
+  def deliver_external(url)
+    if url.start_with?("/")
+      redirect_to url
+    elsif url.match?(%r{\Ahttps?://}i)
+      redirect_to url, allow_other_host: true
+    else
+      Rails.logger.warn("Ingenic: download #{@download.id} has an unusable file URL")
+      render_unavailable
+    end
+  end
+
+  # Reading locale first, then the site default, with one row per resource: a
+  # translation that exists only in the default locale still shows up, and a
+  # resource that has both does not appear twice.
+  def downloads
+    @downloads ||=
+      begin
+        rows =
+          IngenicDownload
+            .published
+            .where(locale: [I18n.locale.to_s, SiteSetting.ingenic_default_locale].uniq)
+
+        rows = rows.where(product_slug: params[:product]) if params[:product].present?
+        rows = rows.where(kind: params[:kind]) if params[:kind].present?
+        rows = rows.where(version: params[:version]) if params[:version].present?
+        rows = rows.where(platform: params[:platform]) if params[:platform].present?
+
+        rows
+          .ordered
+          .group_by { |row| [row.product_slug, row.kind, row.version, row.platform, row.name] }
+          .map { |_, group| group.find { |row| row.locale == I18n.locale.to_s } || group.first }
+      end
+  end
+
+  def downloads_json
+    Ingenic::DownloadAccess
+      .for_list(current_user, downloads)
+      .map { |result| download_json(result.download, result.state) }
+  end
+
+  def download_json(download, state)
+    {
+      "id" => download.id,
+      "product_slug" => download.product_slug,
+      "kind" => download.kind,
+      "version" => download.version,
+      "platform" => download.platform,
+      "architecture" => download.architecture,
+      "name" => download.name,
+      "description" => download.description,
+      "file_size" => download.file_size,
+      "sha256" => download.file_sha256.presence || download.sha256,
+      "released_on" => download.released_on&.iso8601,
+      "access_level" => download.access_level,
+      "access_state" => state.to_s,
+      "external" => download.external?,
+      # Where the browser should go for the bytes, whatever the state: the
+      # endpoint is what decides, and it is the only address the page needs.
+      "file_path" => "#{Discourse.base_path}/ingenic/downloads/#{download.id}/file",
+    }
+  end
+
+  # Options come from the unfiltered set so a narrowed selection can be widened
+  # again without a reload.
+  def filters
+    all = IngenicDownload.published
+    {
+      products: all.distinct.order(:product_slug).pluck(:product_slug),
+      kinds: all.distinct.order(:kind).pluck(:kind),
+      versions: all.distinct.order(version: :desc).pluck(:version).compact,
+      platforms: all.distinct.pluck(:platform).compact.sort,
+    }
+  end
+
+  def form_json
+    fields =
+      Ingenic::DeveloperForm.fields.map do |field|
+        {
+          "key" => field[:key].to_s,
+          "label" => field[:label],
+          "type" => field[:type].to_s,
+          "required" => field[:required] ? true : false,
+        }
+      end
+
+    profile = IngenicDeveloperProfile.for(current_user)
+
+    {
+      "fields" => fields,
+      "values" => profile ? profile.data.to_h : {},
+      "completed" => profile.present?,
+    }
   end
 end

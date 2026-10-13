@@ -7,5 +7,6 @@ export default {
       this.route("show", { path: "/:id" });
     });
     this.route("permissions", { path: "permissions" });
+    this.route("downloads", { path: "downloads" });
   },
 };

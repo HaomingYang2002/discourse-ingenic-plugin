@@ -58,3 +58,40 @@ plugins:
   # has no linked topic yet.
   ingenic_docs_discussion_category:
     default: ""
+    type: string
+    description: "Category slug used for the 'Discuss in forum' link on a documentation page that has no linked topic."
+
+  # Where uploaded SDKs and firmware are written. The default sits beside the
+  # application rather than under public/, because a file the web server serves
+  # to anyone who guesses its URL cannot be gated by anything the plugin does.
+  # Point this at a larger volume if the downloads outgrow the app disk; keep it
+  # outside public/ wherever it points.
+  ingenic_download_storage_path:
+    default: ""
+    type: string
+    description: "Directory that holds uploaded SDK and firmware files. Leave empty to use <app>/ingenic-downloads. Must be outside public/."
+
+  # Where an application for an access-restricted resource is sent. Left empty,
+  # applications are still recorded and shown in the admin queue, but nobody is
+  # emailed about them.
+  ingenic_download_admin_email:
+    default: ""
+    type: string
+    description: "Address that receives an email when a developer applies for an access-restricted download."
+
+  # The developer information form, as a JSON array. This is the form a visitor
+  # fills in for the 'login and information' tier and above. Replacing it
+  # changes the form, the validation and the admin's view of an answer together,
+  # so the three cannot disagree.
+  #
+  # [
+  #   { "key": "full_name", "label": "Full name", "type": "text", "required": true },
+  #   { "key": "use_case",  "label": "Intended use", "type": "textarea", "required": true }
+  # ]
+  #
+  # "type" is text or textarea. Leave empty to use the built-in developer form.
+  ingenic_developer_form_fields:
+    default: ""
+    type: string
+    multiline: true
+    description: "JSON array describing the developer information form. Leave empty for the built-in set of fields."

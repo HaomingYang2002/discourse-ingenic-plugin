@@ -60,7 +60,7 @@ export default class IngenicPermissionForm extends Component {
         <input name="resource_id" inputmode="numeric" required />
       </label>
       <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.assign"}}</button>
-      {{#if this.message}}<p class="admin-config-area__message">{{this.message}}</p>{{/if}}
+      {{#if this.message}}<p class="ingenic-admin-note">{{this.message}}</p>{{/if}}
     </form>
   </template>
 }

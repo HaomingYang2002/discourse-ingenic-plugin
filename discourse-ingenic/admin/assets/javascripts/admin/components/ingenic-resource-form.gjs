@@ -65,7 +65,7 @@ export default class IngenicResourceForm extends Component {
         <span>Published</span>
       </label>
       <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.save"}}</button>
-      {{#if this.message}}<p class="admin-config-area__message">{{this.message}}</p>{{/if}}
+      {{#if this.message}}<p class="ingenic-admin-note">{{this.message}}</p>{{/if}}
     </form>
   </template>
 }

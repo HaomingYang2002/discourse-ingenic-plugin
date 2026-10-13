@@ -156,6 +156,114 @@ module Admin
       head :no_content
     end
 
+    # Downloads -------------------------------------------------------------
+
+    def download_list
+      downloads = ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicDownload).ordered
+      pending = IngenicDownloadRequest.pending.group(:download_id).count
+      granted = IngenicDownloadGrant.active.group(:download_id).count
+
+      render_json_dump(
+        downloads:
+          downloads.map do |download|
+            admin_download_json(download, pending[download.id] || 0, granted[download.id] || 0)
+          end,
+        access_levels: IngenicDownload::ACCESS_LEVELS,
+        kinds: IngenicDownload::KINDS,
+        storage_writable: Ingenic::DownloadStorage.writable?,
+      )
+    end
+
+    def create_download
+      # A resource with no parent scope to inherit from is created by an
+      # administrator; a scoped manager edits the resources they were granted.
+      authorize_create!
+      record = IngenicDownload.new(download_params)
+      uploaded = apply_upload(record)
+
+      if record.save
+        render_json_dump(download: admin_download_json(record, *counts_for(record)))
+      else
+        # The bytes are already on disk by the time validation runs, and nothing
+        # will ever name them again if the row is refused.
+        Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        render_record_error(record)
+      end
+    end
+
+    def update_download
+      record = IngenicDownload.find(params[:id])
+      authorize_ingenic!(record)
+
+      replaced = record.storage_path
+      uploaded = apply_upload(record)
+
+      if record.save
+        # Replacing an upload orphans the file it replaced.
+        Ingenic::DownloadStorage.delete(replaced) if replaced.present? && replaced != record.storage_path
+        render_json_dump(download: admin_download_json(record, *counts_for(record)))
+      else
+        Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        render_record_error(record)
+      end
+    end
+
+    # Withdrawn rather than destroyed: a resource that has been downloaded is
+    # referred to by requests and grants, and those records are the audit trail
+    # for who was given access to what.
+    def destroy_download
+      record = IngenicDownload.find(params[:id])
+      authorize_ingenic!(record)
+      record.update!(published: false)
+      head :no_content
+    end
+
+    def download_requests
+      # Deciding an application is an administrative act rather than a content
+      # edit: it hands a named account access to a file, so it is not delegated
+      # to a scoped content manager.
+      authorize_ingenic!(permissions: true)
+      requests = IngenicDownloadRequest.includes(:user, :download).recent.limit(200)
+
+      render_json_dump(
+        requests: requests.map { |request| download_request_json(request) },
+        pending_count: IngenicDownloadRequest.pending.count,
+      )
+    end
+
+    def approve_request
+      authorize_ingenic!(permissions: true)
+      request = IngenicDownloadRequest.find(params[:id])
+      request.approve!(
+        current_user,
+        note: params[:note].to_s.strip.presence,
+        expires_at: parse_time(params[:expires_at]),
+      )
+      Jobs.enqueue(:ingenic_download_decision_email, request_id: request.id)
+      render_json_dump(request: download_request_json(request))
+    end
+
+    def reject_request
+      authorize_ingenic!(permissions: true)
+      request = IngenicDownloadRequest.find(params[:id])
+      request.reject!(current_user, note: params[:note].to_s.strip.presence)
+      Jobs.enqueue(:ingenic_download_decision_email, request_id: request.id)
+      render_json_dump(request: download_request_json(request))
+    end
+
+    def download_grants
+      authorize_ingenic!(permissions: true)
+      grants = IngenicDownloadGrant.includes(:user, :download).order(created_at: :desc).limit(200)
+      render_json_dump(grants: grants.map { |grant| download_grant_json(grant) })
+    end
+
+    def revoke_grant
+      authorize_ingenic!(permissions: true)
+      grant = IngenicDownloadGrant.find(params[:id])
+      grant.revoke!(current_user)
+      render_json_dump(grant: download_grant_json(grant))
+    end
+
     # Permissions -----------------------------------------------------------
 
     def permissions
@@ -218,8 +326,136 @@ module Admin
       params.permit(:slug, :name, :locale, :chip, :description, :image_url, :documentation_url, :application_url, :published, :position)
     end
 
+    def download_params
+      params.permit(
+        :product_slug,
+        :kind,
+        :version,
+        :locale,
+        :name,
+        :description,
+        :platform,
+        :architecture,
+        :file_url,
+        :file_size,
+        :sha256,
+        :released_on,
+        :published,
+        :position,
+        :access_level,
+      )
+    end
+
     def permission_params
       params.permit(:user_id, :group_id, :resource_type, :resource_id, :permission)
+    end
+
+    # Writes the uploaded file, if the request carries one, and returns where it
+    # went. The path is returned rather than read back off the record so that a
+    # refused save can clean up the file it just wrote.
+    #
+    # A stored file clears any URL the row had: two sources for the same bytes
+    # is one more than the delivery endpoint is willing to choose between.
+    def apply_upload(record)
+      file = params[:file]
+      return nil unless file.respond_to?(:read)
+
+      # Reported on the record rather than raised, so the upload form shows the
+      # same kind of error as a missing name would.
+      unless Ingenic::DownloadStorage.writable?
+        record.errors.add(:base, I18n.t("ingenic.admin_errors.storage_unavailable"))
+        return nil
+      end
+
+      stored = Ingenic::DownloadStorage.store(file)
+      record.storage_path = stored[:path]
+      record.original_filename = file.original_filename.to_s.presence
+      record.file_sha256 = stored[:sha256]
+      record.file_size = ActiveSupport::NumberHelper.number_to_human_size(stored[:size])
+      record.file_url = nil
+      stored[:path]
+    end
+
+    def parse_time(value)
+      return nil if value.blank?
+
+      Time.zone.parse(value.to_s)
+    rescue ArgumentError
+      nil
+    end
+
+    # The counts for the one row a save just returned, as [waiting, granted].
+    # The listing counts the whole table in two queries instead; here there is a
+    # single row to answer for, and reporting zero would blank out the counters
+    # the manager is looking at until the next reload.
+    def counts_for(download)
+      [
+        IngenicDownloadRequest.pending.where(download_id: download.id).count,
+        IngenicDownloadGrant.active.where(download_id: download.id).count,
+      ]
+    end
+
+    def admin_download_json(download, pending, granted)
+      download
+        .attributes
+        .slice(
+          "id",
+          "product_slug",
+          "kind",
+          "version",
+          "locale",
+          "name",
+          "description",
+          "platform",
+          "architecture",
+          "file_url",
+          "file_size",
+          "sha256",
+          "released_on",
+          "published",
+          "position",
+          "access_level",
+          "file_sha256",
+        )
+        .merge(
+          "stored" => download.stored?,
+          "pending_requests" => pending,
+          "active_grants" => granted,
+        )
+    end
+
+    def download_request_json(request)
+      profile = IngenicDeveloperProfile.for(request.user)
+
+      {
+        "id" => request.id,
+        "status" => request.status,
+        "message" => request.message,
+        "review_note" => request.review_note,
+        "created_at" => request.created_at.iso8601,
+        "reviewed_at" => request.reviewed_at&.iso8601,
+        "user_id" => request.user_id,
+        "username" => request.user.username,
+        "user_email" => request.user.email,
+        "download_id" => request.download_id,
+        "download_name" => request.download.name,
+        "profile_summary" => profile&.summary(limit: 6).presence,
+      }
+    end
+
+    def download_grant_json(grant)
+      {
+        "id" => grant.id,
+        "user_id" => grant.user_id,
+        "username" => grant.user.username,
+        "download_id" => grant.download_id,
+        "download_name" => grant.download.name,
+        "active" => grant.active?,
+        "expires_at" => grant.expires_at&.iso8601,
+        "revoked_at" => grant.revoked_at&.iso8601,
+        "note" => grant.note,
+        "created_at" => grant.created_at.iso8601,
+      }
     end
 
     def product_json(product, include_children: false, include_versions: false)
