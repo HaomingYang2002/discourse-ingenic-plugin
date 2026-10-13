@@ -23,6 +23,32 @@ require_relative "lib/ingenic/permission_resolver"
 require_relative "lib/ingenic/resolved_page"
 require_relative "lib/ingenic/documentation_resolver"
 
+# A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
+# behind a Rails::Engine or expects the plugin to require each file, and this
+# one uses flat top-level constants, so every file has to be named here. A
+# missing line is not a subtle bug: the constant is simply undefined the first
+# time a route or a job reaches for it. `spec/plugin_requires_spec.rb` fails if
+# a file under app/ stops being listed.
+require_relative "app/models/ingenic_doc_product"
+require_relative "app/models/ingenic_doc_version"
+require_relative "app/models/ingenic_doc_page"
+require_relative "app/models/ingenic_download"
+require_relative "app/models/ingenic_board"
+require_relative "app/models/ingenic_permission"
+
+require_relative "app/serializers/ingenic_product_serializer"
+require_relative "app/serializers/ingenic_version_serializer"
+require_relative "app/serializers/ingenic_page_serializer"
+require_relative "app/serializers/ingenic_page_list_serializer"
+require_relative "app/serializers/ingenic_download_serializer"
+require_relative "app/serializers/ingenic_board_serializer"
+
+require_relative "app/controllers/admin/ingenic/base_controller"
+require_relative "app/controllers/admin/ingenic_controller"
+require_relative "app/controllers/ingenic_docs_controller"
+require_relative "app/controllers/ingenic_downloads_controller"
+require_relative "app/controllers/ingenic_boards_controller"
+
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 register_svg_icon "book"
 
