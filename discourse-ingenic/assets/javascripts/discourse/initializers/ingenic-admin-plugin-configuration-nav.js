@@ -12,9 +12,10 @@ const PLUGIN_ID = "discourse-ingenic";
  * and a link to a page that answers 404 is worse than no link.
  *
  * The split is not arbitrary. Permissions decides who else may edit content,
- * the download queue decides who may have a file, and the site screen is not
- * filed under any product or board — so there is no scope an administrator
- * could grant over it even if they wanted to.
+ * the download queue decides who may have a file, the points screen names
+ * accounts and moves their standing, and the site screen is not filed under any
+ * product or board — so there is no scope an administrator could grant over it
+ * even if they wanted to.
  */
 export default {
   name: "ingenic-admin-plugin-configuration-nav",
@@ -48,6 +49,10 @@ export default {
           {
             label: "admin.ingenic.downloads.title",
             route: "adminPlugins.show.downloads",
+          },
+          {
+            label: "admin.ingenic.points.title",
+            route: "adminPlugins.show.points",
           },
           {
             label: "admin.ingenic.site.title",

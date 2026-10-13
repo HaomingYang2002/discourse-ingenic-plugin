@@ -21,6 +21,7 @@ const BLANK = {
   platform: "",
   architecture: "",
   access_level: "public_login",
+  point_cost: 0,
   file_url: "",
   file_size: "",
   sha256: "",
@@ -260,6 +261,15 @@ export default class IngenicDownloadManager extends Component {
           {{/if}}
 
           <label>
+            <span>{{i18n "admin.ingenic.downloads.fields.point_cost"}}</span>
+            <input type="number" name="point_cost" min="0" value={{this.draft.point_cost}} />
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.downloads.fields.point_cost_hint"}}
+          </p>
+
+          <label>
             <span>{{i18n "admin.ingenic.downloads.fields.file"}}</span>
             <input type="file" name="file" />
           </label>
@@ -324,6 +334,9 @@ export default class IngenicDownloadManager extends Component {
                 {{#if record.category_name}}· {{record.category_name}}{{/if}}
                 {{#if record.version}}· {{record.version}}{{/if}}
                 · {{i18n (get this.accessLevelKeys record.access_level)}}
+                {{#if record.point_cost}}
+                  · {{i18n "admin.ingenic.downloads.costs_points" points=record.point_cost}}
+                {{/if}}
                 {{#if record.stored}}
                   · {{i18n "admin.ingenic.downloads.stored"}}
                 {{/if}}
