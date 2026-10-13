@@ -171,6 +171,8 @@ class IngenicDownloadsController < ::ApplicationController
       return render_unavailable
     end
 
+    record_download
+
     path = Ingenic::DownloadStorage.absolute_path(relative)
     response.headers["Content-Type"] = "application/octet-stream"
     response.headers["Content-Length"] = path.size.to_s
@@ -199,14 +201,35 @@ class IngenicDownloadsController < ::ApplicationController
   # http(s) address. Anything else is a typo or worse, and neither deserves a
   # Location header.
   def deliver_external(url)
-    if url.start_with?("/")
-      redirect_to url
-    elsif url.match?(%r{\Ahttps?://}i)
-      redirect_to url, allow_other_host: true
-    else
+    local = url.start_with?("/")
+    if !local && !url.match?(%r{\Ahttps?://}i)
       Rails.logger.warn("Ingenic: download #{@download.id} has an unusable file URL")
-      render_unavailable
+      return render_unavailable
     end
+
+    record_download
+
+    if local
+      redirect_to url
+    else
+      # Told outright, because Rails refuses to redirect off-site otherwise —
+      # the address here is the partner's own, which is the whole point of a
+      # resource held elsewhere.
+      redirect_to url, allow_other_host: true
+    end
+  end
+
+  # The record of the hand-over, written from the two branches of `deliver` that
+  # actually release the file rather than once at the top of it. The third branch
+  # is the resource that is allowed and no longer in storage, and nobody
+  # received that one: recording it would put a name in the audit trail against
+  # a file that never left.
+  #
+  # Deliberately not guarded here: `IngenicDownloadLog.record!` never raises,
+  # because a download somebody is entitled to must not fail over a row in a
+  # log.
+  def record_download
+    IngenicDownloadLog.record!(user: current_user, download: @download, request: request)
   end
 
   # Reading locale first, then the site default, with one row per resource: a

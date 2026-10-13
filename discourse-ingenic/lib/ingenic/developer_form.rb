@@ -7,6 +7,10 @@ module Ingenic
   # forum's form is the template and it will keep changing. Reading them through
   # one place means the form the visitor sees, the validation on submit and the
   # admin's view of an answer all come from the same definition.
+  #
+  # No telephone number is asked for. The address that matters is the email, the
+  # account already has one, and a field the team would only ever read past is
+  # one more reason for a visitor to abandon the form.
   module DeveloperForm
     FALLBACK = [
       { "key" => "full_name", "label" => "Full name", "type" => "text", "required" => true },
@@ -19,7 +23,6 @@ module Ingenic
         "required" => true,
       },
       { "key" => "contact_email", "label" => "Contact email", "type" => "text", "required" => true },
-      { "key" => "phone", "label" => "Phone", "type" => "text", "required" => false },
       { "key" => "use_case", "label" => "Intended use", "type" => "textarea", "required" => true },
       { "key" => "project_stage", "label" => "Project stage", "type" => "text", "required" => false },
       {

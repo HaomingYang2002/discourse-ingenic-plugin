@@ -21,8 +21,11 @@ class IngenicDownloadLog < ActiveRecord::Base
 
   scope :recent, -> { order(created_at: :desc, id: :desc) }
 
-  # Called from the delivery endpoint, after the permission check has passed, so
-  # a row here means bytes actually left the server.
+  # Called from the delivery endpoint once the permission check has passed and
+  # the file is being released, so a row here means the account was given the
+  # file: for a stored resource that the bytes were streamed to it, for one held
+  # elsewhere that the browser was sent to fetch them. Nothing is written for a
+  # resource that turned out to be missing, because nobody received that one.
   #
   # Never raises: a failure to write the record must not turn a download the
   # visitor is entitled to into an error page. The alternative — losing the

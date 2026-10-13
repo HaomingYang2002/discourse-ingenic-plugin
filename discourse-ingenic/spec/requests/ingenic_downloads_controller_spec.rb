@@ -67,6 +67,16 @@ describe IngenicDownloadsController do
       expect(response.parsed_body["signed_in"]).to eq(true)
     end
 
+    # A telephone number is not among the questions. The account already has an
+    # address the team can write to, and a field nobody reads is one more reason
+    # for a developer to give up on the form.
+    it "does not ask for a telephone number" do
+      get "/ingenic/downloads.json"
+
+      keys = response.parsed_body.dig("form", "fields").map { |field| field["key"] }
+      expect(keys).not_to include("phone")
+    end
+
     it "serves the app shell for a direct navigation" do
       get "/ingenic/downloads"
 
@@ -176,12 +186,19 @@ describe IngenicDownloadsController do
                country: "UK",
                contact_email: "ada@example.com",
                use_case: "Set-top boxes",
+               phone: "+44 20 7946 0000",
                admin: "true",
                injected: "<script>",
              },
            }
 
-      expect(IngenicDeveloperProfile.for(user).data.keys).not_to include("admin", "injected")
+      expect(IngenicDeveloperProfile.for(user).data.keys).not_to include(
+        "admin",
+        "injected",
+        # Sent by a browser holding an older copy of the form, and dropped for
+        # the same reason as the rest: the form is the definition of the answer.
+        "phone",
+      )
     end
   end
 
@@ -345,6 +362,81 @@ describe IngenicDownloadsController do
       )
     ensure
       FileUtils.remove_entry(directory) if directory
+    end
+  end
+
+  # The record the team asked for by name. An approval lasts, so the grant table
+  # answers "who may" and never "who did" — this is the only remaining account of
+  # a gated file having been collected, and of the account that collected it.
+  describe "the record of a delivery" do
+    it "names the account that took the file" do
+      download = resource(IngenicDownload::LOGIN_ONLY)
+      sign_in(user)
+
+      expect { get "/ingenic/downloads/#{download.id}/file" }.to change(
+        IngenicDownloadLog,
+        :count,
+      ).by(1)
+
+      log = IngenicDownloadLog.last
+      expect(log.user).to eq(user)
+      expect(log.download).to eq(download)
+      expect(log.resource_name).to eq(download.name)
+    end
+
+    it "records nothing for a visitor who was refused" do
+      download = resource(IngenicDownload::APPROVAL_REQUIRED)
+
+      expect { get "/ingenic/downloads/#{download.id}/file" }.not_to change(
+        IngenicDownloadLog,
+        :count,
+      )
+      expect(response.status).to eq(302)
+    end
+
+    # Allowed, but there is nothing to hand over. A row here would put a name
+    # against a file that never left, which is worse than no row at all.
+    it "records nothing for a resource that is no longer in storage" do
+      download =
+        resource(
+          IngenicDownload::LOGIN_ONLY,
+          storage_path: "aa/gone.bin",
+          original_filename: "gone.bin",
+          file_url: nil,
+        )
+      sign_in(user)
+
+      expect { get "/ingenic/downloads/#{download.id}/file" }.not_to change(
+        IngenicDownloadLog,
+        :count,
+      )
+      expect(response.status).to eq(302)
+    end
+
+    # A grant is what the team approves, and it is not a deadline: once an
+    # application is approved the resource stays available to that account.
+    it "keeps the grant, and with it the access, with no end date" do
+      download = resource(IngenicDownload::APPROVAL_REQUIRED)
+      with_profile
+      IngenicDownloadRequest.create!(user: user, download: download).approve!(admin)
+
+      grant = IngenicDownloadGrant.find_by(user: user, download: download)
+      expect(grant.expires_at).to be_nil
+      expect(Ingenic::DownloadAccess.new(user, download).result.state).to eq(:granted)
+    end
+
+    # The record is kept for the team, not asked of the visitor: a download
+    # somebody is entitled to is not to be turned into an error page because a
+    # row could not be written.
+    it "hands the file over even when the record cannot be written" do
+      download = resource(IngenicDownload::LOGIN_ONLY)
+      sign_in(user)
+      IngenicDownloadLog.stubs(:create!).raises(ActiveRecord::StatementInvalid.new("no space left"))
+
+      get "/ingenic/downloads/#{download.id}/file"
+
+      expect(response.status).to eq(302)
+      expect(response.location).to eq("https://example.com/sdk.tgz")
     end
   end
 
