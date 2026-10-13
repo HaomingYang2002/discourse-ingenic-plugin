@@ -47,13 +47,10 @@ describe "Ingenic pages" do
     end
   end
 
+  # What the catalogue answers with is covered by the board spec; what is
+  # checked here is the half that is shared with the download centre: the same
+  # address answering a browser navigation with the shell rather than data.
   describe "GET /ingenic/boards" do
-    it "returns the published boards as JSON" do
-      get "/ingenic/boards.json"
-
-      expect(response.parsed_body["boards"].map { |item| item["slug"] }).to eq(["halley5"])
-    end
-
     it "serves the app shell on browser navigation" do
       get "/ingenic/boards"
 

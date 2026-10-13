@@ -24,6 +24,15 @@ class IngenicDocProduct < ActiveRecord::Base
            foreign_key: :product_id,
            dependent: :destroy
 
+  # Boards are catalogued against a chip, but they are not part of the
+  # documentation: retiring a chip from the docs should not take the boards that
+  # mention it off the site or refuse the deletion. The board keeps the chip's
+  # name and loses the link.
+  has_many :boards,
+           class_name: "IngenicBoard",
+           foreign_key: :product_id,
+           dependent: :nullify
+
   validates :slug, presence: true, uniqueness: { scope: :locale }
   validates :name, presence: true
   validates :locale, presence: true

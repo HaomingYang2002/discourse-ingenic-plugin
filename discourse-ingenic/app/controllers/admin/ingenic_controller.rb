@@ -126,13 +126,13 @@ module Admin
 
     def board_list
       boards = ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicBoard).ordered
-      render_json_dump(boards: boards.map { |board| board_json(board) })
-    end
 
-    def board
-      record = IngenicBoard.find(params[:id])
-      authorize_ingenic!(record)
-      render_json_dump(board: board_json(record))
+      render_json_dump(
+        boards: boards.map { |board| board_json(board) },
+        # The chips a board can be filed against, each with the series it sits
+        # under, so the picker can offer them without a second request.
+        chips: board_chip_options,
+      )
     end
 
     def create_board
@@ -323,7 +323,26 @@ module Admin
     end
 
     def board_params
-      params.permit(:slug, :name, :locale, :chip, :description, :image_url, :documentation_url, :application_url, :published, :position)
+      permitted =
+        params.permit(
+          :slug,
+          :name,
+          :locale,
+          :chip,
+          :product_id,
+          :description,
+          :specs,
+          :image_url,
+          :documentation_url,
+          :application_url,
+          :published,
+          :position,
+        )
+
+      # An empty picker option means "no chip from the tree", which is null
+      # rather than a blank string the foreign key would refuse.
+      permitted[:product_id] = permitted[:product_id].presence
+      permitted
     end
 
     def download_params
@@ -499,10 +518,45 @@ module Admin
       )
     end
 
+    def board_chip_options
+      IngenicDocProduct
+        .chips
+        .includes(:parent)
+        .ordered
+        .map do |chip|
+          {
+            "id" => chip.id,
+            "name" => chip.name,
+            "slug" => chip.slug,
+            "series_name" => chip.parent&.name,
+          }
+        end
+    end
+
     def board_json(board)
       board
         .attributes
-        .slice("id", "slug", "name", "locale", "chip", "description", "image_url", "documentation_url", "application_url", "published", "position")
+        .slice(
+          "id",
+          "slug",
+          "name",
+          "locale",
+          "chip",
+          "product_id",
+          "description",
+          "specs",
+          "image_url",
+          "documentation_url",
+          "application_url",
+          "published",
+          "position",
+        )
+        .merge(
+          # Server-derived rather than read off the row: the tree is what decides
+          # which chip a board shows, and the label column is only the fallback.
+          "chip_name" => board.chip_name,
+          "series_name" => board.series_name,
+        )
     end
 
     def permission_json(permission)

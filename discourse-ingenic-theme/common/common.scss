@@ -287,6 +287,28 @@ html.ingenic-nav-first .sidebar-sections {
     line-height: 1.4;
   }
 
+  // Boards carry a specification list of their own length, so the same
+  // reasoning applies as for downloads: the buttons line up along the bottom
+  // of the row rather than following the longest list on each card.
+  &--board {
+    display: flex;
+    flex-direction: column;
+
+    .ingenic-card__actions {
+      margin-top: auto;
+      padding-top: 0.8rem;
+    }
+  }
+
+  // One item per line in the admin form, drawn as a list on the card.
+  &__specs {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+    line-height: 1.5;
+  }
+
   // Cards in one row are rarely the same height — a resource with a checksum
   // and a release date is taller than one without — so the button is pushed to
   // the bottom and the row of buttons lines up.
@@ -297,6 +319,24 @@ html.ingenic-nav-first .sidebar-sections {
     .ingenic-card__actions {
       margin-top: auto;
       padding-top: 0.8rem;
+    }
+  }
+}
+
+// The catalogue's two filters and the control that undoes them. Laid out on
+// the same grid as the download filters so the two pages read alike.
+.ingenic-boards {
+  &__filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+    margin-bottom: 1rem;
+
+    // The clear control is a button in a row of labelled selects, so it is
+    // aligned with the controls rather than with their labels.
+    .btn {
+      justify-self: start;
     }
   }
 }
@@ -722,6 +762,14 @@ html.ingenic-nav-first .sidebar-sections {
 
     &__body {
       padding: 1.25rem;
+    }
+  }
+
+  .ingenic-boards {
+    // One column, for the same reason as the download filters: two selects
+    // side by side would each be narrower than the names they have to show.
+    &__filters {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

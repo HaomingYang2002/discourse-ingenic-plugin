@@ -292,7 +292,11 @@
   padding-bottom: 0.75rem;
 }
 
-.ingenic-admin__downloads-page .ingenic-admin-list__row {
+// The row's left side is a name with a line of detail under it and its right
+// side is a pair of buttons, so the buttons line up with the name rather than
+// with the middle of the block.
+.ingenic-admin__downloads-page .ingenic-admin-list__row,
+.ingenic-admin__boards-panel .ingenic-admin-list__row {
   align-items: flex-start;
 }
 

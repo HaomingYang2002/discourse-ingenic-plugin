@@ -110,7 +110,6 @@ after_initialize do
       put "/documentation/pages/:id" => "admin/ingenic#update_page", format: false
       delete "/documentation/pages/:id" => "admin/ingenic#destroy_page", format: false
       get "/boards" => "admin/ingenic#board_list", format: false
-      get "/boards/:id" => "admin/ingenic#board", format: false
       post "/boards" => "admin/ingenic#create_board", format: false
       put "/boards/:id" => "admin/ingenic#update_board", format: false
       delete "/boards/:id" => "admin/ingenic#destroy_board", format: false

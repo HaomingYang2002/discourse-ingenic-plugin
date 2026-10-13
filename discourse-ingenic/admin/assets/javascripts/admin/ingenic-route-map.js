@@ -3,9 +3,7 @@ export default {
   path: "/plugins",
   map() {
     this.route("documentation", { path: "documentation" });
-    this.route("boards", { path: "boards" }, function () {
-      this.route("show", { path: "/:id" });
-    });
+    this.route("boards", { path: "boards" });
     this.route("permissions", { path: "permissions" });
     this.route("downloads", { path: "downloads" });
   },

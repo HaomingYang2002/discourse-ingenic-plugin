@@ -187,17 +187,17 @@ export default class IngenicDownloadManager extends Component {
           </h3>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.name"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.name"}}</span>
             <input name="name" value={{this.draft.name}} required />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.product_slug"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.product_slug"}}</span>
             <input name="product_slug" value={{this.draft.product_slug}} required />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.kind"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.kind"}}</span>
             {{! The ui-kit select rather than a bare <select>: a Glimmer-rendered
                 `selected` attribute does not survive re-rendering, which is the
                 bug DNativeSelect exists to work around. }}
@@ -215,27 +215,27 @@ export default class IngenicDownloadManager extends Component {
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.version"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.version"}}</span>
             <input name="version" value={{this.draft.version}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.platform"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.platform"}}</span>
             <input name="platform" value={{this.draft.platform}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.architecture"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.architecture"}}</span>
             <input name="architecture" value={{this.draft.architecture}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.locale"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.locale"}}</span>
             <input name="locale" value={{this.draft.locale}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.access_level"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.access_level"}}</span>
             <DNativeSelect
               name="access_level"
               @includeNone={{false}}
@@ -256,47 +256,47 @@ export default class IngenicDownloadManager extends Component {
           {{/if}}
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.file"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.file"}}</span>
             <input type="file" name="file" />
           </label>
 
           <p class="ingenic-admin-form__hint">
-            {{i18n "admin.ingenic.downloads.file_hint"}}
+            {{i18n "admin.ingenic.downloads.fields.file_hint"}}
           </p>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.file_url"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.file_url"}}</span>
             <input name="file_url" value={{this.draft.file_url}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.file_size"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.file_size"}}</span>
             <input name="file_size" value={{this.draft.file_size}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.sha256"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.sha256"}}</span>
             <input name="sha256" value={{this.draft.sha256}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.released_on"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.released_on"}}</span>
             <input type="date" name="released_on" value={{this.draft.released_on}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.position"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.position"}}</span>
             <input type="number" name="position" value={{this.draft.position}} />
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.description"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.description"}}</span>
             <textarea name="description">{{this.draft.description}}</textarea>
           </label>
 
           <label class="checkbox-label">
             <input type="checkbox" name="published" checked={{this.draft.published}} />
-            <span>{{i18n "admin.ingenic.downloads.published"}}</span>
+            <span>{{i18n "admin.ingenic.downloads.fields.published"}}</span>
           </label>
 
           <div class="ingenic-admin__toolbar">
