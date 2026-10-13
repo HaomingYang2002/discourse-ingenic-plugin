@@ -36,6 +36,10 @@ class IngenicDownload < ActiveRecord::Base
   validates :access_level, inclusion: { in: ACCESS_LEVELS }
   validates :product_slug, presence: true
   validate :has_somewhere_to_download_from
+  # Not signed, for the same reason a point rule is not: a negative price is a
+  # charge for arriving, and a member who cannot afford one would be refused a
+  # file for having done nothing.
+  validates :point_cost, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   scope :published, -> { where(published: true) }
   scope :ordered, -> { order(position: :asc, released_on: :desc, name: :asc) }
@@ -51,6 +55,13 @@ class IngenicDownload < ActiveRecord::Base
 
   def approval_required?
     access_level == APPROVAL_REQUIRED
+  end
+
+  # Whether this resource costs points to unlock. An addition to the access
+  # levels rather than a fourth one: the levels decide who may have a file, and
+  # this decides what it costs once they may.
+  def costs_points?
+    point_cost.positive?
   end
 
   # What the listing prints on the card. Null for a resource whose category has

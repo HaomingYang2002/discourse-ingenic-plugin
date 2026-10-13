@@ -365,6 +365,131 @@ describe IngenicDownloadsController do
     end
   end
 
+  # What a resource costs, from the listing's point of view and from the file
+  # endpoint's. The two have to agree: a card that says Unlock and an endpoint
+  # that serves the file for nothing would be a price that means nothing.
+  describe "a resource that costs points" do
+    before { SiteSetting.ingenic_points_enabled = true }
+
+    def earn(account, event = IngenicPointRule::TOPIC_CREATED)
+      Ingenic::Points.award(user: account, event: event)
+    end
+
+    it "reports the reader's balance with the listing" do
+      earn(user)
+      sign_in(user)
+
+      get "/ingenic/downloads.json"
+
+      expect(response.parsed_body["points"]).to eq(
+        IngenicPointRule.amount_for(IngenicPointRule::TOPIC_CREATED),
+      )
+      expect(response.parsed_body["points_enabled"]).to eq(true)
+    end
+
+    it "carries the price of a resource and whether it is already unlocked" do
+      download = resource(IngenicDownload::LOGIN_ONLY, name: "Priced", point_cost: 40)
+      earn(user)
+      sign_in(user)
+
+      get "/ingenic/downloads.json"
+
+      card = response.parsed_body["downloads"].find { |d| d["name"] == "Priced" }
+      expect(card["point_cost"]).to eq(40)
+      expect(card["unlocked"]).to eq(false)
+
+      get "/ingenic/downloads/#{download.id}/file"
+      get "/ingenic/downloads.json"
+
+      card = response.parsed_body["downloads"].find { |d| d["name"] == "Priced" }
+      expect(card["unlocked"]).to eq(true)
+    end
+
+    it "refuses the file to an account that cannot afford it, with the price" do
+      download = resource(IngenicDownload::LOGIN_ONLY, point_cost: 400)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file.json"
+
+      expect(response.status).to eq(403)
+      expect(response.parsed_body["errors"].first).to eq(
+        I18n.t("ingenic.downloads.not_enough_points", points: 400),
+      )
+    end
+
+    it "sends a browser navigation back to the centre when the balance is short" do
+      download = resource(IngenicDownload::LOGIN_ONLY, point_cost: 400)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file"
+
+      expect(response.status).to eq(302)
+      expect(response.location).to end_with("/ingenic/downloads")
+    end
+
+    it "takes the points and hands the file over when the balance is enough" do
+      download = resource(IngenicDownload::LOGIN_ONLY, point_cost: 5)
+      earn(user)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file"
+
+      expect(response.location).to eq("https://example.com/sdk.tgz")
+      expect(IngenicPointBalance.total_for(user)).to eq(
+        IngenicPointRule.amount_for(IngenicPointRule::TOPIC_CREATED) - 5,
+      )
+    end
+
+    it "charges nothing more for a resource already bought" do
+      download = resource(IngenicDownload::LOGIN_ONLY, point_cost: 5)
+      earn(user)
+      earn(user, IngenicPointRule::POST_CREATED)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file"
+      after_first = IngenicPointBalance.total_for(user)
+      get "/ingenic/downloads/#{download.id}/file"
+
+      expect(IngenicPointBalance.total_for(user)).to eq(after_first)
+    end
+
+    it "charges nothing for a resource that is not in storage" do
+      directory = Dir.mktmpdir("ingenic-download")
+      SiteSetting.ingenic_download_storage_path = directory
+
+      download =
+        resource(
+          IngenicDownload::LOGIN_ONLY,
+          storage_path: "aa/gone.bin",
+          original_filename: "gone.bin",
+          file_url: nil,
+          point_cost: 5,
+        )
+      earn(user)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file.json"
+
+      expect(response.status).to eq(404)
+      expect(IngenicPointBalance.total_for(user)).to eq(
+        IngenicPointRule.amount_for(IngenicPointRule::TOPIC_CREATED),
+      )
+    ensure
+      FileUtils.remove_entry(directory) if directory
+    end
+
+    it "charges nothing while points are switched off" do
+      SiteSetting.ingenic_points_enabled = false
+      download = resource(IngenicDownload::LOGIN_ONLY, point_cost: 5)
+      sign_in(user)
+
+      get "/ingenic/downloads/#{download.id}/file"
+
+      expect(response.location).to eq("https://example.com/sdk.tgz")
+      expect(IngenicPointBalance.total_for(user)).to eq(0)
+    end
+  end
+
   # The record the team asked for by name. An approval lasts, so the grant table
   # answers "who may" and never "who did" — this is the only remaining account of
   # a gated file having been collected, and of the account that collected it.

@@ -314,6 +314,95 @@ module Admin
       render_json_dump(grant: download_grant_json(grant))
     end
 
+    # Points ----------------------------------------------------------------
+
+    # One request for the whole screen: what the rules pay, the most recent
+    # movements, and who is holding what.
+    #
+    # Administrator-only throughout, including the reading. The ledger names
+    # accounts and the adjustments move a member's standing on the site, which
+    # is the same kind of act as deciding an access request — and that is not
+    # delegated to a scoped content manager either.
+    def points
+      authorize_admin_only!
+
+      render_json_dump(
+        rules: IngenicPointRule.ordered.map { |rule| point_rule_json(rule) },
+        events: IngenicPointRule::EVENTS,
+        entries: IngenicPointEntry.includes(:user, :awarded_by).recent.limit(100).map { |entry| point_entry_json(entry) },
+        balances: IngenicPointBalance.top.includes(:user).limit(50).map { |row| point_balance_json(row) },
+        totals: point_totals,
+        enabled: ::Ingenic::Points.enabled?,
+        exclude_staff: SiteSetting.ingenic_points_exclude_staff,
+      )
+    end
+
+    # The amounts and the wording, which is all of a rule an admin is allowed to
+    # change. The event itself is the ledger's vocabulary, and a rule for an
+    # event nothing fires would award points for something that never happens.
+    def update_point_rule
+      authorize_admin_only!
+      record = IngenicPointRule.find(params[:id])
+      record.assign_attributes(point_rule_params)
+      save_or_error(record) { render_json_dump(rule: point_rule_json(record)) }
+    end
+
+    # A hand-written movement, with the note that explains it.
+    #
+    # Works while points are switched off, on purpose: the switch stops the
+    # forum handing points out on its own, and this is somebody deciding.
+    def adjust_points
+      authorize_admin_only!
+
+      # By username, because that is what the account picker on the screen hands
+      # back and what an administrator already knows. It is also the value the
+      # ledger prints, so the row a mistake was noticed on names its own account.
+      username = params[:username].to_s.strip
+      user = username.present? ? User.find_by_username(username) : nil
+      return render_json_error(I18n.t("ingenic.admin_errors.user_not_found"), status: 404) if user.nil?
+
+      amount = params[:points].to_i
+      if amount.zero?
+        return render_json_error(I18n.t("ingenic.admin_errors.points_amount_blank"), status: 422)
+      end
+
+      entry =
+        ::Ingenic::Points.adjust(
+          user: user,
+          points: amount,
+          note: params[:note].to_s.strip.first(500).presence,
+          by: current_user,
+        )
+
+      render_json_dump(
+        entry: entry && point_entry_json(entry),
+        balance: ::Ingenic::Points.total_for(user),
+      )
+    end
+
+    # Recomputes every balance from the ledger. The repair for the day the
+    # numbers and the rows behind them disagree.
+    def rebuild_points
+      authorize_admin_only!
+      render_json_dump(::Ingenic::Points.rebuild!)
+    end
+
+    # The ledger, one account at a time. The screen shows the recent movements
+    # already; this is for when somebody asks why their number is what it is.
+    def point_entries
+      authorize_admin_only!
+
+      scope = IngenicPointEntry.recent
+      scope = scope.where(user_id: params[:user_id]) if params[:user_id].present?
+
+      render_json_dump(
+        # Counted before the cap, so the page can say how many there are as well
+        # as showing the first slice of them.
+        total: scope.count,
+        entries: scope.includes(:user, :awarded_by).limit(200).map { |entry| point_entry_json(entry) },
+      )
+    end
+
     # Site content ----------------------------------------------------------
 
     # One request for the whole page. All three lists are short and all three are
@@ -526,6 +615,7 @@ module Admin
           :published,
           :position,
           :access_level,
+          :point_cost,
         )
 
       # "No category" comes back from the picker as an empty string, which the
@@ -536,6 +626,12 @@ module Admin
 
     def permission_params
       params.permit(:user_id, :group_id, :resource_type, :resource_id, :permission)
+    end
+
+    # The event is deliberately not permitted: it is the ledger's vocabulary,
+    # and renaming one would orphan every entry already written under it.
+    def point_rule_params
+      params.permit(:points, :label, :published, :position)
     end
 
     def download_category_params
@@ -651,6 +747,7 @@ module Admin
           "published",
           "position",
           "access_level",
+          "point_cost",
           "file_sha256",
         )
         .merge(
@@ -789,6 +886,58 @@ module Admin
         "revoked_at" => grant.revoked_at&.iso8601,
         "note" => grant.note,
         "created_at" => grant.created_at.iso8601,
+      }
+    end
+
+    def point_rule_json(rule)
+      rule.attributes.slice("id", "event", "label", "points", "position", "published")
+    end
+
+    def point_entry_json(entry)
+      {
+        "id" => entry.id,
+        "created_at" => entry.created_at.iso8601,
+        "user_id" => entry.user_id,
+        "username" => entry.user&.username,
+        "points" => entry.points,
+        "event" => entry.event,
+        "reason" => entry.reason,
+        "note" => entry.note,
+        # Named for what it was for, so a row about a post that has since been
+        # deleted still reads as something rather than as a bare id.
+        "subject" => entry.subject_type,
+        "subject_id" => entry.subject_id,
+        "awarded_by" => entry.awarded_by&.username,
+      }
+    end
+
+    def point_balance_json(row)
+      {
+        "user_id" => row.user_id,
+        "username" => row.user&.username,
+        "points" => row.points,
+        "updated_at" => row.updated_at.iso8601,
+      }
+    end
+
+    # What the screen puts at the top. Summed from the ledger rather than from
+    # the balances, because the ledger is the authority and the difference
+    # between the two is exactly what the repair button is for.
+    #
+    # Broken out by what the movements were rather than shown as one negative
+    # total: "taken back because the post was deleted" and "spent on a download"
+    # are different facts about the forum, and adding them together hides both.
+    def point_totals
+      by_event = IngenicPointEntry.group(:event).sum(:points)
+
+      {
+        # Only the earning rules, so this is what the forum paid out for
+        # contributions rather than everything that ever went up.
+        "earned" => IngenicPointRule::EVENTS.sum { |event| by_event[event] || 0 },
+        "reversed" => (by_event[IngenicPointEntry::REVERSAL] || 0).abs,
+        "spent" => (by_event[IngenicPointEntry::DOWNLOAD] || 0).abs,
+        "adjusted" => by_event[IngenicPointEntry::MANUAL] || 0,
+        "holders" => IngenicPointBalance.where("points > 0").count,
       }
     end
 

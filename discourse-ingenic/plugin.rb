@@ -28,6 +28,8 @@ require_relative "lib/ingenic/developer_form"
 require_relative "lib/ingenic/download_access"
 require_relative "lib/ingenic/download_storage"
 require_relative "lib/ingenic/official_flair"
+require_relative "lib/ingenic/points"
+require_relative "lib/ingenic/point_events"
 
 # A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
 # behind a Rails::Engine or expects the plugin to require each file, and this
@@ -50,6 +52,9 @@ require_relative "app/models/ingenic_promotion"
 require_relative "app/models/ingenic_social_link"
 require_relative "app/models/ingenic_footer_column"
 require_relative "app/models/ingenic_footer_link"
+require_relative "app/models/ingenic_point_rule"
+require_relative "app/models/ingenic_point_entry"
+require_relative "app/models/ingenic_point_balance"
 
 require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_version_serializer"
@@ -68,6 +73,7 @@ require_relative "app/controllers/ingenic_docs_controller"
 require_relative "app/controllers/ingenic_downloads_controller"
 require_relative "app/controllers/ingenic_boards_controller"
 require_relative "app/controllers/ingenic_site_controller"
+require_relative "app/controllers/ingenic_points_controller"
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 register_svg_icon "book"
@@ -107,6 +113,24 @@ after_initialize do
       Ingenic::OfficialFlair.after_list_change(old_value)
     end
   end
+
+  # The points ledger.
+  #
+  # Six events, and between them every way points are earned or taken back:
+  # something is written, something is liked, an answer is accepted, and the
+  # three ways any of those goes away. What counts and who earns is in
+  # Ingenic::PointEvents; this is only the subscribing.
+  #
+  # `discourse-solved` owns the two solution events and may not be enabled. A
+  # handler for an event nothing fires costs nothing, which is why these are
+  # registered unconditionally rather than behind a check for a plugin this one
+  # does not otherwise depend on.
+  on(:post_created) { |post, _opts, _user| Ingenic::PointEvents.post_created(post) }
+  on(:post_destroyed) { |post, _opts, _user| Ingenic::PointEvents.post_destroyed(post) }
+  on(:like_created) { |post_action, _creator| Ingenic::PointEvents.like_created(post_action) }
+  on(:like_destroyed) { |post_action, _creator| Ingenic::PointEvents.like_destroyed(post_action) }
+  on(:accepted_solution) { |post| Ingenic::PointEvents.solution_accepted(post) }
+  on(:unaccepted_solution) { |post| Ingenic::PointEvents.solution_unaccepted(post) }
 
   # Navigation and homepage layout are admin-editable, so they are shipped to
   # the client through the site serializer rather than baked into the theme.
@@ -169,6 +193,14 @@ after_initialize do
 
       get "/download-logs" => "admin/ingenic#download_logs", format: false
 
+      # Points. Reading is administrator-only too: the ledger names accounts,
+      # and an adjustment moves a member's standing.
+      get "/points" => "admin/ingenic#points", format: false
+      put "/points/rules/:id" => "admin/ingenic#update_point_rule", format: false
+      post "/points/adjust" => "admin/ingenic#adjust_points", format: false
+      post "/points/rebuild" => "admin/ingenic#rebuild_points", format: false
+      get "/point-entries" => "admin/ingenic#point_entries", format: false
+
       post "/download-categories" => "admin/ingenic#create_download_category", format: false
       put "/download-categories/:id" => "admin/ingenic#update_download_category", format: false
       delete "/download-categories/:id" => "admin/ingenic#destroy_download_category", format: false
@@ -218,5 +250,10 @@ after_initialize do
     # no page here: every one of them is drawn inside a layout the theme already
     # owns.
     get "/ingenic/site", to: "ingenic_site#show", as: :ingenic_site
+
+    # The member's own points. Read-only from the front end: points are earned
+    # by contributing and spent on a download, and neither happens through this
+    # address.
+    get "/ingenic/points", to: "ingenic_points#show", as: :ingenic_points
   end
 end

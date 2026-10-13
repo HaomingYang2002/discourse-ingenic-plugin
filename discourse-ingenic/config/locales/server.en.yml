@@ -9,6 +9,8 @@ en:
     ingenic_download_admin_email: "Address notified when a developer applies for an access-restricted download."
     ingenic_developer_form_fields: "JSON array describing the developer information form. Empty uses the built-in fields."
     ingenic_official_groups: "Groups whose members wear an official identity badge beside their username. A member already wearing a badge of their own keeps it."
+    ingenic_points_enabled: "Award points for contributions, and let a resource cost points to unlock. Switching it off keeps every balance where it is."
+    ingenic_points_exclude_staff: "Administrators and moderators do not earn points. A like from one still counts for the member who wrote the post."
 
   ingenic:
     errors:
@@ -21,6 +23,8 @@ en:
       has_children: "This record has child records and cannot be deleted."
       page_not_found: "That page does not exist in this version or any version it inherits from."
       storage_unavailable: "Uploaded files cannot be written. Check the download storage path."
+      user_not_found: "No such account."
+      points_amount_blank: "Enter a number of points to add or deduct."
     developer_form:
       missing: "%{field} is required."
     downloads:
@@ -35,6 +39,17 @@ en:
       profile_saved: "Your developer information has been saved."
       not_published: "This resource is not published."
       request_not_needed: "This resource does not need an application."
+      not_enough_points: "You need %{points} points to unlock this file."
+      unlocked: "Unlocked. You can download it from now on."
+
+    # Why points were taken back. Written into the ledger as the reason, so it
+    # stays readable after the post that caused it is gone.
+    points:
+      reversed_post: "The post this was for was deleted"
+      reversed_like: "The like this was for was removed"
+      reversed_solution: "The accepted answer was unmarked"
+      manual_reason: "Adjusted by an administrator"
+      unlocked: "Unlocked %{resource}"
 
   # Bodies and subjects for the download centre's emails. Email::MessageBuilder
   # reads these keys by name, so they have to live under the template name the

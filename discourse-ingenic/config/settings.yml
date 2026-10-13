@@ -120,3 +120,28 @@ plugins:
     type: list
     list_type: compact
     description: "Groups whose members wear an official identity badge beside their username. A member already wearing a badge of their own keeps it."
+
+  # Points: what members earn for contributing, and what a resource can cost to
+  # unlock. Switching this off stops the forum handing points out and stops a
+  # resource being bought with them; it does not clear the ledger, and the
+  # balances are where they were when it comes back on.
+  #
+  # An administrator adjusting an account by hand still works while this is off,
+  # because that is somebody deciding on purpose rather than the forum deciding
+  # for them.
+  ingenic_points_enabled:
+    default: true
+    client: false
+
+  # Whether administrators and moderators earn points.
+  #
+  # On by default: answering here is a member of staff's job rather than their
+  # contribution, and a community leaderboard nobody in the community can reach
+  # the top of is not much of a leaderboard. Worth knowing while trying the
+  # feature out — a moderator posting to test it will see nothing happen.
+  #
+  # It does not stop staff *giving* points: a like from a moderator still
+  # counts for the member who wrote the post.
+  ingenic_points_exclude_staff:
+    default: true
+    client: false

@@ -31,6 +31,10 @@ class IngenicDownloadsController < ::ApplicationController
       filters: filters,
       form: form_json,
       signed_in: current_user.present?,
+      # What the reader has, so a card can say what a resource costs and whether
+      # they can already afford it without a request per card.
+      points: Ingenic::Points.total_for(current_user),
+      points_enabled: Ingenic::Points.enabled?,
     )
   end
 
@@ -117,6 +121,22 @@ class IngenicDownloadsController < ::ApplicationController
 
   private
 
+  # Collects the price of a resource, if it has one, and reports the outcome the
+  # way the delivery branches need it: true means the bytes may leave.
+  #
+  # A short balance is the only failure that is about the reader rather than
+  # about the server, so it comes back as a state the page already knows how to
+  # draw rather than as an error string.
+  def charge
+    case Ingenic::DownloadAccess.charge(current_user, @download)
+    when :insufficient
+      render_state(:needs_points)
+      false
+    else
+      true
+    end
+  end
+
   def find_download
     @download = IngenicDownload.find_by(id: params[:id])
     raise Discourse::NotFound if @download.nil?
@@ -130,14 +150,24 @@ class IngenicDownloadsController < ::ApplicationController
   # resource shows the same state and the control that moves it forward. A JSON
   # caller gets the reason instead, because there is no page to land on.
   def render_denied(access)
+    render_state(access.state)
+  end
+
+  def render_state(state)
     if request.format.json?
-      render_json_error(state_message(access.state), status: 403)
+      render_json_error(state_message(state), status: 403)
     else
       redirect_to "/ingenic/downloads"
     end
   end
 
   def state_message(state)
+    # The one state whose message carries a number, so it is spelled out rather
+    # than looked up from the table below.
+    if state == :needs_points
+      return I18n.t("ingenic.downloads.not_enough_points", points: @download.point_cost)
+    end
+
     key =
       {
         anonymous: "not_signed_in",
@@ -170,6 +200,8 @@ class IngenicDownloadsController < ::ApplicationController
       )
       return render_unavailable
     end
+
+    return if !charge
 
     record_download
 
@@ -206,6 +238,8 @@ class IngenicDownloadsController < ::ApplicationController
       Rails.logger.warn("Ingenic: download #{@download.id} has an unusable file URL")
       return render_unavailable
     end
+
+    return if !charge
 
     record_download
 
@@ -262,9 +296,26 @@ class IngenicDownloadsController < ::ApplicationController
       .map { |result| download_json(result.download, result.state) }
   end
 
+  # Whether this account has already unlocked the resource, asked of the ledger
+  # rather than of the row. Reading it once for the whole page keeps a listing
+  # from running one query per priced card.
+  def unlocked?(download)
+    return true unless download.costs_points?
+    return true unless Ingenic::Points.enabled?
+
+    @unlocked_ids ||= Ingenic::Points.unlocked_download_ids(current_user)
+    @unlocked_ids.include?(download.id)
+  end
+
   def download_json(download, state)
     {
       "id" => download.id,
+      # What the card needs to talk about price: what it costs, and whether this
+      # account has already bought it. Both are read from the same ledger the
+      # endpoint charges against, so the card cannot promise a free download the
+      # endpoint will refuse.
+      "point_cost" => download.point_cost,
+      "unlocked" => unlocked?(download),
       "product_slug" => download.product_slug,
       "category_id" => download.category_id,
       "category_name" => download.category_name,
