@@ -99,17 +99,24 @@ plugins:
     multiline: true
     description: "JSON array describing the developer information form. Leave empty for the built-in set of fields."
 
-  # Groups whose name carries an official identity badge. Comma-separated group
-  # names, exactly as they are spelled in Discourse.
+  # Groups whose members wear an official identity badge beside their username.
+  # One group name per entry, spelled as the group is spelled on its own page.
+  # Case and stray spaces do not matter.
   #
-  # The badge itself is Discourse's own group flair, which the group settings
-  # already let an admin upload or pick as an icon. This setting only decides who
-  # wears it: a member of a listed group is given that group's flair, and a
-  # member of none keeps whatever they chose for themselves. Listing a group with
-  # no flair configured does nothing, so this is safe to fill in before the
-  # badge image is ready.
+  # The badge itself is Discourse's own group flair, which the group's own
+  # settings already let an admin upload or pick as an icon. This setting only
+  # decides who wears it: a member of a listed group is given that group's
+  # flair. A member who already wears a badge they chose themselves keeps it,
+  # and can pick up the official one from their preferences page instead.
+  #
+  # Listing more than one group is a way of saying which badge outranks which:
+  # the first listed group a member belongs to is the one that wins.
+  #
+  # A listed group with no flair configured grants nothing, so this is safe to
+  # fill in before the badge image is ready — the badges appear when it is
+  # uploaded.
   ingenic_official_groups:
     default: "admins"
     type: list
     list_type: compact
-    description: "Groups whose members wear an official identity badge beside their username."
+    description: "Groups whose members wear an official identity badge beside their username. A member already wearing a badge of their own keeps it."

@@ -27,6 +27,7 @@ require_relative "lib/ingenic/documentation_resolver"
 require_relative "lib/ingenic/developer_form"
 require_relative "lib/ingenic/download_access"
 require_relative "lib/ingenic/download_storage"
+require_relative "lib/ingenic/official_flair"
 
 # A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
 # behind a Rails::Engine or expects the plugin to require each file, and this
@@ -59,6 +60,7 @@ require_relative "app/serializers/ingenic_board_serializer"
 require_relative "app/mailers/ingenic_download_mailer"
 require_relative "app/jobs/regular/ingenic_download_request_email"
 require_relative "app/jobs/regular/ingenic_download_decision_email"
+require_relative "app/jobs/regular/ingenic_official_flair_sync"
 
 require_relative "app/controllers/admin/ingenic/base_controller"
 require_relative "app/controllers/admin/ingenic_controller"
@@ -73,6 +75,37 @@ register_svg_icon "book"
 after_initialize do
   reloadable_patch do
     Guardian.prepend DiscourseIngenic::GuardianExtensions
+  end
+
+  # The official identity badge.
+  #
+  # Discourse already draws a group's flair beside a member's username; what it
+  # does not do is hand that flair out on membership, because its own route to
+  # it runs through the group being the member's primary group, which decides
+  # rather more than a badge. These four events are every way a member and a
+  # listing can come apart: joining, leaving, the group's own flair changing,
+  # and the list of official groups changing. The rules and the reasons are in
+  # Ingenic::OfficialFlair; what is here is only what notices.
+  #
+  # Each is guarded on the extension being on. The handlers outlive the setting
+  # — Rails has already loaded this file — and a forum that has switched the
+  # extension off should not go on handing out badges in the background.
+  on(:user_added_to_group) do |user, _group, **_opts|
+    Ingenic::OfficialFlair.sync_user(user) if SiteSetting.ingenic_enabled
+  end
+
+  on(:user_removed_from_group) do |user, _group|
+    Ingenic::OfficialFlair.sync_user(user) if SiteSetting.ingenic_enabled
+  end
+
+  on(:group_updated) do |group|
+    Ingenic::OfficialFlair.after_group_change(group) if SiteSetting.ingenic_enabled
+  end
+
+  on(:site_setting_changed) do |name, old_value, _new_value|
+    if SiteSetting.ingenic_enabled && name.to_s == "ingenic_official_groups"
+      Ingenic::OfficialFlair.after_list_change(old_value)
+    end
   end
 
   # Navigation and homepage layout are admin-editable, so they are shipped to

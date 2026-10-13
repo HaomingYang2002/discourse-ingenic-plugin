@@ -8,7 +8,7 @@ en:
     ingenic_download_storage_path: "Directory holding uploaded SDK and firmware files. Empty uses <app>/ingenic-downloads. Must be outside public/."
     ingenic_download_admin_email: "Address notified when a developer applies for an access-restricted download."
     ingenic_developer_form_fields: "JSON array describing the developer information form. Empty uses the built-in fields."
-    ingenic_official_groups: "Groups whose members wear an official identity badge beside their username."
+    ingenic_official_groups: "Groups whose members wear an official identity badge beside their username. A member already wearing a badge of their own keeps it."
 
   ingenic:
     errors:
