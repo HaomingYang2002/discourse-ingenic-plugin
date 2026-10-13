@@ -138,7 +138,7 @@ export default class IngenicBoardManager extends Component {
   }
 
   <template>
-    <div class="ingenic-admin__boards-panel">
+    <div class="ingenic-admin-panel">
       {{#if this.error}}<p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>{{/if}}
       {{#if this.message}}<p class="ingenic-admin-note">{{this.message}}</p>{{/if}}
 

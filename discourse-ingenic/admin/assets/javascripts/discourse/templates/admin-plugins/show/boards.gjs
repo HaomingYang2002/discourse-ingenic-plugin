@@ -3,7 +3,7 @@ import IngenicBoardManager from "../../../../admin/components/ingenic-board-mana
 import { i18n } from "discourse-i18n";
 
 const Boards = <template>
-  <div class="ingenic-admin__boards admin-detail">
+  <div class="admin-detail">
     <DPageSubheader
       @titleLabel={{i18n "admin.ingenic.boards.title"}}
       @descriptionLabel={{i18n "admin.ingenic.boards.description"}}

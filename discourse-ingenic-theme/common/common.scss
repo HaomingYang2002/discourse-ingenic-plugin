@@ -197,10 +197,14 @@ html.ingenic-nav-first .sidebar-sections {
   margin-bottom: 0.75rem;
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--primary-low);
-  border-left: 3px solid var(--tertiary);
+  border-left: 3px solid var(--primary-low);
   border-radius: var(--ingenic-radius);
   background: var(--primary-very-low);
   font-size: var(--font-down-1);
+
+  &--ok {
+    border-left-color: var(--tertiary);
+  }
 
   &--error {
     border-left-color: var(--danger);
@@ -261,6 +265,20 @@ html.ingenic-nav-first .sidebar-sections {
 
   &__title {
     font-weight: 700;
+  }
+
+  // A board photo arrives at whatever size it was uploaded, so it is given the
+  // card's width and a fixed frame. `contain` rather than `cover` because a
+  // board is the subject of the picture and cropping it would hide the part
+  // someone is looking at.
+  &__image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    margin-bottom: 0.6rem;
+    border-radius: 6px;
+    background: var(--primary-very-low);
+    object-fit: contain;
   }
 
   &__meta {
@@ -579,6 +597,15 @@ html.ingenic-nav-first .sidebar-sections {
     color: var(--primary-medium);
   }
 
+  // The trigger is a flex row with the caret after the value, so a chip name
+  // longer than the column has to be allowed to shorten or it takes the caret
+  // off the edge of the control.
+  &__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__panel {
     position: absolute;
     z-index: 200;
@@ -700,10 +727,17 @@ html.ingenic-nav-first .sidebar-sections {
       text-decoration: none;
     }
 
-    &--depth-1 { padding-left: 1.2rem; }
-    &--depth-2 { padding-left: 1.85rem; }
-    &--depth-3 { padding-left: 2.5rem; }
-    &--depth-4 { padding-left: 3.15rem; }
+    // One step per level of the contents. The reader saturates the level at the
+    // deepest step here, so a page nested further than this keeps the last
+    // indentation instead of falling back to none.
+    &--indent-1 { padding-left: 1.2rem; }
+    &--indent-2 { padding-left: 1.85rem; }
+    &--indent-3 { padding-left: 2.5rem; }
+    &--indent-4 { padding-left: 3.15rem; }
+    &--indent-5 { padding-left: 3.8rem; }
+    &--indent-6 { padding-left: 4.45rem; }
+    &--indent-7 { padding-left: 5.1rem; }
+    &--indent-8 { padding-left: 5.75rem; }
   }
 
   &__excerpt {

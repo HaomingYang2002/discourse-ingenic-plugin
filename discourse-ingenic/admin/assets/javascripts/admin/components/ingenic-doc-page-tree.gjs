@@ -4,6 +4,11 @@ import { fn } from "@ember/helper";
 import { eq } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
+// How many indentation steps the plugin's stylesheet defines, so a page nested
+// deeper than the last one keeps the last one's indentation rather than
+// falling back to none.
+const MAX_INDENT = 8;
+
 /**
  * The resolved page list for one version.
  *
@@ -12,12 +17,19 @@ import { i18n } from "discourse-i18n";
  * whose parent lives in an earlier version in the right place.
  */
 export default class IngenicDocPageTree extends Component {
+  get rows() {
+    return this.args.pages.map((page) => ({
+      ...page,
+      indent: Math.min(page.depth ?? 0, MAX_INDENT),
+    }));
+  }
+
   <template>
     <div class="ingenic-admin-tree">
-      {{#each @pages as |page|}}
+      {{#each this.rows as |page|}}
         <button
           type="button"
-          class="ingenic-admin-tree__row ingenic-admin-tree__row--depth-{{page.depth}} {{if (eq page.slug @selectedSlug) 'is-selected'}}"
+          class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{page.indent}} {{if (eq page.slug @selectedSlug) 'is-selected'}}"
           {{on "click" (fn @onSelect page)}}
         >
           <span class="ingenic-admin-tree__title">{{page.title}}</span>

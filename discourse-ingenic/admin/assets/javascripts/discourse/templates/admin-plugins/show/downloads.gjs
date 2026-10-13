@@ -47,7 +47,7 @@ export default class AdminPluginsShowDownloads extends Component {
   }
 
   <template>
-    <div class="ingenic-admin__downloads-page admin-detail">
+    <div class="admin-detail">
       <DPageSubheader
         @titleLabel={{i18n "admin.ingenic.downloads.title"}}
         @descriptionLabel={{i18n "admin.ingenic.downloads.description"}}

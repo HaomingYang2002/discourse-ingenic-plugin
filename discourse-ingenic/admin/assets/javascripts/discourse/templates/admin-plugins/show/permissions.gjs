@@ -4,7 +4,7 @@ import IngenicPermissionList from "../../../../admin/components/ingenic-permissi
 import { i18n } from "discourse-i18n";
 
 const Permissions = <template>
-  <div class="ingenic-admin__permissions admin-detail">
+  <div class="admin-detail">
     <DPageSubheader
       @titleLabel={{i18n "admin.ingenic.permissions.title"}}
       @descriptionLabel={{i18n "admin.ingenic.permissions.description"}}

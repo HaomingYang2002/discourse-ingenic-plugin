@@ -14,6 +14,11 @@ import getURL from "discourse/lib/get-url";
 const ROUTE_PREFIX = "/ingenic/docs";
 const SEARCH_ENDPOINT = "/ingenic/docs-search";
 
+// How many indentation steps the stylesheet defines. One step per level of the
+// table of contents, which is a chapter-and-section tree, so eight is well past
+// any real documentation set.
+const MAX_INDENT = 8;
+
 // The URL is /<series>/<chip>/<version>/<page>. Only the series is required:
 // the plugin fills in the series' first chip and that chip's default version,
 // so a navigation entry can point at /ingenic/docs and still land somewhere
@@ -115,6 +120,12 @@ export default class IngenicDocs extends Component {
       slug: entry.slug,
       title: entry.title,
       depth: entry.depth ?? 0,
+      // Indentation is a set of classes rather than a computed style, so it
+      // stops growing at the deepest step the stylesheet defines. Saturating
+      // here rather than letting the class run off the end matters: an unknown
+      // class falls back to the unindented rule, which would draw a page five
+      // levels down level with a chapter heading.
+      indent: Math.min(entry.depth ?? 0, MAX_INDENT),
       isActive: entry.slug === this.urlPageSlug,
       href: this.hrefFor(entry.slug),
     }));
@@ -487,7 +498,7 @@ export default class IngenicDocs extends Component {
                   </p>
                   <ul class="ingenic-nav">
                     {{#each this.searchHits as |hit|}}
-                      <li class="ingenic-nav__item">
+                      <li>
                         <a class="ingenic-nav__link" href={{hit.href}} {{on "click" (fn this.openPage hit)}}>
                           {{hit.title}}
                           <span class="ingenic-nav__excerpt">{{hit.excerpt}}</span>
@@ -502,9 +513,9 @@ export default class IngenicDocs extends Component {
                 {{else}}
                   <ul class="ingenic-nav">
                     {{#each this.tree as |entry|}}
-                      <li class="ingenic-nav__item">
+                      <li>
                         <a
-                          class="ingenic-nav__link ingenic-nav__link--depth-{{entry.depth}} {{if entry.isActive 'is-active'}}"
+                          class="ingenic-nav__link ingenic-nav__link--indent-{{entry.indent}} {{if entry.isActive 'is-active'}}"
                           href={{entry.href}}
                           {{on "click" (fn this.openPage entry)}}
                         >

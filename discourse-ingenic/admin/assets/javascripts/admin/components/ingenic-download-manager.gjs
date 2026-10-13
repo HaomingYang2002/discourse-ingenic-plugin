@@ -158,7 +158,7 @@ export default class IngenicDownloadManager extends Component {
   }
 
   <template>
-    <div class="ingenic-admin__downloads">
+    <div class="ingenic-admin-panel">
       {{#if @storageWritable}}
         <p class="ingenic-admin-note">{{i18n "admin.ingenic.downloads.storage_ok"}}</p>
       {{else}}

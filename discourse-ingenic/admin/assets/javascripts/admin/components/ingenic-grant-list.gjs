@@ -38,7 +38,7 @@ export default class IngenicGrantList extends Component {
   }
 
   <template>
-    <div class="ingenic-admin__grants">
+    <div class="ingenic-admin-panel">
       {{#if this.error}}<p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>{{/if}}
 
       <div class="ingenic-admin-list">

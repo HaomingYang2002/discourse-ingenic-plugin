@@ -38,7 +38,7 @@ export default class IngenicPermissionForm extends Component {
   }
 
   <template>
-    <form class="ingenic-admin-form ingenic-admin-form--permissions" {{on "submit" this.save}}>
+    <form class="ingenic-admin-form" {{on "submit" this.save}}>
       <label>
         <span>User ID (or leave blank)</span>
         <input name="user_id" inputmode="numeric" />

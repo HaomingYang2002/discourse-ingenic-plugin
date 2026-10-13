@@ -86,6 +86,13 @@
   }
 }
 
+// The second grid column. It has to be told it may be narrower than its widest
+// child, or a long form field sets the column's minimum and the layout
+// overflows the page instead.
+.ingenic-doc-manager__workspace {
+  min-width: 0;
+}
+
 .ingenic-doc-manager__editor {
   border: 1px solid var(--primary-low);
   border-radius: 8px;
@@ -129,10 +136,25 @@
   }
 }
 
-.ingenic-admin-tree__row--depth-1 { padding-left: 1.4rem; }
-.ingenic-admin-tree__row--depth-2 { padding-left: 2.4rem; }
-.ingenic-admin-tree__row--depth-3 { padding-left: 3.4rem; }
-.ingenic-admin-tree__row--depth-4 { padding-left: 4.4rem; }
+// The row is a title beside a badge, and a page title can be a whole sentence,
+// so the title gives way rather than pushing the badge out of the row.
+.ingenic-admin-tree__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// One step per level of the contents. The tree saturates the level at the
+// deepest step here, so a page nested further than this keeps the last
+// indentation instead of falling back to none.
+.ingenic-admin-tree__row--indent-1 { padding-left: 1.4rem; }
+.ingenic-admin-tree__row--indent-2 { padding-left: 2.4rem; }
+.ingenic-admin-tree__row--indent-3 { padding-left: 3.4rem; }
+.ingenic-admin-tree__row--indent-4 { padding-left: 4.4rem; }
+.ingenic-admin-tree__row--indent-5 { padding-left: 5.4rem; }
+.ingenic-admin-tree__row--indent-6 { padding-left: 6.4rem; }
+.ingenic-admin-tree__row--indent-7 { padding-left: 7.4rem; }
+.ingenic-admin-tree__row--indent-8 { padding-left: 8.4rem; }
 
 .ingenic-admin-tree__badge {
   flex: 0 0 auto;
@@ -202,15 +224,15 @@
   margin-top: 1rem;
 }
 
-.ingenic-admin-panel {
+// The panel a management screen is drawn on. The queue carries its own name as
+// well because it holds the one rule that is about the queue rather than about
+// panels in general.
+.ingenic-admin-panel,
+.ingenic-admin__queue {
   padding: 1rem;
   border: 1px solid var(--primary-low);
   border-radius: 8px;
   background: var(--secondary);
-}
-
-.ingenic-admin-panel__form {
-  margin-bottom: 1rem;
 }
 
 // The row list every management screen is built from, and the one-line note
@@ -226,9 +248,14 @@
   margin-top: 1rem;
 }
 
+// Every list in the admin screens has the same shape — a name with a line of
+// detail under it on the left, a pair of buttons on the right — so the buttons
+// line up with the name rather than with the middle of the block. That is a
+// property of the shape, not of any one screen, so it belongs here instead of
+// on a selector per page.
 .ingenic-admin-list__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 0.9rem;
@@ -292,14 +319,8 @@
   padding-bottom: 0.75rem;
 }
 
-// The row's left side is a name with a line of detail under it and its right
-// side is a pair of buttons, so the buttons line up with the name rather than
-// with the middle of the block.
-.ingenic-admin__downloads-page .ingenic-admin-list__row,
-.ingenic-admin__boards-panel .ingenic-admin-list__row {
-  align-items: flex-start;
-}
-
+// The queue's review form sits in a list row beside the request it answers, so
+// it is sized to the row rather than stretching across the panel.
 .ingenic-admin__queue .ingenic-admin-form--inline {
   flex: 0 0 auto;
   max-width: 22rem;
