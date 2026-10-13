@@ -27,6 +27,8 @@ const ACTIONS = {
   request: { label: "apply", hint: "apply_hint" },
   pending: { label: "pending", hint: "pending_hint" },
   rejected: { label: "rejected", hint: "rejected_hint" },
+  unlock: { label: "unlock", hint: "unlock_hint" },
+  points: { label: "points_short", hint: "points_hint" },
   download: { label: "download", hint: null },
 };
 
@@ -36,6 +38,7 @@ const ACTION_FOR = {
   needs_request: "request",
   pending: "pending",
   rejected: "rejected",
+  needs_points: "points",
   granted: "download",
 };
 
@@ -54,6 +57,8 @@ export default class IngenicDownloads extends Component {
   @tracked selected = { series: "", product: "", category: "", version: "", platform: "" };
   @tracked form = { fields: [], values: {}, completed: false };
   @tracked signedIn = false;
+  @tracked points = 0;
+  @tracked pointsEnabled = false;
   @tracked loading = true;
   @tracked panel = null;
   @tracked busy = false;
@@ -80,15 +85,32 @@ export default class IngenicDownloads extends Component {
 
   // Every label and decision the card needs, worked out here so the template
   // stays a description of the layout rather than a set of lookups.
+  //
+  // A resource that costs points and that this account has not bought yet is
+  // drawn as Unlock rather than Download, and the two are the same link: the
+  // endpoint does the charging, and the card only says what is about to happen.
+  // The label carries the price, which is why it is built here rather than
+  // looked up from the table above.
   get cards() {
     return this.downloads.map((download) => {
-      const action = ACTIONS[ACTION_FOR[download.access_state]] ?? ACTIONS.pending;
+      let action = ACTION_FOR[download.access_state] ?? "pending";
+      const price = download.point_cost ?? 0;
+
+      if (action === "download" && price > 0 && !download.unlocked) {
+        action = "unlock";
+      }
+
+      const entry = ACTIONS[action] ?? ACTIONS.pending;
 
       return {
         ...download,
-        action: ACTION_FOR[download.access_state] ?? "pending",
-        actionLabel: this.#label(action.label),
-        actionHint: action.hint ? this.#label(action.hint) : null,
+        action,
+        // Both of these are the same link to the same endpoint: it is the
+        // endpoint that charges, and the card only says what is about to
+        // happen. Told apart by the label rather than by the control.
+        isLink: action === "download" || action === "unlock",
+        actionLabel: this.#label(entry.label, { points: price }),
+        actionHint: entry.hint ? this.#label(entry.hint, { points: price }) : null,
         linkTarget: download.external ? "_blank" : "_self",
         linkRel: download.external ? "noopener noreferrer" : null,
       };
@@ -105,6 +127,17 @@ export default class IngenicDownloads extends Component {
 
   get panelValues() {
     return this.form.values ?? {};
+  }
+
+  // Shown to a signed-in visitor on a forum where points are on, and to nobody
+  // else: an anonymous visitor has no balance to read, and a forum with points
+  // switched off has nothing to say about them.
+  get showsPoints() {
+    return this.signedIn && this.pointsEnabled;
+  }
+
+  get pointsPath() {
+    return getURL("/ingenic/points");
   }
 
   @action
@@ -209,8 +242,8 @@ export default class IngenicDownloads extends Component {
     this.notice = null;
   }
 
-  #label(key) {
-    return i18n(themePrefix(`ingenic.downloads.${key}`));
+  #label(key, params) {
+    return i18n(themePrefix(`ingenic.downloads.${key}`), params);
   }
 
   #failureMessage(failure) {
@@ -246,6 +279,8 @@ export default class IngenicDownloads extends Component {
         this.downloads = payload.downloads ?? [];
         this.form = payload.form ?? this.form;
         this.signedIn = payload.signed_in ?? false;
+        this.points = payload.points ?? 0;
+        this.pointsEnabled = payload.points_enabled ?? false;
 
         // Filter options always come from the unfiltered response so the user
         // can widen the selection again after narrowing it.
@@ -269,6 +304,15 @@ export default class IngenicDownloads extends Component {
             {{i18n (themePrefix "ingenic.downloads.subtitle")}}
           </p>
         </div>
+
+        {{#if this.showsPoints}}
+          <a class="ingenic-points__balance" href={{this.pointsPath}}>
+            <span class="ingenic-points__balance-value">{{this.points}}</span>
+            <span class="ingenic-points__balance-label">
+              {{i18n (themePrefix "ingenic.downloads.points_balance")}}
+            </span>
+          </a>
+        {{/if}}
       </header>
 
       {{#if this.notice}}
@@ -443,7 +487,7 @@ export default class IngenicDownloads extends Component {
               </dl>
 
               <div class="ingenic-card__actions">
-                {{#if (eq card.action "download")}}
+                {{#if card.isLink}}
                   <a
                     class="btn btn-primary"
                     href={{card.file_path}}

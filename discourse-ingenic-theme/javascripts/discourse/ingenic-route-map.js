@@ -19,4 +19,5 @@ export default function () {
   this.route("ingenic-docs", { path: "/ingenic/docs/*path" });
   this.route("ingenic-downloads", { path: "/ingenic/downloads" });
   this.route("ingenic-boards", { path: "/ingenic/boards" });
+  this.route("ingenic-points", { path: "/ingenic/points" });
 }

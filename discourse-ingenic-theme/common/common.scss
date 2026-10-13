@@ -221,6 +221,85 @@ html.ingenic-nav-first .sidebar-sections {
   }
 }
 
+// The member's points total. It sits in a section header on the downloads page
+// and in the points page's own header, so it is styled once here rather than in
+// both places — as a link in the first case and a plain block in the second.
+.ingenic-points__balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ingenic-points__balance-value {
+  font-size: var(--font-up-3);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tertiary);
+}
+
+.ingenic-points__balance-label {
+  font-size: var(--font-down-2);
+  color: var(--primary-medium);
+}
+
+.ingenic-points__rules,
+.ingenic-points__history {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--primary-very-low);
+    font-size: var(--font-down-1);
+  }
+}
+
+.ingenic-points__rule-points {
+  font-weight: 700;
+  color: var(--tertiary);
+}
+
+// The reason takes the room, the date and the number stay out of its way: a
+// movement is read for why it happened far more often than for when.
+.ingenic-points__history-reason {
+  flex: 1;
+}
+
+.ingenic-points__history-when {
+  color: var(--primary-medium);
+  white-space: nowrap;
+}
+
+.ingenic-points__history-points {
+  min-width: 3rem;
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.is-award {
+    color: var(--tertiary);
+  }
+
+  &.is-deduction {
+    color: var(--danger);
+  }
+}
+
+.ingenic-points__note {
+  margin: 0;
+  color: var(--primary-medium);
+  font-size: var(--font-down-1);
+}
+
 .ingenic-topic-list {
   margin: 0;
   padding: 0;

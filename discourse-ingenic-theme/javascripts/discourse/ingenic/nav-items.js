@@ -6,8 +6,8 @@ import getURL from "discourse/lib/get-url";
 // plugin's setting. Anything configured on the plugin side replaces this list
 // wholesale rather than merging with it, so order and labels have one owner.
 //
-// These are the three entries of the Developer Center group. Discourse's own
-// Topics and Categories sections sit above this one and are left alone.
+// These are the entries of the Developer Center group. Discourse's own Topics
+// and Categories sections sit above this one and are left alone.
 const DEFAULT_ITEMS = [
   { key: "docs", icon: "book", labelKey: "ingenic.nav.docs", href: "/ingenic/docs" },
   {
@@ -21,6 +21,12 @@ const DEFAULT_ITEMS = [
     icon: "microchip",
     labelKey: "ingenic.nav.boards",
     href: "/ingenic/boards",
+  },
+  {
+    key: "points",
+    icon: "star",
+    labelKey: "ingenic.nav.points",
+    href: "/ingenic/points",
   },
 ];
 
