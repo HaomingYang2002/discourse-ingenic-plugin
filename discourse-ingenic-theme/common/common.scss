@@ -1139,3 +1139,14 @@ html.ingenic-nav-first .sidebar-sections {
     }
   }
 }
+
+// The homepage block titles link to their full listings. They are headings
+// first, so they borrow the heading colour and only underline on hover.
+.ingenic-section__header h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+.ingenic-section__header h2 a:hover,
+.ingenic-section__header h2 a:focus {
+  text-decoration: underline;
+}

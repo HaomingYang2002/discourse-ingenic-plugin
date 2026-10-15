@@ -59,7 +59,7 @@ export default class IngenicBlockBoards extends Component {
   <template>
     <section class="ingenic-section" {{didInsert this.load}}>
       <header class="ingenic-section__header">
-        <h2>{{this.title}}</h2>
+        <h2><a href="/ingenic/boards">{{this.title}}</a></h2>
       </header>
 
       {{#if this.boards.length}}
