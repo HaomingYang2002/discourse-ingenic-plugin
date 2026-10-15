@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require_dependency "email/build_email_helper"
 
 require_dependency "email/message_builder"
 
