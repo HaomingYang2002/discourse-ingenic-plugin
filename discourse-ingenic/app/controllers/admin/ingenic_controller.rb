@@ -177,7 +177,7 @@ module Admin
         # without a second request. Includes retired entries, because a resource
         # filed under one has to keep showing it until it is reclassified.
         categories: download_categories_json,
-        storage_writable: Ingenic::DownloadStorage.writable?,
+        storage_writable: ::Ingenic::DownloadStorage.writable?,
         # The log names accounts, so a scoped content manager is not offered the
         # tab. Sent as a flag rather than letting the page ask and be refused,
         # because a refused request per page load is a worse way to say no.
@@ -235,7 +235,7 @@ module Admin
       else
         # The bytes are already on disk by the time validation runs, and nothing
         # will ever name them again if the row is refused.
-        Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        ::Ingenic::DownloadStorage.delete(uploaded) if uploaded
         render_record_error(record)
       end
     end
@@ -250,10 +250,10 @@ module Admin
 
       if record.save
         # Replacing an upload orphans the file it replaced.
-        Ingenic::DownloadStorage.delete(replaced) if replaced.present? && replaced != record.storage_path
+        ::Ingenic::DownloadStorage.delete(replaced) if replaced.present? && replaced != record.storage_path
         render_json_dump(download: admin_download_json(record, *counts_for(record)))
       else
-        Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        ::Ingenic::DownloadStorage.delete(uploaded) if uploaded
         render_record_error(record)
       end
     end
@@ -694,12 +694,12 @@ module Admin
 
       # Reported on the record rather than raised, so the upload form shows the
       # same kind of error as a missing name would.
-      unless Ingenic::DownloadStorage.writable?
+      unless ::Ingenic::DownloadStorage.writable?
         record.errors.add(:base, I18n.t("ingenic.admin_errors.storage_unavailable"))
         return nil
       end
 
-      stored = Ingenic::DownloadStorage.store(file)
+      stored = ::Ingenic::DownloadStorage.store(file)
       record.storage_path = stored[:path]
       record.original_filename = file.original_filename.to_s.presence
       record.file_sha256 = stored[:sha256]
