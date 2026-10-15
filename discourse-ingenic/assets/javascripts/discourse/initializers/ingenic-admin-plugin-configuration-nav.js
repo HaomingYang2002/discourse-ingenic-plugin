@@ -33,10 +33,12 @@ export default {
         {
           label: "admin.ingenic.documentation.title",
           route: "adminPlugins.show.documentation",
+          currentWhen: "adminPlugins.show.documentation",
         },
         {
           label: "admin.ingenic.boards.title",
           route: "adminPlugins.show.boards",
+          currentWhen: "adminPlugins.show.boards",
         },
       ];
 
@@ -45,18 +47,22 @@ export default {
           {
             label: "admin.ingenic.permissions.title",
             route: "adminPlugins.show.permissions",
+            currentWhen: "adminPlugins.show.permissions",
           },
           {
             label: "admin.ingenic.downloads.title",
             route: "adminPlugins.show.downloads",
+            currentWhen: "adminPlugins.show.downloads",
           },
           {
             label: "admin.ingenic.points.title",
             route: "adminPlugins.show.points",
+            currentWhen: "adminPlugins.show.points",
           },
           {
             label: "admin.ingenic.site.title",
             route: "adminPlugins.show.site",
+            currentWhen: "adminPlugins.show.site",
           },
         );
       }
