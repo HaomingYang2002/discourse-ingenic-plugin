@@ -37,6 +37,7 @@ require_relative "lib/ingenic/point_events"
 # missing line is not a subtle bug: the constant is simply undefined the first
 # time a route or a job reaches for it. `spec/plugin_requires_spec.rb` fails if
 # a file under app/ stops being listed.
+after_initialize do
 require_relative "app/models/ingenic_doc_product"
 require_relative "app/models/ingenic_doc_version"
 require_relative "app/models/ingenic_doc_page"
@@ -56,8 +57,8 @@ require_relative "app/models/ingenic_point_rule"
 require_relative "app/models/ingenic_point_entry"
 require_relative "app/models/ingenic_point_balance"
 
-require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_version_serializer"
+require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_page_serializer"
 require_relative "app/serializers/ingenic_page_list_serializer"
 require_relative "app/serializers/ingenic_board_serializer"
@@ -74,6 +75,7 @@ require_relative "app/controllers/ingenic_downloads_controller"
 require_relative "app/controllers/ingenic_boards_controller"
 require_relative "app/controllers/ingenic_site_controller"
 require_relative "app/controllers/ingenic_points_controller"
+end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 register_svg_icon "book"
