@@ -2,7 +2,7 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { on } from "@ember/modifier";
-import { fn } from "@ember/helper";
+import { fn, hash } from "@ember/helper";
 import { ajax } from "discourse/lib/ajax";
 import UserChooser from "discourse/select-kit/components/user-chooser";
 import { i18n } from "discourse-i18n";
