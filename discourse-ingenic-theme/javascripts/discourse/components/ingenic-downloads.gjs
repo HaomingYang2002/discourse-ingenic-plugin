@@ -111,8 +111,8 @@ export default class IngenicDownloads extends Component {
         isLink: action === "download" || action === "unlock",
         actionLabel: this.#label(entry.label, { points: price }),
         actionHint: entry.hint ? this.#label(entry.hint, { points: price }) : null,
-        linkTarget: download.external ? "_blank" : "_self",
-        linkRel: download.external ? "noopener noreferrer" : null,
+        linkTarget: "_blank",
+        linkRel: "noopener noreferrer",
       };
     });
   }

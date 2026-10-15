@@ -64,9 +64,9 @@ export default class IngenicBlockDownloads extends Component {
               <div class="ingenic-card__actions">
                 <a
                   class="btn btn-primary"
-                  href={{download.file_url}}
-                  target={{if download.external "_blank" "_self"}}
-                  rel={{if download.external "noopener noreferrer" ""}}
+                  href={{download.file_path}}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   {{i18n (themePrefix "ingenic.downloads.download")}}
                 </a>
