@@ -50,13 +50,13 @@ export default class IngenicHomepage extends Component {
           </div>
           <div class="ingenic-homepage__hero-actions">
             <a class="btn btn-primary" href="/ingenic/docs">{{i18n (themePrefix "ingenic.nav.docs")}}</a>
-            <a class="btn" href="/c/technical-discussions">{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
+            <a class="btn" href="/c/24">{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
           </div>
         </section>
 
         <nav class="ingenic-homepage__quick-links" aria-label={{i18n (themePrefix "ingenic.home.quick_links")}}>
-          <a href="/c/official-announcements"><span class="d-icon d-icon-bullhorn"></span>{{i18n (themePrefix "ingenic.nav.announcements")}}</a>
-          <a href="/c/technical-discussions"><span class="d-icon d-icon-comments"></span>{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
+          <a href="/c/4"><span class="d-icon d-icon-bullhorn"></span>{{i18n (themePrefix "ingenic.nav.announcements")}}</a>
+          <a href="/c/24"><span class="d-icon d-icon-comments"></span>{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
           <a href="/ingenic/docs"><span class="d-icon d-icon-book"></span>{{i18n (themePrefix "ingenic.nav.docs")}}</a>
           <a href="/ingenic/downloads"><span class="d-icon d-icon-download"></span>{{i18n (themePrefix "ingenic.nav.downloads")}}</a>
           <a href="/ingenic/boards"><span class="d-icon d-icon-microchip"></span>{{i18n (themePrefix "ingenic.nav.boards")}}</a>

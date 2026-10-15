@@ -42,7 +42,7 @@ export default class IngenicBlockTopics extends Component {
 
     try {
       const result = await this.store.findFiltered("topicList", {
-        filter: `category/${this.categorySlug}/l/latest`,
+        filter: `c/${this.categorySlug}/l/latest`,
       });
 
       this.topics = (result.topics ?? []).slice(0, this.limit);
