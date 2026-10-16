@@ -91,12 +91,48 @@ function isExternal(href) {
   return /^https?:\/\//i.test(href) || href.startsWith("//");
 }
 
-function hrefFor(item) {
+// A category is addressed the way Discourse addresses one: by its slug *and* its
+// id. `/c/open-source` on its own is not a route and answers 404, so an entry
+// naming a category is a working link only once the id is in it — which is what
+// the site's category list is for.
+//
+// The list carries no `url` to take, only ids, so the address is built the way
+// `Category#url` builds it: the slug path, then the id. A sub-category's slug
+// path is its parent's slug and then its own (`/c/open-source/official/7`), and
+// that parent is in the same list.
+//
+// The server resolves a configured entry the same way; this is the shipped
+// list's turn, and it is the only place a category entry is written by hand.
+//
+// Exported because the shipped list names no sub-category, so the branch that
+// composes a parent's slug is the one part of this a page load would never
+// reach: it is here for an entry an administrator adds as a default, and it is
+// checked on its own rather than left to be found by whoever writes that entry.
+export function hrefFor(item, site) {
   if (item.href) {
     return item.href;
   }
 
-  return item.category ? `/c/${item.category}` : "";
+  if (!item.category) {
+    return "";
+  }
+
+  const categories = site?.categories || [];
+  const category = categories.find(
+    (candidate) => candidate.slug === item.category,
+  );
+
+  if (!category?.id) {
+    // A category this site does not have. Kept as a link rather than dropped,
+    // and `rake ingenic:doctor` names it.
+    return `/c/${item.category}`;
+  }
+
+  const parent = categories.find(
+    (candidate) => candidate.id === category.parent_category_id,
+  );
+
+  return `/c/${parent ? `${parent.slug}/` : ""}${category.slug}/${category.id}`;
 }
 
 /**
@@ -120,7 +156,7 @@ export function resolveNavItems(site, section) {
           key: item.key,
           icon: item.icon,
           label: i18n(themePrefix(item.labelKey)),
-          href: hrefFor(item),
+          href: hrefFor(item, site),
           section: item.section,
         }));
 
