@@ -1,9 +1,27 @@
 @use "lib/viewport";
 
 :root {
+  // The palette: a light sky blue.
+  //
+  // The accent — links, buttons, the active navigation entry — and the text
+  // colour are not here. They are the `tertiary` and `primary` slots of the
+  // **Ingenic Light** colour scheme this theme ships in about.json, which an
+  // admin edits with the standard colour pickers and no stylesheet. What is
+  // here is the tints that scheme has no slot for: the washes and hairlines
+  // that give a surface its sky cast. Nothing outside this block names a
+  // colour, so changing the shade of the theme is a change in one place.
+  --ingenic-sky-50: #f2f9fd;
+  --ingenic-sky-100: #e2f0fb;
+  --ingenic-sky-200: #c9e2f6;
+
+  // The tint used for any surface that is meant to read as set back from the
+  // page — notices, the developer-information prompt, the documentation
+  // control strip, the frame around a picture that has not loaded.
+  --ingenic-surface-tint: var(--ingenic-sky-50);
+  --ingenic-surface-border: var(--ingenic-sky-200);
+
   --ingenic-radius: 8px;
   --ingenic-panel-border: var(--primary-low);
-  --ingenic-page-background: var(--primary-very-low);
   --d-sidebar-width: #{$ingenic_sidebar_width}px;
 
   @include viewport.until(lg) {
@@ -39,6 +57,11 @@ html.ingenic-nav-first .sidebar-sections {
   max-width: 1280px;
   margin: 0 auto 2rem;
 
+  // The banner above the blocks. A pale sky wash with the page's own text on
+  // it, rather than a saturated gradient with white on it: this way the banner
+  // is part of the page instead of a lid on it, and the one place the blue is
+  // allowed to be a surface rather than an accent. The radial highlight in the
+  // corner is what keeps it from reading as a flat rectangle.
   &__hero {
     display: flex;
     align-items: center;
@@ -46,11 +69,12 @@ html.ingenic-nav-first .sidebar-sections {
     gap: 2rem;
     margin-bottom: 1rem;
     padding: clamp(1.5rem, 4vw, 3.25rem);
+    border: 1px solid var(--ingenic-surface-border);
     border-radius: var(--ingenic-radius);
     background:
-      radial-gradient(circle at 85% 15%, rgb(255 255 255 / 20%), transparent 36%),
-      linear-gradient(120deg, var(--tertiary), var(--quaternary));
-    color: var(--secondary);
+      radial-gradient(circle at 84% 12%, var(--ingenic-sky-200), transparent 46%),
+      linear-gradient(150deg, var(--ingenic-sky-50), var(--ingenic-sky-100));
+    color: var(--primary);
 
     h1 {
       margin: 0.25rem 0 0.6rem;
@@ -61,35 +85,26 @@ html.ingenic-nav-first .sidebar-sections {
     p {
       max-width: 46rem;
       margin: 0;
-      color: rgb(255 255 255 / 82%);
+      color: var(--primary-high);
       font-size: var(--font-up-1);
     }
   }
 
   &__eyebrow {
-    color: rgb(255 255 255 / 76%) !important;
+    color: var(--tertiary) !important;
     font-size: var(--font-down-1) !important;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
+  // The buttons are left exactly as Discourse styles them: a white outline
+  // button and an accent-filled primary one both work on a light panel, and
+  // both follow the colour scheme. Only the layout is the theme's business.
   &__hero-actions {
     display: flex;
     flex: 0 0 auto;
     gap: 0.6rem;
-
-    .btn {
-      border-color: rgb(255 255 255 / 60%);
-      background: transparent;
-      color: var(--secondary);
-
-      &.btn-primary {
-        border-color: var(--secondary);
-        background: var(--secondary);
-        color: var(--tertiary);
-      }
-    }
   }
 
   &__quick-links {
@@ -191,10 +206,10 @@ html.ingenic-nav-first .sidebar-sections {
   gap: 1rem;
   margin-bottom: 0.75rem;
   padding: 0.6rem 0.8rem;
-  border: 1px solid var(--primary-low);
+  border: 1px solid var(--ingenic-surface-border);
   border-left: 3px solid var(--primary-low);
   border-radius: var(--ingenic-radius);
-  background: var(--primary-very-low);
+  background: var(--ingenic-surface-tint);
   font-size: var(--font-down-1);
 
   &--ok {
@@ -351,7 +366,7 @@ html.ingenic-nav-first .sidebar-sections {
     aspect-ratio: 16 / 10;
     margin-bottom: 0.6rem;
     border-radius: 6px;
-    background: var(--primary-very-low);
+    background: var(--ingenic-sky-100);
     object-fit: contain;
   }
 
@@ -450,9 +465,9 @@ html.ingenic-nav-first .sidebar-sections {
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--primary-low);
+    border: 1px solid var(--ingenic-surface-border);
     border-radius: var(--ingenic-radius);
-    background: var(--primary-very-low);
+    background: var(--ingenic-surface-tint);
 
     p {
       margin: 0.2rem 0 0;
@@ -507,8 +522,8 @@ html.ingenic-nav-first .sidebar-sections {
   &__controls {
     position: relative;
     padding: 1rem;
-    border-right: 1px solid var(--ingenic-panel-border);
-    background: var(--primary-very-low);
+    border-right: 1px solid var(--ingenic-surface-border);
+    background: var(--ingenic-surface-tint);
   }
 
   &__field {
@@ -551,7 +566,7 @@ html.ingenic-nav-first .sidebar-sections {
     cursor: pointer;
 
     &:hover {
-      background: var(--primary-low);
+      background: var(--ingenic-sky-100);
       color: var(--primary);
     }
   }
@@ -847,9 +862,9 @@ html.ingenic-nav-first .sidebar-sections {
   align-items: flex-end;
   min-height: 11rem;
   padding: 1rem;
-  border: 1px solid var(--primary-low);
+  border: 1px solid var(--ingenic-surface-border);
   border-radius: var(--ingenic-radius);
-  background: var(--primary-very-low);
+  background: var(--ingenic-surface-tint);
 
   &__image {
     position: absolute;

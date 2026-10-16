@@ -72,7 +72,10 @@ Then:
 
 1. Open the theme and pick the **Ingenic Light** colour scheme. This is where the
    accent colour lives — the standard colour pickers edit it, and there is no
-   separate brand-colour setting.
+   separate brand-colour setting. It ships a light sky blue: accent
+   `#1976d2`, text `#12263a`, header `#f4f9fd`, highlight `#cfe8fb`. If the
+   header comes out grey rather than faintly blue, the theme is still on the
+   site's old colour scheme and this step was missed.
 2. Set it as the site's default theme, or make it a selectable one first and
    switch over once you are happy with it.
 

@@ -76,6 +76,29 @@ with the one visitors know. The accent colour is not a theme setting either —
 it is the **Ingenic Light** colour scheme this theme ships, which the standard
 admin colour pickers edit.
 
+## Colours
+
+The palette is a light sky blue, and it lives in two places:
+
+- **`about.json`** — the **Ingenic Light** colour scheme: the accent (`tertiary`),
+  the text colour (`primary`), the header, the search highlight and the semantic
+  red, green and pink. These are the ones an admin may reasonably want to change,
+  and Discourse already has pickers for them.
+- **`common/common.scss`**, in the `:root` block — the tints a colour scheme has
+  no slot for: the wash behind a notice, the hairline around it, the pale blue a
+  picture sits on until it loads. `--ingenic-surface-tint` and
+  `--ingenic-surface-border` are what the theme's own surfaces use.
+
+Nothing outside that block names a colour, so the shade of the whole theme is
+edited in those two places and nowhere else. The accent is checked against WCAG
+AA on white: `#1976d2` is 4.6:1, which is why it is that depth of blue rather
+than a lighter, prettier one — a sky blue that passes as a link colour on white
+is darker than a sky blue that only fills buttons.
+
+Typography and spacing are Discourse's own scale (`--font-up-*`, `--space-*`,
+`--font-family`), not the theme's invention, so they follow whatever the site's
+font settings say and match other Discourse sites without a second style guide.
+
 ## Layout configuration
 
 Navigation items and homepage blocks live in the **plugin** settings

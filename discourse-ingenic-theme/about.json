@@ -6,16 +6,16 @@
   "assets": {},
   "color_schemes": {
     "Ingenic Light": {
-      "primary": "1a1a1a",
+      "primary": "12263a",
       "secondary": "ffffff",
-      "tertiary": "c8102e",
-      "quaternary": "c8102e",
-      "header_background": "ffffff",
-      "header_primary": "1a1a1a",
-      "highlight": "fff2cc",
-      "danger": "c8102e",
-      "success": "1f8b4c",
-      "love": "c8102e"
+      "tertiary": "1976d2",
+      "quaternary": "0d5b9e",
+      "header_background": "f4f9fd",
+      "header_primary": "12263a",
+      "highlight": "cfe8fb",
+      "danger": "d64545",
+      "success": "2f9e63",
+      "love": "d6336c"
     }
   }
 }
