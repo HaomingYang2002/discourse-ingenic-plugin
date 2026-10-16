@@ -8,6 +8,14 @@ module Ingenic
   # reader-facing facts (depth, where it was inherited from) together means the
   # serializers never have to know that inheritance exists.
   class ResolvedPage
+    # The serializers read their attributes through
+    # `read_attribute_for_serialization`, which ActiveModel defines on the
+    # classes it is mixed into rather than on Object. Without this the reader
+    # answered every documentation page with a 500 — the page was resolved,
+    # handed to the serializer, and the serializer could not read a single field
+    # of it.
+    include ActiveModel::Serialization
+
     attr_reader :page, :inherited_from, :parent_slug
     attr_accessor :depth
 

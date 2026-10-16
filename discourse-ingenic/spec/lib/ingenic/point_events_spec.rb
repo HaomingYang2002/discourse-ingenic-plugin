@@ -59,7 +59,11 @@ describe Ingenic::PointEvents do
     end
 
     it "pays nothing for a bot's post" do
-      bot = Fabricate(:user, human: false)
+      # `User#bot?` is `!human?`, and `human?` asks whether the id is a real
+      # one — so a bot is an account with no member behind it, which is what
+      # Discourse's own system account is. There is no `human` attribute to
+      # fabricate.
+      bot = Discourse.system_user
       post = Fabricate(:post, topic: topic, user: bot, post_number: 2)
 
       described_class.post_created(post)

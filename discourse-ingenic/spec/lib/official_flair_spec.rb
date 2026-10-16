@@ -150,7 +150,7 @@ describe Ingenic::OfficialFlair do
     # why the handler passes it along.
     it "takes its badges back when it is renamed out from under the list" do
       official.add(member)
-      official.update!(name: "ingenic-official-renamed")
+      official.update!(name: "ingenic-renamed")
 
       described_class.sync_all(retired: [official.id])
 
@@ -163,7 +163,7 @@ describe Ingenic::OfficialFlair do
     # told which group to look for cannot take it back.
     it "would keep them if the re-check did not know which group to look for" do
       official.add(member)
-      official.update!(name: "ingenic-official-renamed")
+      official.update!(name: "ingenic-renamed")
 
       described_class.sync_all
 

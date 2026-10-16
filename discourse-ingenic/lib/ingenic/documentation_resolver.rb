@@ -16,8 +16,13 @@ module Ingenic
       @product = product
     end
 
+    # Every version of the product, oldest first. There is no `published` flag on
+    # a version to filter by — what a reader may see is decided page by page, and
+    # a version with no pages of its own is not empty, it is the one before it.
+    # Asking for a scope that does not exist raised `NoMethodError` on the first
+    # request that resolved any documentation at all.
     def versions
-      @versions ||= product.versions.published.to_a.sort_by { |version| [version.position, version.id] }
+      @versions ||= product.versions.to_a.sort_by { |version| [version.position, version.id] }
     end
 
     # Every version that contributes to `version`, oldest first and including

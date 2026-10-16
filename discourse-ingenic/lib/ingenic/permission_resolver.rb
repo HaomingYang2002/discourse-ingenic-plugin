@@ -71,7 +71,14 @@ module Ingenic
     attr_reader :user
 
     def group_ids
-      @group_ids ||= @user.groups.pluck(:id) + [Group::EVERYONE_GROUP_ID]
+      # `everyone` is an automatic group rather than a row anybody joins, and its
+      # id is only known once Discourse has seeded its own groups — so the
+      # constant to reach for is the one naming it. `Group::EVERYONE_GROUP_ID`
+      # reads like it ought to exist and never has: written that way this raised
+      # `NameError` on the first request that asked who may manage anything,
+      # which is a 500 for a plain member opening a screen they should simply
+      # have been kept out of.
+      @group_ids ||= @user.groups.pluck(:id) + [Group::AUTO_GROUPS[:everyone]]
     end
 
     def grants_for(resource_type)

@@ -32,4 +32,63 @@ RSpec.describe "plugin requires" do
 
     expect(missing).to be_empty
   end
+
+  # A require is not enough on its own: it has to come before whatever names the
+  # constant *while the file is being loaded*. A `serializer:` in a `has_one`
+  # line, a superclass, and an `include` at class level are all read as the class
+  # body runs, so a file required after the one that names it is a `NameError`
+  # during boot rather than a missing method at runtime — which is how
+  # `IngenicBountySerializer` naming `IngenicBountyTopicSerializer` one line too
+  # early took the whole application down before it could serve a page.
+  #
+  # Everything else in these files names constants from inside a method body,
+  # where the lookup happens on the call rather than on the load and the order
+  # does not matter. This test is deliberately limited to the class-body forms
+  # for that reason.
+  it "requires a file before whatever names its constants in a class body" do
+    root = File.expand_path("..", __dir__)
+    required =
+      File
+        .read(File.join(root, "plugin.rb"))
+        .scan(/require_relative\s+"([^"]+)"/)
+        .flatten
+        .map { |path| "#{path}.rb" }
+
+    definers = {}
+    required.each do |path|
+      File
+        .read(File.join(root, path))
+        .scan(/^\s*(?:class|module)\s+([A-Z][A-Za-z0-9_]*)/)
+        .flatten
+        .each { |name| definers[name] ||= path }
+    end
+
+    position = required.each_with_index.to_h
+
+    named_in_class_body = lambda do |source|
+      source
+        .scan(
+          /(?:serializer|each_serializer):\s*([A-Z][A-Za-z0-9_:]*)|
+           ^\s*class\s+\S+\s*<\s*([A-Z][A-Za-z0-9_:]*)|
+           ^\s*(?:include|extend|prepend)\s+([A-Z][A-Za-z0-9_:]*)/x,
+        )
+        .flatten
+        .compact
+        .map { |name| name.split("::").last }
+    end
+
+    early = required.flat_map do |path|
+      named_in_class_body
+        .call(File.read(File.join(root, path)))
+        .filter_map do |name|
+          definer = definers[name]
+          next if definer.nil? || definer == path
+          next if position[definer] < position[path]
+
+          "#{path} names #{name}, which #{definer} defines and plugin.rb requires after it"
+        end
+    end
+
+    expect(early).to be_empty
+  end
 end

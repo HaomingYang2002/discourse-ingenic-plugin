@@ -5,11 +5,16 @@ require "rails_helper"
 describe Ingenic::PermissionResolver do
   fab!(:user) { Fabricate(:user) }
   fab!(:group) { Fabricate(:group) }
+  # A grant on a series reaches everything filed under it, so the fixture is the
+  # tree the plugin actually builds: a series, the chips beneath it, and the
+  # versions and pages that hang off a chip. Only a chip may have a parent —
+  # `kind` defaults to `series`, and a series with a parent is refused.
   fab!(:family) { IngenicDocProduct.create!(slug: "t-series", name: "T Series", locale: "en") }
   fab!(:child) do
     IngenicDocProduct.create!(
       slug: "t33",
       name: "T33",
+      kind: IngenicDocProduct::CHIP,
       locale: "en",
       parent: family,
     )

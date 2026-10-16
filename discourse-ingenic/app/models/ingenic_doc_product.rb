@@ -58,9 +58,15 @@ class IngenicDocProduct < ActiveRecord::Base
     children.published.ordered
   end
 
+  # The version a reader lands on when the URL names none. A version has no
+  # `published` column — what is published is decided page by page — so this used
+  # to raise `NoMethodError` for every chip whose version list it was asked
+  # about, which is every visit to /ingenic/docs.
+  #
+  # The flagged one wins; failing that, the first in display order, which is the
+  # association's own ordering rather than whatever the database returns first.
   def default_version
-    versions.where(published: true).detect(&:latest) ||
-      versions.where(published: true).first
+    versions.detect(&:latest) || versions.first
   end
 
   private

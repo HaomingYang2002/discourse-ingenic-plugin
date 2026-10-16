@@ -37,6 +37,20 @@ describe DiscourseIngenic::ConfigParser do
       expect(described_class.nav_items.first["href"]).to eq("/c/official-announcements")
     end
 
+    # The slug alone is not a route — /c/<slug> answers 404 — so an entry for a
+    # category that exists has to carry the id the forum addresses it by. The
+    # spec above covers the category that is not there, which keeps the slug.
+    it "resolves a category that is there to the address the forum serves" do
+      category = Fabricate(:category, slug: "official-announcements")
+      SiteSetting.ingenic_nav_items = [
+        { key: "announcements", label: "Announcements", category: "official-announcements" },
+      ].to_json
+
+      expect(described_class.nav_items.first["href"]).to eq(
+        "/c/official-announcements/#{category.id}",
+      )
+    end
+
     it "carries the group each entry belongs to" do
       SiteSetting.ingenic_nav_items = [
         { key: "docs", label: "Documentation", href: "/ingenic/docs", section: "resources" },

@@ -375,6 +375,14 @@ describe IngenicDownloadsController do
       Ingenic::Points.award(user: account, event: event)
     end
 
+    # Enough to afford a price the seeded rules would not reach: opening a topic
+    # pays 5, and a test about buying something needs a balance that can buy it.
+    # Put in the way an administrator would, so nothing here writes a balance
+    # the ledger has no row for.
+    def fund(account, points)
+      Ingenic::Points.adjust(user: account, points: points, note: "seed", by: admin)
+    end
+
     it "reports the reader's balance with the listing" do
       earn(user)
       sign_in(user)
@@ -389,7 +397,7 @@ describe IngenicDownloadsController do
 
     it "carries the price of a resource and whether it is already unlocked" do
       download = resource(IngenicDownload::LOGIN_ONLY, name: "Priced", point_cost: 40)
-      earn(user)
+      fund(user, 40)
       sign_in(user)
 
       get "/ingenic/downloads.json"
@@ -573,7 +581,7 @@ describe IngenicDownloadsController do
       with_profile
       IngenicDownloadRequest.create!(user: user, download: download, message: "hello")
 
-      get "/admin/plugins/discourse-ingenic/download-requests"
+      get "/admin/plugins/discourse-ingenic/download-requests.json"
 
       expect(response.status).to eq(200)
       entry = response.parsed_body["requests"].first
@@ -589,7 +597,7 @@ describe IngenicDownloadsController do
       request = IngenicDownloadRequest.create!(user: user, download: download)
 
       expect {
-        put "/admin/plugins/discourse-ingenic/download-requests/#{request.id}/approve",
+        put "/admin/plugins/discourse-ingenic/download-requests/#{request.id}/approve.json",
             params: {
               note: "welcome",
             }
@@ -606,7 +614,7 @@ describe IngenicDownloadsController do
       grant = IngenicDownloadGrant.issue!(user, download, granted_by: admin)
       expect(Ingenic::DownloadAccess.new(user, download).result.state).to eq(:granted)
 
-      delete "/admin/plugins/discourse-ingenic/download-grants/#{grant.id}"
+      delete "/admin/plugins/discourse-ingenic/download-grants/#{grant.id}.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["grant"]["active"]).to eq(false)
@@ -622,7 +630,7 @@ describe IngenicDownloadsController do
       # the exception settings in play; neither reaches the controller.
       outcome =
         begin
-          get "/admin/plugins/discourse-ingenic/download-requests"
+          get "/admin/plugins/discourse-ingenic/download-requests.json"
           response.status
         rescue ActionController::RoutingError
           :unrouted

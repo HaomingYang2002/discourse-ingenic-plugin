@@ -84,15 +84,26 @@ module DiscourseIngenic
     end
 
     # A nav entry may point at a Discourse category slug, an internal path or an
-    # absolute external URL. Category entries resolve to /c/<slug> so that the
-    # Ingenic team can reorder them without knowing final category ids.
+    # absolute external URL.
+    #
+    # A category entry resolves through the category itself, because Discourse
+    # addresses a category by its slug *and* its id: `/c/open-source/12`. The
+    # slug on its own is not a route — it answers 404 — so an entry built from
+    # the slug alone is a link that looks right in the admin UI and goes nowhere
+    # in the sidebar. Nobody wants to look up ids to write a navigation list,
+    # which is what this is for.
+    #
+    # A category that is not there keeps the slug-only address rather than
+    # disappearing: a visible link the doctor task names is easier to account
+    # for than a navigation row that quietly went missing.
     def resolve_href(item)
       return item["href"].to_s if item["href"].present?
 
-      category = item["category"].to_s
-      return "" if category.blank?
+      slug = item["category"].to_s
+      return "" if slug.blank?
 
-      "/c/#{category}"
+      category = Category.find_by(slug: slug)
+      category ? category.url : "/c/#{slug}"
     end
   end
 end

@@ -14,7 +14,10 @@ class IngenicDocVersion < ActiveRecord::Base
   validates :slug, presence: true, uniqueness: { scope: %i[product_id locale] }
   validates :label, presence: true
 
-  scope :published, -> { where(published: true) }
+  # There is deliberately no `published` scope: a version has no such column.
+  # What a reader may see is decided page by page, which is also what makes
+  # inheritance work — a version that has not been written yet shows the pages
+  # it inherited.
   scope :ordered, -> { order(position: :asc, released_on: :desc) }
 
   # The version's pages as a reader sees them, which includes everything

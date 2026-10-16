@@ -25,8 +25,11 @@ describe Ingenic::Bounties do
   end
 
   # An answer on a topic — post number 2, which is what the first reply is.
+  # The number has to be given: Discourse assigns it through PostCreator, and a
+  # fabricated post left unnumbered reads to the bounty code as the opening post
+  # of its topic, which is never an answer to it.
   def answer_on(topic)
-    Fabricate(:post, topic: topic, user: answerer)
+    Fabricate(:post, topic: topic, user: answerer, post_number: 2)
   end
 
   describe ".available?" do
@@ -221,7 +224,10 @@ describe Ingenic::Bounties do
     # that keeps staff off the leaderboard has nothing to say about it.
     it "pays a member of staff who wrote the accepted answer" do
       SiteSetting.ingenic_points_exclude_staff = true
-      staff_answer = Fabricate(:post, topic: topic, user: Fabricate(:admin))
+      # A third post on the topic, so it does not collide with the answer the
+      # fixture above already wrote as number 2.
+      staff_answer =
+        Fabricate(:post, topic: topic, user: Fabricate(:admin), post_number: 3)
 
       described_class.settle_for(staff_answer)
 
@@ -255,6 +261,8 @@ describe Ingenic::Bounties do
     end
 
     it "gives the points back once, however many times it is asked" do
+      described_class.open!(topic: topic, user: asker, points: 100)
+
       2.times { described_class.cancel!(bounty: IngenicBounty.last, by: asker) }
 
       expect(balance_of(asker)).to eq(500)

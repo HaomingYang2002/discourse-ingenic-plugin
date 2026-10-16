@@ -104,6 +104,10 @@ describe Ingenic::DownloadAccess do
     end
 
     it "answers one applicant about one resource, not about the tier in general" do
+      # The profile is part of the tier's own preconditions, so the applicant
+      # has to have one for either answer to be about the grant rather than
+      # about the form.
+      with_profile(user)
       mine = resource(IngenicDownload::APPROVAL_REQUIRED, name: "Mine")
       IngenicDownloadGrant.issue!(user, mine)
       theirs = resource(IngenicDownload::APPROVAL_REQUIRED, name: "Theirs")

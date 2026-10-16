@@ -73,7 +73,12 @@ describe IngenicPointsController do
       get "/ingenic/points"
 
       expect(response.status).to eq(200)
-      expect(response.body).not_to include("balance")
+      # The shell is the application, not the answer: the number itself arrives
+      # from the JSON endpoint once it has mounted. Asserted on a key the
+      # payload has rather than on the word "balance", which core's own
+      # preloaded site settings happen to contain.
+      expect(response.body).to include('id="data-preloaded"')
+      expect(response.body).not_to include('"entries"')
     end
   end
 
@@ -82,8 +87,10 @@ describe IngenicPointsController do
   # is the same kind of act as deciding who may have a file — and that is not
   # delegated to a scoped content manager either.
   describe "the admin screen" do
-    # No .json suffix: the management routes are declared with `format: false`,
-    # so a dot in the path is part of the segment rather than a format.
+    # The management endpoints are JSON like the rest of Discourse's admin API,
+    # so the format is on the path. Without it the request never reaches the
+    # controller: the route has no format segment to match, and the base
+    # controller answers a non-AJAX request with an empty page.
     let(:endpoint) { "/admin/plugins/discourse-ingenic" }
 
     it "is out of reach for an ordinary account" do
@@ -95,7 +102,7 @@ describe IngenicPointsController do
       # the exception settings in play; neither reaches the controller.
       outcome =
         begin
-          get "#{endpoint}/points"
+          get "#{endpoint}/points.json"
           response.status
         rescue ActionController::RoutingError
           :unrouted
@@ -114,7 +121,7 @@ describe IngenicPointsController do
       )
       sign_in(user)
 
-      get "#{endpoint}/points"
+      get "#{endpoint}/points.json"
 
       expect(response.status).to eq(404)
     end
@@ -123,7 +130,7 @@ describe IngenicPointsController do
       Ingenic::Points.award(user: user, event: IngenicPointRule::TOPIC_CREATED)
       sign_in(admin)
 
-      get "#{endpoint}/points"
+      get "#{endpoint}/points.json"
 
       body = response.parsed_body
       expect(body["rules"].map { |rule| rule["event"] }).to match_array(IngenicPointRule::EVENTS)
@@ -137,7 +144,7 @@ describe IngenicPointsController do
     it "adjusts an account by username, and says what it left them with" do
       sign_in(admin)
 
-      post "#{endpoint}/points/adjust",
+      post "#{endpoint}/points/adjust.json",
            params: {
              username: user.username,
              points: 25,
@@ -153,7 +160,7 @@ describe IngenicPointsController do
     it "refuses an adjustment to an account that does not exist" do
       sign_in(admin)
 
-      post "#{endpoint}/points/adjust", params: { username: "nobody", points: 5 }
+      post "#{endpoint}/points/adjust.json", params: { username: "nobody", points: 5 }
 
       expect(response.status).to eq(404)
     end
@@ -161,7 +168,7 @@ describe IngenicPointsController do
     it "refuses an adjustment of nothing" do
       sign_in(admin)
 
-      post "#{endpoint}/points/adjust", params: { username: user.username, points: 0 }
+      post "#{endpoint}/points/adjust.json", params: { username: user.username, points: 0 }
 
       expect(response.status).to eq(422)
       expect(IngenicPointBalance.total_for(user)).to eq(0)
@@ -173,7 +180,7 @@ describe IngenicPointsController do
       paid = rule.points
       sign_in(admin)
 
-      put "#{endpoint}/points/rules/#{rule.id}", params: { points: 99, label: "Opening a topic" }
+      put "#{endpoint}/points/rules/#{rule.id}.json", params: { points: 99, label: "Opening a topic" }
 
       expect(response.status).to eq(200)
       expect(rule.reload.points).to eq(99)
@@ -186,7 +193,7 @@ describe IngenicPointsController do
       rule = IngenicPointRule.for(IngenicPointRule::TOPIC_CREATED)
       sign_in(admin)
 
-      put "#{endpoint}/points/rules/#{rule.id}", params: { event: "something_else" }
+      put "#{endpoint}/points/rules/#{rule.id}.json", params: { event: "something_else" }
 
       expect(rule.reload.event).to eq(IngenicPointRule::TOPIC_CREATED)
     end
@@ -196,7 +203,7 @@ describe IngenicPointsController do
       IngenicPointBalance.where(user_id: user.id).update_all(points: 999)
       sign_in(admin)
 
-      post "#{endpoint}/points/rebuild"
+      post "#{endpoint}/points/rebuild.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["corrected"]).to eq(1)
@@ -210,7 +217,7 @@ describe IngenicPointsController do
       Ingenic::Points.award(user: other_user, event: IngenicPointRule::TOPIC_CREATED)
       sign_in(admin)
 
-      get "#{endpoint}/point-entries", params: { user_id: user.id }
+      get "#{endpoint}/point-entries.json", params: { user_id: user.id }
 
       expect(response.parsed_body["total"]).to eq(1)
       expect(response.parsed_body["entries"].first["username"]).to eq(user.username)

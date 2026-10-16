@@ -350,9 +350,18 @@ module Ingenic
       raise ArgumentError, "no configuration file at #{path}" unless File.exist?(path)
 
       data = YAML.safe_load(File.read(path), permitted_classes: [Date, Time], aliases: true)
-      raise ArgumentError, "#{path} is not an Ingenic configuration file" unless data.is_a?(Hash)
 
-      if data["version"].to_i > VERSION
+      # A file of ours says so: it carries a format version and a content
+      # section, and `payload` always writes both. Asking only whether the YAML
+      # was a mapping let any mapping through — importing an unrelated
+      # configuration file reported a run in which nothing was applied and
+      # nothing was wrong, which is the worst of the two answers, and the
+      # message below was one this never raised.
+      unless data.is_a?(Hash) && data["version"].is_a?(Integer) && data["content"].is_a?(Hash)
+        raise ArgumentError, "#{path} is not an Ingenic configuration file"
+      end
+
+      if data["version"] > VERSION
         raise ArgumentError,
               "#{path} was written by a newer version (#{data["version"]}); " \
                 "this plugin understands #{VERSION}"

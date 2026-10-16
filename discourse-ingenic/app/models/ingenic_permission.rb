@@ -11,7 +11,15 @@ class IngenicPermission < ActiveRecord::Base
   belongs_to :user, optional: true
   belongs_to :group, optional: true
 
-  RESOURCE_TYPES = %w[IngenicDocProduct IngenicDocPage IngenicBoard].freeze
+  # What can be managed by somebody other than an administrator. A download is
+  # on the list because a resource is edited by whoever looks after that
+  # product's material, and the screens around it were written on that
+  # assumption: the listing filters by what the reader may manage, and the
+  # downloads page sends a scoped manager a flag saying the access log is not
+  # theirs to read. Left off the list, that filter had nothing it could ever
+  # match — every manager saw an empty page, and the flag distinguished a case
+  # that could not arise.
+  RESOURCE_TYPES = %w[IngenicDocProduct IngenicDocPage IngenicBoard IngenicDownload].freeze
   PERMISSIONS = %w[manage].freeze
 
   validates :resource_type, inclusion: { in: RESOURCE_TYPES }

@@ -225,7 +225,9 @@ describe IngenicBountiesController do
     before { IngenicPointRule.for(IngenicPointRule::SOLUTION_ACCEPTED).update!(points: 0) }
 
     it "pays the answerer what the asker put up, and closes the offer" do
-      answer = Fabricate(:post, topic: topic, user: answerer)
+      # Numbered, because Discourse assigns post numbers through PostCreator and
+      # the bounty code reads the number to tell an answer from the question.
+      answer = Fabricate(:post, topic: topic, user: answerer, post_number: 2)
       bounty = Ingenic::Bounties.open!(topic: topic, user: asker, points: 100)
       sign_in(asker)
 
@@ -242,7 +244,7 @@ describe IngenicBountiesController do
     end
 
     it "leaves a topic without a bounty on it alone" do
-      answer = Fabricate(:post, topic: other_topic, user: answerer)
+      answer = Fabricate(:post, topic: other_topic, user: answerer, post_number: 2)
       other_topic.update!(user_id: asker.id)
       sign_in(asker)
 

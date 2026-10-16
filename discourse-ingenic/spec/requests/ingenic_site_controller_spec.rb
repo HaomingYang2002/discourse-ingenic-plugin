@@ -82,11 +82,16 @@ describe IngenicSiteController do
     end
 
     it "leaves out a column nobody published, links and all" do
-      IngenicFooterColumn.create!(title: "Retired", published: false)
+      retired = IngenicFooterColumn.create!(title: "Retired", published: false)
+      IngenicFooterLink.create!(column: retired, label: "Gone", href: "/gone")
 
       get "/ingenic/site.json"
 
-      expect(response.parsed_body["footer_columns"]).to be_empty
+      columns = response.parsed_body["footer_columns"]
+      expect(columns.map { |row| row["title"] }).to eq(["Developers"])
+      expect(columns.flat_map { |row| row["links"] }.map { |link| link["label"] }).not_to include(
+        "Gone",
+      )
     end
 
     it "is not a page" do

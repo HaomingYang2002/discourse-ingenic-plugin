@@ -30,13 +30,26 @@ class IngenicDocsController < ::ApplicationController
     return render_app_shell unless request.format.json?
 
     series = find_series
+    # A name in the URL that resolves to nothing is a 404. Only the *absence* of
+    # a choice falls back to the first one — an address that spells out a series
+    # this site does not have is a broken link, and answering it with somebody
+    # else's documentation is worse than saying so.
+    return render_not_found(:product_not_found) if series.nil? && series_slug.present?
+
     chip = series && find_chip(series)
+    return render_not_found(:product_not_found) if chip.nil? && chip_slug.present?
+
     version = chip && find_version(chip)
+    # `latest` is an alias rather than a slug, so it is not a missing version
+    # when a chip has none flagged.
+    if version.nil? && chip && version_slug.present? && version_slug != "latest"
+      return render_not_found(:version_not_found)
+    end
+
     page = version && find_page(version)
 
-    # A version that exists but not the requested page is a real 404. No chip,
-    # or no chips at all, is not — a site whose documentation has not been
-    # written yet still has to be able to render the reader.
+    # No series at all is not a 404: a site whose documentation has not been
+    # written yet still has to render the sidebar entry that points here.
     return render_not_found(:page_not_found) if version && page_slug.present? && page.nil?
 
     render_json_dump(payload(series, chip, version, page))
@@ -152,14 +165,13 @@ class IngenicDocsController < ::ApplicationController
     fragment
   end
 
+  # A version carries no `published` flag, so the selector lists them all: what
+  # a reader may see is decided page by page, and the version that is empty
+  # because nobody has written it yet shows the pages it inherited.
   def available_versions(chip)
     return [] if chip.nil?
 
-    chip
-      .versions
-      .published
-      .ordered
-      .map { |record| IngenicVersionSerializer.new(record, root: false) }
+    chip.versions.ordered.map { |record| IngenicVersionSerializer.new(record, root: false) }
   end
 
   # Read from the path segments on `show`, and from query parameters on
@@ -208,7 +220,11 @@ class IngenicDocsController < ::ApplicationController
   def find_version(chip)
     return chip.default_version if version_slug.blank? || version_slug == "latest"
 
-    chip.versions.published.find_by(slug: version_slug)
+    # No `published` scope here: a version has no such column. What is published
+    # or not is decided per page — an unpublished version is one whose pages a
+    # reader cannot see — so a version that exists is one a reader can open, and
+    # asking for one that does not exist is the 404 below.
+    chip.versions.find_by(slug: version_slug)
   end
 
   # The version already resolves the reading language per slug, so matching the

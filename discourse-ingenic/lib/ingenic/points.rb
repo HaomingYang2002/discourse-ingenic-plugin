@@ -109,11 +109,24 @@ module Ingenic
 
       ActiveRecord::Base.transaction do
         balance = IngenicPointBalance.lock.find_by(user_id: user.id)
+
+        # Asked before the balance, because the answer does not depend on it:
+        # whether the thing is already theirs is a fact about the ledger, not
+        # about what they have left. Behind the balance check it was answered
+        # `:insufficient` instead — and the member it happened to was the one
+        # who had just spent their last points on it, so the resource they had
+        # paid for a moment ago became one they could not afford.
+        if IngenicPointEntry.where(user_id: user.id, event: event).for_subject(subject).exists?
+          outcome = :already
+          next
+        end
+
         next if balance.nil? || balance.points < cost
 
-        # Nil here is the ledger already holding this exact purchase, which is
-        # an answer of its own rather than a failure: the thing is theirs, and
-        # nothing more is owed for it.
+        # Nil here is the ledger having taken this exact purchase in the moment
+        # between the question above and this insert, which is an answer of its
+        # own rather than a failure: the thing is theirs, and nothing more is
+        # owed for it.
         entry =
           record(
             user: user,

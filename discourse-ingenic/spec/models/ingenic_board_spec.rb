@@ -35,15 +35,24 @@ describe IngenicBoard do
     )
   end
 
+  def board_attributes(attrs = {})
+    {
+      slug: "halley5",
+      name: "Halley5",
+      locale: "en",
+      application_url: "https://example.com/apply",
+    }.merge(attrs)
+  end
+
   def board(attrs = {})
-    IngenicBoard.create!(
-      {
-        slug: "halley5",
-        name: "Halley5",
-        locale: "en",
-        application_url: "https://example.com/apply",
-      }.merge(attrs),
-    )
+    IngenicBoard.create!(board_attributes(attrs))
+  end
+
+  # Built rather than created, for the examples that are about a record being
+  # refused: `create!` raises instead of handing back something to inspect, so a
+  # test of "this must not be valid" has to stop short of the insert.
+  def unsaved_board(attrs = {})
+    IngenicBoard.new(board_attributes(attrs))
   end
 
   describe "the chip a board is for" do
@@ -75,7 +84,7 @@ describe IngenicBoard do
     end
 
     it "refuses a board filed against a series" do
-      record = board(product: series)
+      record = unsaved_board(product: series)
 
       expect(record).not_to be_valid
       expect(record.errors[:product]).to be_present

@@ -13,17 +13,17 @@ describe Admin::IngenicController do
 
   describe "GET /admin/plugins/discourse-ingenic/documentation" do
     it "returns products" do
-      get "/admin/plugins/discourse-ingenic/documentation"
+      get "/admin/plugins/discourse-ingenic/documentation.json"
 
       expect(response.status).to eq(200)
-      expect(response.parsed_body["products"].first["slug"]).to eq("t-series")
+      expect(response.parsed_body["series"].first["slug"]).to eq("t-series")
     end
   end
 
   describe "POST /admin/plugins/discourse-ingenic/documentation/products" do
     it "creates a product" do
       expect {
-        post "/admin/plugins/discourse-ingenic/documentation/products",
+        post "/admin/plugins/discourse-ingenic/documentation/products.json",
              params: { slug: "c-series", name: "C Series", locale: "en" }
       }.to change(IngenicDocProduct, :count).by(1)
 
@@ -41,7 +41,7 @@ describe Admin::IngenicController do
         locale: "en",
       )
 
-      get "/admin/plugins/discourse-ingenic/boards"
+      get "/admin/plugins/discourse-ingenic/boards.json"
 
       expect(response.status).to eq(200)
       chip = response.parsed_body["chips"].first
@@ -52,7 +52,7 @@ describe Admin::IngenicController do
 
   describe "PUT /admin/plugins/discourse-ingenic/boards/:id" do
     it "updates a board" do
-      put "/admin/plugins/discourse-ingenic/boards/#{board.id}",
+      put "/admin/plugins/discourse-ingenic/boards/#{board.id}.json",
           params: { name: "Updated Board" }
 
       expect(response.status).to eq(200)
@@ -69,7 +69,7 @@ describe Admin::IngenicController do
           locale: "en",
         )
 
-      put "/admin/plugins/discourse-ingenic/boards/#{board.id}",
+      put "/admin/plugins/discourse-ingenic/boards/#{board.id}.json",
           params: {
             product_id: chip.id,
           }
@@ -93,7 +93,7 @@ describe Admin::IngenicController do
 
       # The picker posts an empty string for its blank option, which the foreign
       # key would refuse as a value.
-      put "/admin/plugins/discourse-ingenic/boards/#{board.id}",
+      put "/admin/plugins/discourse-ingenic/boards/#{board.id}.json",
           params: {
             product_id: "",
           }
@@ -105,7 +105,7 @@ describe Admin::IngenicController do
 
   describe "GET /admin/plugins/discourse-ingenic/permissions" do
     it "is restricted to admins" do
-      get "/admin/plugins/discourse-ingenic/permissions"
+      get "/admin/plugins/discourse-ingenic/permissions.json"
 
       expect(response.status).to eq(200)
     end
@@ -121,7 +121,7 @@ describe Admin::IngenicController do
       column = IngenicFooterColumn.create!(title: "Developers")
       IngenicFooterLink.create!(column: column, label: "Downloads", href: "/ingenic/downloads")
 
-      get "/admin/plugins/discourse-ingenic/site"
+      get "/admin/plugins/discourse-ingenic/site.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["promotions"].first["title"]).to eq("Spring campaign")
@@ -136,7 +136,7 @@ describe Admin::IngenicController do
     it "persists the form and reports whether the slot is showing" do
       promotion = IngenicPromotion.create!(title: "Old headline", locale: "en")
 
-      put "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}",
+      put "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}.json",
           params: { title: "New headline", published: "true" }
 
       expect(response.status).to eq(200)
@@ -148,7 +148,7 @@ describe Admin::IngenicController do
       promotion =
         IngenicPromotion.create!(title: "Timed", locale: "en", starts_at: 1.day.from_now)
 
-      put "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}",
+      put "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}.json",
           params: { title: "Timed", starts_at: "" }
 
       expect(response.status).to eq(200)
@@ -161,7 +161,7 @@ describe Admin::IngenicController do
       promotion = IngenicPromotion.create!(title: "Old campaign", locale: "en")
 
       expect {
-        delete "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}"
+        delete "/admin/plugins/discourse-ingenic/promotions/#{promotion.id}.json"
       }.to change(IngenicPromotion, :count).by(-1)
 
       expect(response.status).to eq(204)
@@ -179,7 +179,7 @@ describe Admin::IngenicController do
           qr_image_url: "/uploads/wechat.png",
         )
 
-      put "/admin/plugins/discourse-ingenic/social-links/#{record.id}",
+      put "/admin/plugins/discourse-ingenic/social-links/#{record.id}.json",
           params: { kind: IngenicSocialLink::LINK, href: "https://wechat.example.com" }
 
       expect(response.status).to eq(200)
@@ -193,7 +193,7 @@ describe Admin::IngenicController do
       column = IngenicFooterColumn.create!(title: "Company")
 
       expect {
-        post "/admin/plugins/discourse-ingenic/footer-links",
+        post "/admin/plugins/discourse-ingenic/footer-links.json",
              params: { column_id: column.id, label: "About", href: "/about" }
       }.to change(IngenicFooterLink, :count).by(1)
 
@@ -208,7 +208,7 @@ describe Admin::IngenicController do
       IngenicFooterLink.create!(column: column, label: "About", href: "/about")
 
       expect {
-        delete "/admin/plugins/discourse-ingenic/footer-columns/#{column.id}"
+        delete "/admin/plugins/discourse-ingenic/footer-columns/#{column.id}.json"
       }.to change(IngenicFooterLink, :count).by(-1)
 
       expect(response.status).to eq(204)
@@ -219,7 +219,7 @@ describe Admin::IngenicController do
     it "renames a category" do
       category = IngenicDownloadCategory.create!(name: "SDK", locale: "en")
 
-      put "/admin/plugins/discourse-ingenic/download-categories/#{category.id}",
+      put "/admin/plugins/discourse-ingenic/download-categories/#{category.id}.json",
           params: { name: "Software development kits" }
 
       expect(response.status).to eq(200)
@@ -236,9 +236,10 @@ describe Admin::IngenicController do
           product_slug: "t33",
           locale: "en",
           category: category,
+          file_url: "https://example.com/sdk.tgz",
         )
 
-      delete "/admin/plugins/discourse-ingenic/download-categories/#{category.id}"
+      delete "/admin/plugins/discourse-ingenic/download-categories/#{category.id}.json"
 
       expect(response.status).to eq(204)
       expect(download.reload.category_id).to be_nil
@@ -247,10 +248,15 @@ describe Admin::IngenicController do
 
   describe "GET /admin/plugins/discourse-ingenic/download-logs" do
     it "lists what was taken, newest first" do
-      download = IngenicDownload.create!(name: "T33 SDK", product_slug: "t33", locale: "en")
+      download = IngenicDownload.create!(
+        name: "T33 SDK",
+        product_slug: "t33",
+        locale: "en",
+        file_url: "https://example.com/sdk.tgz",
+      )
       IngenicDownloadLog.create!(user: admin, download: download, resource_name: download.name)
 
-      get "/admin/plugins/discourse-ingenic/download-logs"
+      get "/admin/plugins/discourse-ingenic/download-logs.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["logs"].first["resource_name"]).to eq("T33 SDK")
@@ -262,7 +268,7 @@ describe Admin::IngenicController do
       # of the downloads page is not.
       sign_in(Fabricate(:moderator))
 
-      get "/admin/plugins/discourse-ingenic/download-logs"
+      get "/admin/plugins/discourse-ingenic/download-logs.json"
 
       expect(response.status).to eq(404)
     end
@@ -281,6 +287,7 @@ describe Admin::IngenicController do
         product_slug: "t33",
         locale: "en",
         access_level: IngenicDownload::APPROVAL_REQUIRED,
+        file_url: "https://example.com/sdk.tgz",
       )
     end
     fab!(:application) do
@@ -295,7 +302,7 @@ describe Admin::IngenicController do
     end
 
     it "lists the application without a name instead of failing" do
-      get "/admin/plugins/discourse-ingenic/download-requests"
+      get "/admin/plugins/discourse-ingenic/download-requests.json"
 
       expect(response.status).to eq(200)
       row = response.parsed_body["requests"].first
@@ -305,7 +312,7 @@ describe Admin::IngenicController do
     end
 
     it "refuses to approve it, because there is no account to let in" do
-      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/approve"
+      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/approve.json"
 
       expect(response.status).to eq(422)
       expect(response.parsed_body["errors"].first).to eq(
@@ -316,7 +323,7 @@ describe Admin::IngenicController do
     end
 
     it "still records a decision to decline it" do
-      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/reject",
+      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/reject.json",
           params: { note: "no account" }
 
       expect(response.status).to eq(200)
@@ -326,7 +333,7 @@ describe Admin::IngenicController do
 
   describe "GET /admin/plugins/discourse-ingenic/downloads" do
     it "offers the record tab to an administrator" do
-      get "/admin/plugins/discourse-ingenic/downloads"
+      get "/admin/plugins/discourse-ingenic/downloads.json"
 
       expect(response.parsed_body["can_read_log"]).to eq(true)
     end
@@ -337,7 +344,12 @@ describe Admin::IngenicController do
       # page reads before it draws the tab, so a manager is never offered a tab
       # whose request would be refused.
       manager = Fabricate(:user)
-      download = IngenicDownload.create!(name: "T33 SDK", product_slug: "t33", locale: "en")
+      download = IngenicDownload.create!(
+        name: "T33 SDK",
+        product_slug: "t33",
+        locale: "en",
+        file_url: "https://example.com/sdk.tgz",
+      )
       IngenicPermission.create!(
         user: manager,
         resource_type: "IngenicDownload",
@@ -345,7 +357,7 @@ describe Admin::IngenicController do
       )
       sign_in(manager)
 
-      get "/admin/plugins/discourse-ingenic/downloads"
+      get "/admin/plugins/discourse-ingenic/downloads.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["downloads"].map { |row| row["id"] }).to eq([download.id])

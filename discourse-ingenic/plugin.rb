@@ -27,6 +27,7 @@ require_relative "lib/ingenic/documentation_resolver"
 require_relative "lib/ingenic/developer_form"
 require_relative "lib/ingenic/download_access"
 require_relative "lib/ingenic/download_storage"
+require_relative "lib/ingenic/forum_categories"
 require_relative "lib/ingenic/official_flair"
 require_relative "lib/ingenic/points"
 require_relative "lib/ingenic/point_events"
@@ -65,8 +66,11 @@ require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_page_serializer"
 require_relative "app/serializers/ingenic_page_list_serializer"
 require_relative "app/serializers/ingenic_board_serializer"
-require_relative "app/serializers/ingenic_bounty_serializer"
+# Before the bounty serializer, which names it in the class body: `serializer:`
+# is read while the class is being defined, so the constant has to be there by
+# then rather than by the time a bounty is serialized.
 require_relative "app/serializers/ingenic_bounty_topic_serializer"
+require_relative "app/serializers/ingenic_bounty_serializer"
 
 require_relative "app/mailers/ingenic_download_mailer"
 require_relative "app/jobs/regular/ingenic_download_request_email"
@@ -275,73 +279,81 @@ after_initialize do
   # slash is present — without this line /ingenic/docs is a 404 at the routing
   # layer, before any controller sees it.
   Discourse::Application.routes.append do
+    # These are JSON endpoints like the rest of Discourse's admin API, so they
+    # keep the format segment and are reached as /boards.json. Declaring them
+    # `format: false` looked tidier and was wrong in a way that only shows up
+    # under test: the route then has no `(.:format)`, so a request that is not
+    # an XHR and does not ask for JSON on the path matches nothing and never
+    # reaches the controller. What a browser sees is an empty 200 page from
+    # `check_xhr`, which reads exactly like the controller answering with
+    # nothing.
     scope "/admin/plugins/discourse-ingenic", constraints: DiscourseIngenic::ManagementConstraint.new do
-      get "/documentation" => "admin/ingenic#documentation", format: false
-      get "/documentation/products/:id" => "admin/ingenic#product", format: false
-      post "/documentation/products" => "admin/ingenic#create_product", format: false
-      put "/documentation/products/:id" => "admin/ingenic#update_product", format: false
-      delete "/documentation/products/:id" => "admin/ingenic#destroy_product", format: false
-      post "/documentation/versions" => "admin/ingenic#create_version", format: false
-      put "/documentation/versions/:id" => "admin/ingenic#update_version", format: false
-      delete "/documentation/versions/:id" => "admin/ingenic#destroy_version", format: false
-      get "/documentation/versions/:id/tree" => "admin/ingenic#version_tree", format: false
-      post "/documentation/versions/:version_id/pages/:slug/override" => "admin/ingenic#override_page", format: false
-      delete "/documentation/versions/:version_id/pages/:slug" => "admin/ingenic#revert_page", format: false
-      post "/documentation/pages" => "admin/ingenic#create_page", format: false
-      put "/documentation/pages/:id" => "admin/ingenic#update_page", format: false
-      delete "/documentation/pages/:id" => "admin/ingenic#destroy_page", format: false
-      get "/boards" => "admin/ingenic#board_list", format: false
-      post "/boards" => "admin/ingenic#create_board", format: false
-      put "/boards/:id" => "admin/ingenic#update_board", format: false
-      delete "/boards/:id" => "admin/ingenic#destroy_board", format: false
-      get "/permissions" => "admin/ingenic#permissions", format: false
-      post "/permissions" => "admin/ingenic#create_permission", format: false
-      delete "/permissions/:id" => "admin/ingenic#destroy_permission", format: false
+      get "/documentation" => "admin/ingenic#documentation"
+      get "/documentation/products/:id" => "admin/ingenic#product"
+      post "/documentation/products" => "admin/ingenic#create_product"
+      put "/documentation/products/:id" => "admin/ingenic#update_product"
+      delete "/documentation/products/:id" => "admin/ingenic#destroy_product"
+      post "/documentation/versions" => "admin/ingenic#create_version"
+      put "/documentation/versions/:id" => "admin/ingenic#update_version"
+      delete "/documentation/versions/:id" => "admin/ingenic#destroy_version"
+      get "/documentation/versions/:id/tree" => "admin/ingenic#version_tree"
+      post "/documentation/versions/:version_id/pages/:slug/override" => "admin/ingenic#override_page"
+      delete "/documentation/versions/:version_id/pages/:slug" => "admin/ingenic#revert_page"
+      post "/documentation/pages" => "admin/ingenic#create_page"
+      put "/documentation/pages/:id" => "admin/ingenic#update_page"
+      delete "/documentation/pages/:id" => "admin/ingenic#destroy_page"
+      get "/boards" => "admin/ingenic#board_list"
+      post "/boards" => "admin/ingenic#create_board"
+      put "/boards/:id" => "admin/ingenic#update_board"
+      delete "/boards/:id" => "admin/ingenic#destroy_board"
+      get "/permissions" => "admin/ingenic#permissions"
+      post "/permissions" => "admin/ingenic#create_permission"
+      delete "/permissions/:id" => "admin/ingenic#destroy_permission"
 
-      get "/downloads" => "admin/ingenic#download_list", format: false
-      post "/downloads" => "admin/ingenic#create_download", format: false
-      put "/downloads/:id" => "admin/ingenic#update_download", format: false
-      delete "/downloads/:id" => "admin/ingenic#destroy_download", format: false
-      get "/download-requests" => "admin/ingenic#download_requests", format: false
-      put "/download-requests/:id/approve" => "admin/ingenic#approve_request", format: false
-      put "/download-requests/:id/reject" => "admin/ingenic#reject_request", format: false
-      get "/download-grants" => "admin/ingenic#download_grants", format: false
-      delete "/download-grants/:id" => "admin/ingenic#revoke_grant", format: false
+      get "/downloads" => "admin/ingenic#download_list"
+      post "/downloads" => "admin/ingenic#create_download"
+      put "/downloads/:id" => "admin/ingenic#update_download"
+      delete "/downloads/:id" => "admin/ingenic#destroy_download"
+      get "/download-requests" => "admin/ingenic#download_requests"
+      put "/download-requests/:id/approve" => "admin/ingenic#approve_request"
+      put "/download-requests/:id/reject" => "admin/ingenic#reject_request"
+      get "/download-grants" => "admin/ingenic#download_grants"
+      delete "/download-grants/:id" => "admin/ingenic#revoke_grant"
 
-      get "/download-logs" => "admin/ingenic#download_logs", format: false
+      get "/download-logs" => "admin/ingenic#download_logs"
 
       # Points. Reading is administrator-only too: the ledger names accounts,
       # and an adjustment moves a member's standing.
-      get "/points" => "admin/ingenic#points", format: false
-      put "/points/rules/:id" => "admin/ingenic#update_point_rule", format: false
-      post "/points/adjust" => "admin/ingenic#adjust_points", format: false
-      post "/points/rebuild" => "admin/ingenic#rebuild_points", format: false
-      get "/point-entries" => "admin/ingenic#point_entries", format: false
+      get "/points" => "admin/ingenic#points"
+      put "/points/rules/:id" => "admin/ingenic#update_point_rule"
+      post "/points/adjust" => "admin/ingenic#adjust_points"
+      post "/points/rebuild" => "admin/ingenic#rebuild_points"
+      get "/point-entries" => "admin/ingenic#point_entries"
 
-      post "/download-categories" => "admin/ingenic#create_download_category", format: false
-      put "/download-categories/:id" => "admin/ingenic#update_download_category", format: false
-      delete "/download-categories/:id" => "admin/ingenic#destroy_download_category", format: false
+      post "/download-categories" => "admin/ingenic#create_download_category"
+      put "/download-categories/:id" => "admin/ingenic#update_download_category"
+      delete "/download-categories/:id" => "admin/ingenic#destroy_download_category"
 
       # The homepage and footer lists. One path returns all three because they
       # are drawn on one screen; the writes are separate because each list has
       # its own fields.
-      get "/site" => "admin/ingenic#site", format: false
+      get "/site" => "admin/ingenic#site"
 
-      post "/promotions" => "admin/ingenic#create_promotion", format: false
-      put "/promotions/:id" => "admin/ingenic#update_promotion", format: false
-      delete "/promotions/:id" => "admin/ingenic#destroy_promotion", format: false
+      post "/promotions" => "admin/ingenic#create_promotion"
+      put "/promotions/:id" => "admin/ingenic#update_promotion"
+      delete "/promotions/:id" => "admin/ingenic#destroy_promotion"
 
-      post "/social-links" => "admin/ingenic#create_social_link", format: false
-      put "/social-links/:id" => "admin/ingenic#update_social_link", format: false
-      delete "/social-links/:id" => "admin/ingenic#destroy_social_link", format: false
+      post "/social-links" => "admin/ingenic#create_social_link"
+      put "/social-links/:id" => "admin/ingenic#update_social_link"
+      delete "/social-links/:id" => "admin/ingenic#destroy_social_link"
 
-      post "/footer-columns" => "admin/ingenic#create_footer_column", format: false
-      put "/footer-columns/:id" => "admin/ingenic#update_footer_column", format: false
-      delete "/footer-columns/:id" => "admin/ingenic#destroy_footer_column", format: false
+      post "/footer-columns" => "admin/ingenic#create_footer_column"
+      put "/footer-columns/:id" => "admin/ingenic#update_footer_column"
+      delete "/footer-columns/:id" => "admin/ingenic#destroy_footer_column"
 
-      post "/footer-links" => "admin/ingenic#create_footer_link", format: false
-      put "/footer-links/:id" => "admin/ingenic#update_footer_link", format: false
-      delete "/footer-links/:id" => "admin/ingenic#destroy_footer_link", format: false
+      post "/footer-links" => "admin/ingenic#create_footer_link"
+      put "/footer-links/:id" => "admin/ingenic#update_footer_link"
+      delete "/footer-links/:id" => "admin/ingenic#destroy_footer_link"
     end
 
     # The front page at its canonical address. Discourse mounts the page chosen

@@ -39,9 +39,15 @@ class IngenicBoardsController < ::ApplicationController
         rows = rows.for_series(params[:series]) if params[:series].present?
         rows = rows.for_chip(params[:chip]) if params[:chip].present?
 
+        # One row per board, and the slug is what a board *is*: the unique index
+        # is on slug and locale together, so the same slug in two languages is
+        # one board translated. Grouping by the name as well would split it
+        # exactly when the translation changed the name, which is the usual
+        # reason for having a translation at all — Halley5 and Halley5 中文
+        # would be two identical cards side by side.
         rows
           .ordered
-          .group_by { |row| [row.slug, row.name] }
+          .group_by(&:slug)
           .map { |_, group| group.find { |row| row.locale == locale } || group.first }
       end
   end
