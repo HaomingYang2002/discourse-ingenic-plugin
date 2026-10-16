@@ -334,6 +334,21 @@ one under the account's preferences), and a signed-out visitor is served from
 the cookie. A reader who is signed in never sees the cookie — that is
 Discourse's rule, not the plugin's.
 
+### The foot of the page
+
+Below the theme's own footer (the partner platform strip and the link columns,
+configured in **Ingenic → Site**) Discourse draws a line of its own: **Powered by
+Discourse**, the last thing on most pages. Hiding it is one core setting, not a
+theme change:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `enable_powered_by_discourse` | off | Removes the **Powered by Discourse** line, leaving the end of the page to this forum's own footer |
+
+It is under **Admin → Settings → Site admin**, or search the settings screen for
+`powered by`. The theme's own footer is a separate thing — it comes from
+**Ingenic → Site** and is unaffected by this setting.
+
 ### Theme settings
 
 | Setting | Default | Effect |
@@ -510,6 +525,7 @@ Open these and check each one:
 - [ ] a section card links into its own category
 - [ ] the promotions you configured in **Ingenic → Site** appear on the front page if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
+- [ ] with `enable_powered_by_discourse` off, the page ends at that footer and the **Powered by Discourse** line is gone
 - [ ] a member of a listed `ingenic_official_groups` group wears its badge beside their username, and a member who picked a badge of their own keeps it
 - [ ] Google, GitHub and email sign-in all still work
 - [ ] **Admin → Customize → Themes** shows no theme errors
