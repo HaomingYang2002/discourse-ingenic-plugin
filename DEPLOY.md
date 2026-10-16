@@ -48,7 +48,7 @@ cd /var/discourse
 ./launcher rebuild app
 ```
 
-The rebuild runs the plugin's migrations and creates its eighteen tables. It
+The rebuild runs the plugin's migrations and creates its nineteen tables. It
 takes a few minutes, and the forum is offline while it runs — there is no
 zero-downtime rebuild in `discourse_docker`.
 
@@ -251,25 +251,41 @@ documentation entry pointing at that chip's `/ingenic/docs/<product>`.
 
 ### Forum sections the navigation points at
 
-Four slugs appear in the list above and in the homepage blocks, so they are worth
-creating before the navigation is put in front of anyone — a `category` entry
-pointing at a category that does not exist is a link to a not-found page.
+Three slugs in the list above name a category, and a fresh Discourse install has
+none of them — a `category` entry pointing at a category that does not exist is a
+link to a not-found page on a sidebar that otherwise looks finished. So the
+plugin creates them:
+
+```bash
+./launcher enter app
+rake ingenic:seed_categories
+```
 
 | Category | Parent | Who may post |
 | --- | --- | --- |
-| Official Announcements (`official-announcements`) | — | staff only |
+| Official Announcements (`official-announcements`) | — | staff |
 | Technical Discussions (`technical-discussions`) | — | everyone |
-| Open Source (`open-source`) *(the group entry)* | — | — |
+| Open Source (`open-source`) *(the section the sidebar points at)* | — | nobody: it is a container |
 | Third-party Open Source (`third-party`) | `open-source` | everyone |
-| Official Open Source (`official`) | `open-source` | staff only |
+| Official Open Source (`official`) | `open-source` | administrators |
 
-`open-source` is the entry the sidebar's **Open Source** row points at, and the
-two sub-categories are what a visitor chooses between once they are there —
-someone posting their own project, and Ingenic's own releases. "Staff only" is
-Discourse's ordinary category security: edit the category, and under **Security**
-give `everyone` *See* but not *Create / Reply*, with a staff group holding
-*Create / Reply*. Nothing in this plugin creates categories or sets their
-permissions; the slugs above are the ones the shipped navigation expects.
+`open-source` is what the sidebar's **Open Source** row opens, and the two
+sub-forums are what a visitor chooses between once they are there — a project of
+their own, or Ingenic's own releases. "Administrators" is Discourse's ordinary
+category security: edit the category, and under **Security** give `everyone`
+*See* but not *Create / Reply*, with `admins` holding *Create / Reply*.
+
+The task creates what is missing and leaves everything else exactly as the forum
+has it — renaming, re-colouring and re-parenting a category afterwards is
+expected, and a second run will not undo it. The one thing it will put back, when
+asked, is the permissions above:
+
+```bash
+rake ingenic:seed_categories[permissions]
+```
+
+`rake ingenic:doctor` reports the same slugs when they are missing, along with
+the settings the plugin and the theme need.
 
 A starting `ingenic_homepage_blocks`:
 
@@ -688,6 +704,9 @@ on another machine brings the theme's settings with it. Nothing else is in there
 ```bash
 cd /var/www/discourse
 
+# create the forum sections the navigation links to — see above
+rake ingenic:seed_categories
+
 # write everything this plugin owns into one file
 rake ingenic:export_config[/shared/ingenic-config.yml]
 
@@ -730,33 +749,58 @@ rake ingenic:doctor
 
 It checks the handful of settings whose wrong value produces no error anywhere —
 the plugin switched off, a language nobody can switch, a download directory
-nothing can be written to — and names what to change.
+nothing can be written to, a forum section the navigation links to and the forum
+does not have — and names what to change.
 
 ---
 
 ## What has and has not been tested
 
-Not tested in a running Discourse. There is no Ruby, no bundler and no database
-in the environment this was built in, so:
+Verified in a Discourse development container — `2026.10.0-latest`, PostgreSQL,
+the plugin and the theme mounted as the development ones — and by asking the
+running server itself, over HTTP, rather than by reading the code:
 
-- the plugin's spec suite is written but has never been executed
-- the theme has never been compiled by Discourse's asset pipeline
-- nothing has been rendered in a browser
-- the bounty table has never been created by a migration, and the hourly job that
-  expires offers has never fired — the escrow, the release and the refund are
-  covered by specs, but no points have moved for real
-- no account has been deleted from a real forum, so the keys that let a member's
-  rows stay behind have only been checked against the migrations that write them
-- no topic has been permanently deleted from a real forum either, so the cascade
-  key and the `before_destroy` refund that runs ahead of it have only been
-  checked against the migration and the specs that cover them
+- the migrations ran, in the development database and in the test one, creating
+  the tables, the foreign keys and the partial unique index the ledger relies on
+- the plugin's spec suite passes: 422 examples, 0 failures
+- `rake ingenic:seed_categories` ran against a real installation and left the
+  five sections with the permissions it says they have, and `rake ingenic:doctor`
+  reports no failures
+- the theme was installed as the site's default theme, and its navigation was
+  checked the way a browser loads it: 27 checks on the three groups, their order,
+  their icons, and which link lights up on which page
+- 44 checks ran against a real PostgreSQL and the real destruction paths —
+  `PostDestroyer` with `force_destroy`, `UserDestroyer` — covering the escrow
+  leaving the balance, the refund on a permanently deleted topic, no refund for a
+  settled one and nothing at all for a trashed one, the database's own cascade
+  when a row is deleted behind the callbacks, and a deleted member's rows staying
+  behind with no owner. Every balance was read back against the sum of the ledger
+  behind it
+- 86 checks ran against the server over HTTP: signing in, the board, a member's
+  own page, opening and withdrawing an offer through the plugin's own endpoints,
+  both refusals — a second offer on one topic, an offer above the ceiling — and a
+  topic permanently deleted by two administrators, because the forum will not let
+  the one who trashed it empty the trash. The escrow came back afterwards. Seven
+  pages answered 200 with the application shell, the five sections were read out
+  of `/site.json`, a member published a project in Third-Party Open Source (200)
+  and was refused in Official Open Source (403), and the navigation setting was
+  written and read back through the endpoint the admin screens write through
 
-What *was* done: every file was parsed (Babel and Glimmer for the theme's
-JavaScript, tree-sitter for Ruby, a YAML parser for the settings and locale
-files), and every Discourse API used was read in the `2026.10.0-latest` source
-to confirm the signature — `api.addSidebarSection`, the custom sidebar section
-and link base classes, the order in which theme route maps are merged, and the
-path that turns theme settings into SCSS variables.
+What that leaves unverified, because a container is not a forum with people on
+it:
+
+- nothing has been looked at in a browser. The navigation was checked as a
+  browser loads it, but no page has been seen, so the layout, the palette and the
+  proportions are as designed rather than as confirmed
+- no message has been sent: the container has no mail server, so the
+  request-to-download flow stops where a message would leave
+- the download centre has no files on it — `ingenic_download_storage_path` is
+  empty — so the three access levels, the grants and the audit log are covered by
+  the specs rather than by a member receiving a file
+- the admin screens have not been opened: the endpoints behind them answer and
+  the Ember code compiles, but nobody has clicked through them
+- nothing has been upgraded. This is the schema as created, not as altered by a
+  later release of the plugin
 
 Expect the first rebuild to be where anything that is wrong shows up. If the
 theme reports a compile error, it will name the file and line in

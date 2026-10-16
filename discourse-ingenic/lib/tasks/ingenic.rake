@@ -78,6 +78,19 @@ namespace :ingenic do
 
   desc "Check the settings this plugin and its theme need, and say what is missing"
   task doctor: :environment do
+    # Whether a signed-out reader's choice of language survives the round trip.
+    # Two routes lead there and either will do: `set_locale_from_cookie` is the
+    # plain one, and the other is content localization, whose own language
+    # switcher writes the same cookie and reads it back. Asking only about the
+    # first reported a failure on a site that works.
+    #
+    # `Discourse.locale_from_cookie` also asks whether the cookie names a locale
+    # in `content_localization_locales`, which is not repeated here: that list is
+    # the supported ones with the default appended, so the default is in it by
+    # construction, and the switcher only ever offers a locale from the list.
+    locale_from_cookie =
+      SiteSetting.set_locale_from_cookie || ContentLocalization.language_switcher_enabled?
+
     # Each of these is a setting whose wrong value produces no error anywhere: a
     # switcher that is not there, an upload directory nothing can be written to,
     # a first-time visitor landing in a language nobody chose. That silence is
@@ -91,14 +104,26 @@ namespace :ingenic do
       ],
       [
         "set_locale_from_cookie",
-        SiteSetting.set_locale_from_cookie,
-        "a signed-out reader's choice goes into a cookie the server will not read back",
+        locale_from_cookie,
+        "a signed-out reader's choice goes into a cookie the server will not read back — " \
+          "set set_locale_from_cookie, or switch on content_localization_enabled and show " \
+          "its language switcher",
       ],
       [
         "default_locale",
         SiteSetting.default_locale == "en",
         "a first-time visitor lands in #{SiteSetting.default_locale.inspect} rather than English",
       ],
+    ]
+
+    # A category the navigation points at and the forum does not have is a link
+    # to a 404 on a page that otherwise looks finished, which is the kind of
+    # thing that gets noticed by a visitor rather than by whoever built it.
+    absent_categories = Ingenic::ForumCategories.missing
+    checks << [
+      "forum categories",
+      absent_categories.empty?,
+      "the navigation links to #{absent_categories.join(", ")}, which the forum does not have — rake ingenic:seed_categories creates them",
     ]
 
     # Only worth asking when a path is configured: with none, nothing is
@@ -124,6 +149,41 @@ namespace :ingenic do
     else
       puts "#{problems.size} to fix. Site settings live under Admin → Settings; the language"
       puts "switcher's own language list is a theme setting on the theme's settings page."
+    end
+  end
+
+  desc "Create the forum sections the navigation links to; 'permissions' re-applies their permissions"
+  task :seed_categories, [:permissions] => :environment do |_task, args|
+    # Three of the navigation's entries name a category, and Discourse creates
+    # none of its own, so on a fresh install those three are links to a page that
+    # does not exist while everything around them renders. This is what makes
+    # them real — and what makes Official Open Source administrators-only rather
+    # than another place for anyone to post.
+    report = Ingenic::ForumCategories.seed!(permissions: args[:permissions].present?)
+
+    width = report.map { |row| row[:slug].length }.max || 0
+    report.each do |row|
+      line = "  #{row[:slug].ljust(width)}  #{row[:action]}"
+      line += "  — #{row[:detail]}" if row[:detail]
+      puts line
+    end
+
+    created = report.count { |row| row[:action] == :created }
+    puts
+    if created.zero?
+      puts "Nothing to create. Categories already in the forum are left as the forum has them:"
+      puts "renaming, re-colouring and reordering them here is not this task's business."
+    else
+      puts "#{created} created. They are ordinary categories from here on — Admin → Categories"
+      puts "renames, re-colours, re-parents and re-permissions them, and this task will not"
+      puts "undo any of that."
+    end
+
+    unless args[:permissions].present?
+      puts
+      puts "To set the permissions in the list again (anyone may post in Third-Party Open"
+      puts "Source, only administrators in Official Open Source, staff in Announcements):"
+      puts "  rake ingenic:seed_categories[permissions]"
     end
   end
 

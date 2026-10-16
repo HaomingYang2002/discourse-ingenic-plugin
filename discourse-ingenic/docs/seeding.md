@@ -11,6 +11,42 @@ cd /var/discourse
 rails c
 ```
 
+## The forum sections
+
+Not every section of the site is content in the plugin's tables: Official
+Announcements, Technical Discussions and Open Source are ordinary Discourse
+categories, because they are places people post. The navigation links to them,
+and a fresh install has no categories at all, so they arrive through a rake task
+rather than through the console:
+
+```bash
+cd /var/discourse
+./launcher enter app
+rake ingenic:seed_categories
+```
+
+Open Source is a section holding two sub-forums rather than a place to post:
+
+| Section | Parent | Who may start a topic |
+| --- | --- | --- |
+| Official Announcements (`official-announcements`) | — | Staff |
+| Technical Discussions (`technical-discussions`) | — | Everyone |
+| Open Source (`open-source`) | — | Nobody: it is a container |
+| Third-Party Open Source (`third-party`) | `open-source` | Everyone |
+| Official Open Source (`official`) | `open-source` | Administrators only |
+
+A second run leaves categories that already exist exactly as the forum has them —
+renaming, re-colouring and re-parenting included. Permissions are the one thing a
+re-run will write, and only when asked:
+
+```bash
+rake ingenic:seed_categories[permissions]
+```
+
+Do that after changing the table above, or to repair an Official Open Source that
+somebody can post into. `rake ingenic:doctor` reports any of the five that is
+missing (`Ingenic::ForumCategories.missing` from the console gives the same list).
+
 ## The product tree
 
 Everything else hangs off this, so it comes first. A product is either a

@@ -49,6 +49,37 @@ carry the group they belong to. An unknown group name is read as `forum`, so a
 typo moves a row rather than losing it; `position` orders entries within their
 group.
 
+An entry that names a `category` is resolved to the address the forum actually
+serves — `/c/<slug>/<id>`. Discourse has no slug-only category route
+(`c/*category_slug_path_with_id` requires the id and the only catch-all is the
+permalink handler), so `/c/<slug>` is a 404; the id is looked up on the server
+for the JSON and from `site.categories` in the theme, and a slug the site does
+not have keeps the plain path as a last resort. This is why the entry resolves
+rather than stores a URL.
+
+The three categories the shipped navigation points at are created by the plugin
+rather than by hand, because a fresh Discourse install has none and a category
+entry pointing at a missing category is a dead link on a page that otherwise
+looks finished:
+
+| Section | Parent | Who may start a topic |
+| --- | --- | --- |
+| Official Announcements (`official-announcements`) | — | Staff |
+| Technical Discussions (`technical-discussions`) | — | Everyone |
+| Open Source (`open-source`) | — | Nobody: it is a container |
+| Third-Party Open Source (`third-party`) | `open-source` | Everyone |
+| Official Open Source (`official`) | `open-source` | Administrators only |
+
+`rake ingenic:seed_categories` creates what is absent and reports one row per
+category (`created`, `kept` or `skipped`); a second run leaves an existing
+category exactly as the forum has it, renaming and re-colouring included.
+`rake ingenic:seed_categories[permissions]` is the only thing that writes
+permissions back, and `rake ingenic:doctor` reports any of the five that is
+missing. The parent is read-only so that its two sub-forums can carry different
+permissions at all: Discourse validates a sub-category's permissions against its
+parent's, and a parent with `everyone` at any level is what lets a child be
+anything.
+
 Because core renders its own sections around the API-registered ones, "above
 Discourse's own sections" is a stylesheet decision rather than an order of
 registration: `ingenic_nav_order` puts the three groups at the top of the flex
@@ -313,6 +344,13 @@ are what still has to be run on a real instance.
 - [ ] a priced resource is never charged when the file turns out to be missing
 - [ ] `/ingenic/points` shows the reader their own history and nobody else's
 - [ ] `Ingenic::Points.rebuild!` corrects a balance that has been edited by hand
+- [ ] `rake ingenic:seed_categories` creates all five sections and reports them as
+      `created`; a second run reports `kept`
+- [ ] the two sub-forums are filed under `open-source`, which reports
+      `has_children` and a subcategory count of 2 in `/categories.json`
+- [ ] a member POSTs a topic into `third-party` and gets 200, and into `official`
+      and gets 403 — readable but refused, not 404
+- [ ] `GET /c/open-source/<id>` serves the section and `GET /c/open-source` is 404
 - [ ] malformed `ingenic_nav_items` / `ingenic_homepage_blocks` /
       `ingenic_developer_form_fields` degrade to an empty list instead of raising
 - [ ] `bundle exec rspec plugins/discourse-ingenic/spec` passes
@@ -340,6 +378,8 @@ are what still has to be run on a real instance.
       disappearing
 - [ ] an external nav entry is never highlighted; a docs entry stays highlighted
       on nested documentation pages
+- [ ] the Open Source row opens the section's own page, at the address carrying
+      the id, and every category row's link answers 200
 - [ ] homepage blocks render in the configured order
 - [ ] disabling a block removes it without leaving a gap
 - [ ] the docs picker opens on hover for the series flyout and by keyboard
@@ -378,10 +418,12 @@ are what still has to be run on a real instance.
 
 ## Known risks
 
-- **The migrations and the specs have not been run in this environment.** There
-  is no Ruby, no database and no bundler on the machine the code was written on;
-  the plugin's specs are written but unexecuted. The first rebuild is the real
-  test.
+- **Nothing here has been seen in a browser.** The migrations, the specs (422
+  examples) and the HTTP paths have all been run against a Discourse development
+  container, but no page has been opened, so the layout, the palette and the
+  proportions are as designed rather than as confirmed. Nor has a message been
+  sent — the container has no mail server — so the request-to-download flow is
+  covered by specs up to the point a message would leave.
 - **The Chinese forum's signup form could not be read.** `forum.ingenic.com` is
   behind a login, so the field list behind "sign in and fill in your details"
   is a generic developer set rather than a copy of theirs. It is configurable

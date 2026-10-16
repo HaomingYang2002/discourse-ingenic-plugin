@@ -12,6 +12,39 @@ rails c
 
 本文与英文版 `docs/seeding.md` 内容一致，可对照阅读。
 
+## 论坛版块
+
+站点上并不是每个版块都是插件表里的内容：官方公告、技术讨论、开源版块就是
+Discourse 原生的分类，因为它们是给人发帖的地方。侧边栏链接指向它们，而全新安装
+的 Discourse 一个分类都没有 —— 所以它们由 rake 任务创建，而不是在控制台里建：
+
+```bash
+cd /var/discourse
+./launcher enter app
+rake ingenic:seed_categories
+```
+
+开源版块是一个装着两个子版块的版块，本身不是发帖的地方：
+
+| 版块 | 上级 | 谁可以发帖 |
+| --- | --- | --- |
+| 官方公告（`official-announcements`） | — | 站务组 |
+| 技术讨论（`technical-discussions`） | — | 所有人 |
+| 开源版块（`open-source`） | — | 无人：它只是容器 |
+| 三方开源（`third-party`） | `open-source` | 所有人 |
+| 官方开源（`official`） | `open-source` | 只有管理员 |
+
+再跑一次，已经存在的分类会原样保留 —— 改名、换颜色、改上级都随你。唯一会在被
+要求时重新写回的，是上面这张表里的权限：
+
+```bash
+rake ingenic:seed_categories[permissions]
+```
+
+改动上面这张表之后、或者有人能在"官方开源"里发帖需要修回来时，跑这一条。
+`rake ingenic:doctor` 会报出五个里缺了哪一个（在控制台里调
+`Ingenic::ForumCategories.missing` 得到的是同一份名单）。
+
 ## 产品树
 
 其他所有内容都挂在这棵树上，所以先建它。产品分为 `series`（系列）和 `chip`
