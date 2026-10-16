@@ -28,8 +28,15 @@ class AddIngenicDownloadCategories < ActiveRecord::Migration[7.2]
 
     # The fixed enum goes away once every row points at a category. Two sources
     # for one fact is the thing this migration exists to remove.
+    #
+    # The index can go here; the column cannot. Discourse patches migrations so
+    # that dropping or renaming a column outside `db/post_migrate` raises, on the
+    # grounds that a running application server may still be reading it — which
+    # is right, and which is why the drop is next door in
+    # `db/post_migrate/…_drop_ingenic_downloads_kind.rb` rather than here. As a
+    # regular migration this one aborted, and took the whole migration set with
+    # it: nothing downstream of it ran at all.
     remove_index :ingenic_downloads, name: "idx_ingenic_downloads_lookup"
-    remove_column :ingenic_downloads, :kind
 
     add_index :ingenic_downloads,
               %i[product_slug category_id version locale],
@@ -38,8 +45,10 @@ class AddIngenicDownloadCategories < ActiveRecord::Migration[7.2]
 
   def down
     remove_index :ingenic_downloads, name: "idx_ingenic_downloads_lookup"
-    add_column :ingenic_downloads, :kind, :string
 
+    # `kind` is not restored here: the post-deploy migration that drops it puts
+    # it back, and it is the one that has to be rolled back first. Rolling this
+    # one back on its own is what breaks, not this line.
     execute <<~SQL
       UPDATE ingenic_downloads
       SET kind = ingenic_download_categories.name

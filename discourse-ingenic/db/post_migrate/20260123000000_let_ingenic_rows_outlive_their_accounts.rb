@@ -31,6 +31,13 @@
 # :cascade` from the start, for this same reason: a delivery to an account that
 # has since been deleted is still a delivery, and the row is only ever read as a
 # count and a resource name.
+#
+# It lives in `db/post_migrate` because Postgres has no ALTER for a referential
+# action: changing one means dropping the constraint and writing it again, and
+# Discourse patches migrations so that a `DROP CONSTRAINT` outside a post-deploy
+# migration raises. Written as a regular migration it aborted the whole set on
+# its first `remove_foreign_key`, so nothing after it ran and the plugin could
+# not be installed at all.
 class LetIngenicRowsOutliveTheirAccounts < ActiveRecord::Migration[7.2]
   # Rows that stay, with the account blanked. The `_by` columns beside them were
   # already nullable — a decision can be recorded without saying who made it —

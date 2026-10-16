@@ -16,6 +16,10 @@ class SendIngenicBountiesWithTheirTopics < ActiveRecord::Migration[7.2]
   # `Topic` callback in `plugin.rb` — and the two together are what make deleting
   # a topic cost nobody anything.
   #
+  # It lives in `db/post_migrate` with the migration it follows, for the same
+  # reason: rewriting a referential action means dropping the constraint first,
+  # and Discourse refuses a `DROP CONSTRAINT` in a regular migration.
+  #
   # Before this, `ingenic_bounties.topic_id` was a plain reference, and the
   # database refused to delete a topic that carried a bounty. That came out
   # worse than a refusal: `PostDestroyer` destroys a topic's replies before it
