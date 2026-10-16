@@ -1,15 +1,23 @@
 en:
   ingenic:
     nav:
-      title: "Developer Center"
+      title: "Developer Resources"
+      new_post: "New Post"
       home: "Home"
       docs: "Online Documentation"
+      open_source: "Open Source"
       downloads: "SDK & Firmware Downloads"
       boards: "Development Boards"
       points: "Points"
       bounties: "Bounties"
       announcements: "Official Announcements"
       discussions: "Technical Discussions"
+      # The two lists that are drawn without a heading. Nothing shows these
+      # words; they are what the sidebar's filter matches against, so typing
+      # "forum" or "points" finds the whole list.
+      sections:
+        forum: "Forum"
+        member: "Bounties and points"
     home:
       title: "Build with Ingenic"
       subtitle: "Documentation, resources, and technical discussions for Ingenic developers."

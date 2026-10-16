@@ -6,15 +6,36 @@ plugins:
   # JSON array. Each entry describes one left navigation item so that admins can
   # reorder, hide or relabel the sidebar without a code change.
   #
+  # "section" is which of the three groups the entry belongs to:
+  #
+  #   forum      the plain list at the top — the forum itself, drawn with no
+  #              heading
+  #   resources  the group below it, drawn under the theme's heading
+  #              (Developer Resources / 开发者资源: the theme's
+  #              ingenic_nav_title setting overrides it)
+  #   member     the plain list under that — what a member has earned or set
+  #              aside, which is not a developer resource
+  #
+  # A name outside those three is read as forum. "position" orders entries
+  # within their own group, not across groups: the groups themselves are always
+  # drawn in the order above.
+  #
   # [
-  #   { "key": "home",        "label": "Home",                 "icon": "house",       "href": "/",                    "position": 0,  "enabled": true },
-  #   { "key": "announce",    "label": "Official Announcements", "icon": "bullhorn", "category": "official-announcements", "position": 1, "enabled": true },
-  #   { "key": "discussions", "label": "Technical Discussions",  "icon": "comments", "category": "technical-discussions",  "position": 2, "enabled": true },
-  #   { "key": "docs",        "label": "Documentation",          "icon": "book",     "href": "/ingenic/docs",        "position": 3,  "enabled": true },
-  #   { "key": "downloads",   "label": "Downloads",              "icon": "download", "href": "/ingenic/downloads",   "position": 4,  "enabled": true },
-  #   { "key": "boards",      "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5,  "enabled": true },
-  #   { "key": "github",      "label": "GitHub",                 "icon": "code-branch", "href": "https://github.com/ingenic-official", "external": true, "position": 6, "enabled": true }
+  #   { "key": "new-post",    "label": "New Post",               "icon": "plus",      "href": "/new-topic",           "section": "forum",     "position": 0, "enabled": true },
+  #   { "key": "home",        "label": "Home",                   "icon": "house",     "href": "/",                    "section": "forum",     "position": 1, "enabled": true },
+  #   { "key": "announce",    "label": "Official Announcements", "icon": "bullhorn",  "category": "official-announcements", "section": "forum", "position": 2, "enabled": true },
+  #   { "key": "discussions", "label": "Technical Discussions",  "icon": "comments",  "category": "technical-discussions",  "section": "forum", "position": 3, "enabled": true },
+  #   { "key": "docs",        "label": "Online Documentation",   "icon": "book",      "href": "/ingenic/docs",        "section": "resources", "position": 4, "enabled": true },
+  #   { "key": "open-source", "label": "Open Source",            "icon": "code",      "category": "open-source",      "section": "resources", "position": 5, "enabled": true },
+  #   { "key": "downloads",   "label": "SDK & Firmware Downloads", "icon": "download", "href": "/ingenic/downloads",  "section": "resources", "position": 6, "enabled": true },
+  #   { "key": "boards",      "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",      "section": "resources", "position": 7, "enabled": true },
+  #   { "key": "bounties",    "label": "Bounties",               "icon": "gift",      "href": "/ingenic/bounties",    "section": "member",    "position": 8, "enabled": true },
+  #   { "key": "points",      "label": "Points",                 "icon": "star",      "href": "/ingenic/points",      "section": "member",    "position": 9, "enabled": true },
+  #   { "key": "github",      "label": "GitHub",                 "icon": "code-branch", "href": "https://github.com/ingenic-official", "section": "resources", "external": true, "position": 10, "enabled": true }
   # ]
+  #
+  # Left empty, the theme's own defaults are used — the same three groups, in
+  # English, with the same entries.
   #
   # A "category" entry resolves to /c/<slug>, so navigation can point at a forum
   # section instead of a URL. Give each chip its own category and point that

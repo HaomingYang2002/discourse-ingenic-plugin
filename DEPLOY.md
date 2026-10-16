@@ -199,31 +199,77 @@ surprises people the first time.
 
 `ingenic_nav_items` and `ingenic_homepage_blocks` are JSON. Both are optional —
 with `ingenic_nav_items` left empty the theme falls back to its shipped
-navigation (Documentation, Downloads, Development Boards, Bounties, Points).
+navigation, which is the same three groups in the same order as the JSON below.
 
 **A configured `ingenic_nav_items` replaces the shipped list wholesale**, it does
 not merge with it. So a site that configured its navigation before Bounties
 existed has no Bounties entry and will not grow one: add it to the JSON, or clear
 the setting and start from the list below.
 
+The navigation is three groups. `section` says which one an entry is in:
+
+| `section` | Drawn as | Holds |
+| --- | --- | --- |
+| `forum` | a plain list at the top, no heading | starting a post, the front page, the forum's own sections |
+| `resources` | a list under its own heading | the developer pages and their forum sections |
+| `member` | a plain list at the bottom, no heading | what a member has earned or set aside |
+
+The heading over the middle group is the theme's `ingenic_nav_title`, defaulting
+to **Developer Resources**. The outer two are deliberately heading-less: a
+heading over the topic list would be a label on the forum, and one over Bounties
+and Points would file them under the developer resources, which is where they do
+not belong.
+
+`position` orders entries **within** their group; the groups themselves are
+always drawn in the order above. An entry naming a group that does not exist is
+read as `forum` rather than dropped, so a mistyped group moves a row instead of
+losing it.
+
 A starting `ingenic_nav_items`:
 
 ```json
 [
-  { "key": "home",      "label": "Home",                 "icon": "house",     "href": "/",               "position": 0, "enabled": true },
-  { "key": "announce",  "label": "Official Announcements", "icon": "bullhorn", "category": "official-announcements", "position": 1, "enabled": true },
-  { "key": "discuss",   "label": "Technical Discussions",  "icon": "comments", "category": "technical-discussions",  "position": 2, "enabled": true },
-  { "key": "docs",      "label": "Documentation",        "icon": "book",      "href": "/ingenic/docs",   "position": 3, "enabled": true },
-  { "key": "downloads", "label": "Downloads",            "icon": "download",  "href": "/ingenic/downloads", "position": 4, "enabled": true },
-  { "key": "boards",    "label": "Development Boards",   "icon": "microchip", "href": "/ingenic/boards", "position": 5, "enabled": true },
-  { "key": "bounties",  "label": "Bounties",             "icon": "gift",      "href": "/ingenic/bounties", "position": 6, "enabled": true },
-  { "key": "points",    "label": "Points",               "icon": "star",      "href": "/ingenic/points", "position": 7, "enabled": true }
+  { "key": "new-post",    "label": "New Post",                 "icon": "plus",      "href": "/new-topic",                "section": "forum",     "position": 0,  "enabled": true },
+  { "key": "home",        "label": "Home",                     "icon": "house",     "href": "/",                         "section": "forum",     "position": 1,  "enabled": true },
+  { "key": "announce",    "label": "Official Announcements",   "icon": "bullhorn",  "category": "official-announcements", "section": "forum",    "position": 2,  "enabled": true },
+  { "key": "discuss",     "label": "Technical Discussions",    "icon": "comments",  "category": "technical-discussions",  "section": "forum",    "position": 3,  "enabled": true },
+  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 4,  "enabled": true },
+  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",           "section": "resources", "position": 5,  "enabled": true },
+  { "key": "downloads",   "label": "SDK & Firmware Downloads", "icon": "download",  "href": "/ingenic/downloads",        "section": "resources", "position": 6,  "enabled": true },
+  { "key": "boards",      "label": "Development Boards",       "icon": "microchip", "href": "/ingenic/boards",           "section": "resources", "position": 7,  "enabled": true },
+  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 8,  "enabled": true },
+  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 9,  "enabled": true }
 ]
 ```
+
+**New Post** is `/new-topic`, Discourse's own route for starting a post: it opens
+the composer where you are, and asks a signed-out visitor to sign in first.
 
 `category` entries resolve to `/c/<slug>`, so navigation can point at a forum
 section instead of a URL. Each chip gets its own category, and its own
 documentation entry pointing at that chip's `/ingenic/docs/<product>`.
+
+### Forum sections the navigation points at
+
+Four slugs appear in the list above and in the homepage blocks, so they are worth
+creating before the navigation is put in front of anyone — a `category` entry
+pointing at a category that does not exist is a link to a not-found page.
+
+| Category | Parent | Who may post |
+| --- | --- | --- |
+| Official Announcements (`official-announcements`) | — | staff only |
+| Technical Discussions (`technical-discussions`) | — | everyone |
+| Open Source (`open-source`) *(the group entry)* | — | — |
+| Third-party Open Source (`third-party`) | `open-source` | everyone |
+| Official Open Source (`official`) | `open-source` | staff only |
+
+`open-source` is the entry the sidebar's **Open Source** row points at, and the
+two sub-categories are what a visitor chooses between once they are there —
+someone posting their own project, and Ingenic's own releases. "Staff only" is
+Discourse's ordinary category security: edit the category, and under **Security**
+give `everyone` *See* but not *Create / Reply*, with a staff group holding
+*Create / Reply*. Nothing in this plugin creates categories or sets their
+permissions; the slugs above are the ones the shipped navigation expects.
 
 A starting `ingenic_homepage_blocks`:
 

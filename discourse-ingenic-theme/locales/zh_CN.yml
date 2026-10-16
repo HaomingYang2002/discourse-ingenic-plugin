@@ -1,15 +1,21 @@
 zh_CN:
   ingenic:
     nav:
-      title: "开发者专区"
+      title: "开发者资源"
+      new_post: "新帖子"
       home: "首页"
       docs: "在线文档"
+      open_source: "开源版块"
       downloads: "SDK 与固件下载"
       boards: "开发板商店"
       points: "积分"
       bounties: "高分悬赏"
       announcements: "官方公告"
       discussions: "技术讨论"
+      # 两个不带标题的分组。这两行文字不会显示，只用于侧边栏的搜索匹配。
+      sections:
+        forum: "论坛"
+        member: "悬赏与积分"
     home:
       title: "使用君正芯片开发"
       subtitle: "面向君正开发者的文档、资源与技术讨论。"

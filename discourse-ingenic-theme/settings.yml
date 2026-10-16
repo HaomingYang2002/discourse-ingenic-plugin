@@ -22,12 +22,12 @@ ingenic_nav_order:
   choices:
     - first
     - last
-  description: "Whether the Ingenic navigation appears above Discourse's own sidebar sections (community, categories, tags) or after them."
+  description: "Whether the Ingenic navigation appears above Discourse's own sidebar sections (categories, tags, the visitor's own sections) or after them."
 
 ingenic_nav_title:
   default: ""
   type: string
-  description: "Optional heading above the Ingenic navigation entries. Left empty, the entries render as a plain list with no heading."
+  description: "Heading over the developer-resources group — the list holding Documentation, Open Source, Downloads and Development Boards. Left empty, it reads Developer Resources (开发者资源 in Chinese). The two lists around it are drawn without a heading on purpose and are not affected by this setting."
 
 ingenic_hero_title:
   default: ""

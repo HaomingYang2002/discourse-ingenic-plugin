@@ -87,21 +87,26 @@ end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
 
-# The icons the theme ships with when `ingenic_nav_items` is left empty, plus
-# the ones its own pages draw.
+# The two icons the theme draws that Discourse's own sprite does not carry.
 #
-# Icons an administrator names in that setting are collected for the sprite
-# automatically — it is an object list with an icon field, and the sprite is
-# built from the settings as well as from code. A list that lives in the
-# theme's source is not, so the ones the theme falls back to are named here or
-# they render as nothing. `book`, `download`, `star` and `circle` are already
-# in Discourse's own subset; `microchip` is not, and the Development Boards
-# entry is the one that would go missing.
-register_svg_icon "book"
-register_svg_icon "download"
+# The served sprite is core's own icon list plus everything code and settings
+# ask for — `SvgSprite.bundle` is `core_svgs.slice(*all_icons)`. An icon an
+# administrator names in `ingenic_nav_items` is collected from the setting
+# itself, but the list the theme falls back to when that setting is empty lives
+# in the theme's source, so those names have to be given here or they render as
+# nothing at all.
+#
+# Of the theme's defaults, `plus`, `house`, `comments`, `book`, `code`,
+# `download`, `gift`, `star`, `circle` and `angle-down` are in core's subset
+# (lib/svg_sprite.rb) and need no help. These two are not:
+#
+#   bullhorn   Official Announcements
+#   microchip  Development Boards
+#
+# Both symbols exist in the vendored SVG set — this is only about which ones are
+# copied into the bundle that is served.
+register_svg_icon "bullhorn"
 register_svg_icon "microchip"
-register_svg_icon "star"
-register_svg_icon "circle"
 
 after_initialize do
   reloadable_patch do

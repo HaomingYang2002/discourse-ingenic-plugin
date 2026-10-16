@@ -191,31 +191,74 @@ discourse-ingenic-theme.zip
 地方。
 
 `ingenic_nav_items` 和 `ingenic_homepage_blocks` 都是 JSON 配置，可选填。
-如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航：在线文档、下载中心、
-开发板、高分悬赏、积分。
+如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航 —— 与下面的 JSON 完全
+相同的三个分组、相同的顺序。
 
 **一旦配置了 `ingenic_nav_items`，它会整体替换主题自带的列表**，而不是与之合并。
 因此在悬赏功能上线之前就已经配置过导航的站点，不会有"高分悬赏"入口，也不会自动
 多出一个：需要自己在 JSON 里补上，或者清空这个设置、以上面的列表为起点重新配置。
 
+导航分为三组，用 `section` 指定某一项属于哪一组：
+
+| `section` | 呈现方式 | 内容 |
+| --- | --- | --- |
+| `forum` | 最上方的一段列表，不带标题 | 发帖入口、首页、论坛自己的版块 |
+| `resources` | 带独立标题的一组 | 开发者页面及其对应的论坛版块 |
+| `member` | 最下方的一段列表，不带标题 | 会员自己的悬赏与积分 |
+
+中间那组的标题取自主题设置 `ingenic_nav_title`，默认是 **Developer Resources**
+（中文界面显示"开发者资源"）。上下两组刻意不带标题：给主题列表加标题等于给论坛
+贴标签，而给"高分悬赏 / 积分"加标题会把它们并到上面的开发者资源里去，那恰恰是
+它们不该在的位置。
+
+`position` 决定**组内**的先后顺序；三个分组本身永远按上表的顺序出现。`section`
+写了不存在的分组名时，这一项会被当作 `forum`，而不是被丢掉 —— 写错分组只会让
+一行换位置，不会让一行消失。
+
 一个可直接修改的 `ingenic_nav_items` 示例：
 
 ```json
 [
-  { "key": "home",      "label": "Home",                  "icon": "house",     "href": "/",                    "position": 0, "enabled": true },
-  { "key": "announce",  "label": "Official Announcements", "icon": "bullhorn", "category": "official-announcements", "position": 1, "enabled": true },
-  { "key": "discuss",   "label": "Technical Discussions",  "icon": "comments",  "category": "technical-discussions",  "position": 2, "enabled": true },
-  { "key": "docs",      "label": "Documentation",          "icon": "book",      "href": "/ingenic/docs",        "position": 3, "enabled": true },
-  { "key": "downloads", "label": "Downloads",              "icon": "download",  "href": "/ingenic/downloads",   "position": 4, "enabled": true },
-  { "key": "boards",    "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5, "enabled": true },
-  { "key": "bounties",  "label": "Bounties",               "icon": "gift",      "href": "/ingenic/bounties",   "position": 6, "enabled": true },
-  { "key": "points",    "label": "Points",                 "icon": "star",      "href": "/ingenic/points",     "position": 7, "enabled": true }
+  { "key": "new-post",    "label": "New Post",                 "icon": "plus",      "href": "/new-topic",                "section": "forum",     "position": 0,  "enabled": true },
+  { "key": "home",        "label": "Home",                     "icon": "house",     "href": "/",                         "section": "forum",     "position": 1,  "enabled": true },
+  { "key": "announce",    "label": "Official Announcements",   "icon": "bullhorn",  "category": "official-announcements", "section": "forum",    "position": 2,  "enabled": true },
+  { "key": "discuss",     "label": "Technical Discussions",    "icon": "comments",  "category": "technical-discussions",  "section": "forum",    "position": 3,  "enabled": true },
+  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 4,  "enabled": true },
+  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",           "section": "resources", "position": 5,  "enabled": true },
+  { "key": "downloads",   "label": "SDK & Firmware Downloads", "icon": "download",  "href": "/ingenic/downloads",        "section": "resources", "position": 6,  "enabled": true },
+  { "key": "boards",      "label": "Development Boards",       "icon": "microchip", "href": "/ingenic/boards",           "section": "resources", "position": 7,  "enabled": true },
+  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 8,  "enabled": true },
+  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 9,  "enabled": true }
 ]
 ```
+
+**New Post**（新帖子）指向 `/new-topic`，这是 Discourse 自带的发帖路由：在当前
+页面直接打开编辑器；未登录的访客会被先引导去登录。
 
 使用 `category` 的导航项会自动解析为 `/c/<分类 slug>`，因此可以把导航指向
 论坛分类，而不必直接填写 URL。每个芯片产品可以设置自己的论坛分类和对应的
 `/ingenic/docs/<product>` 文档入口。
+
+### 导航指向的论坛版块
+
+上面这份列表（以及首页区块配置）里出现了四个分类 slug，建议在把导航放到用户
+面前之前先建好这些分类 —— 指向不存在分类的 `category` 项，点进去是一个
+"页面不存在"。
+
+| 分类 | 上级 | 谁可以发帖 |
+| --- | --- | --- |
+| 官方公告（`official-announcements`） | — | 仅管理员/版主 |
+| 技术讨论（`technical-discussions`） | — | 所有人 |
+| 开源版块（`open-source`）*（导航里的那一项）* | — | — |
+| 三方开源（`third-party`） | `open-source` | 所有人 |
+| 官方开源（`official`） | `open-source` | 仅管理员/版主 |
+
+`open-source` 就是侧边栏"Open Source / 开源版块"指向的入口，两个子分类是访客
+进去后的选择：放自己的开源项目，还是看君正官方的开源发布。"仅管理员/版主"就是
+Discourse 普通的分类权限：编辑该分类，在 **Security（安全）** 里给 `everyone`
+只保留 *See（查看）*、不勾 *Create / Reply（发帖/回复）*，再把 *Create / Reply*
+给管理员所在的组。本插件不会去创建分类或修改分类权限；上面这些 slug 是自带导航
+所期望的名字。
 
 一个可直接修改的 `ingenic_homepage_blocks` 示例：
 

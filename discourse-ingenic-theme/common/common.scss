@@ -84,12 +84,19 @@
   }
 }
 
+// The Ingenic navigation is three sidebar sections, and core draws its own
+// sections around them: the panel header, the visitor's own sections, the
+// category list, tags, and only then anything registered through the API. So
+// "first" is done here, on the flex container, rather than by registration
+// order — the filter box above everything, the three groups below it in the
+// order they were registered (equal `order` values keep their document order,
+// which is the order the sections were added in).
 html.ingenic-nav-first .sidebar-sections {
   > .sidebar-panel-header {
     order: -2;
   }
 
-  > .sidebar-section-wrapper[data-section-name="ingenic"] {
+  > .sidebar-section-wrapper[data-section-name^="ingenic-"] {
     order: -1;
   }
 }

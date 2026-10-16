@@ -20,6 +20,13 @@ module DiscourseIngenic
       []
     end
 
+    # The three groups the sidebar draws, in the order it draws them. The theme
+    # reads an entry's section to decide which list it goes in, so the set is
+    # fixed here: an entry naming something else is read as the first group
+    # rather than dropped, because a navigation row that vanishes is harder to
+    # account for than one that appears in the wrong list.
+    NAV_SECTIONS = %w[forum resources member].freeze
+
     def nav_items
       parse_list(SiteSetting.ingenic_nav_items)
         .select { |item| item["enabled"] != false }
@@ -30,11 +37,20 @@ module DiscourseIngenic
             "label" => item["label"].to_s,
             "icon" => item["icon"].presence || "circle",
             "href" => resolve_href(item),
+            "section" => resolve_section(item),
             "external" => item["external"] == true,
             "position" => item["position"].is_a?(Integer) ? item["position"] : index,
           }
         end
         .sort_by { |item| item["position"] }
+    end
+
+    # Case and stray spaces are not a wrong group, so they are not treated as
+    # one: "Resources" and " resources " both mean resources.
+    def resolve_section(item)
+      section = item["section"].to_s.strip.downcase
+
+      NAV_SECTIONS.include?(section) ? section : NAV_SECTIONS.first
     end
 
     def homepage_blocks

@@ -3,14 +3,16 @@ import IngenicBounty from "../components/ingenic-bounty";
 import IngenicFooter from "../components/ingenic-footer";
 import IngenicLocaleSwitcher from "../components/ingenic-locale-switcher";
 import { applyIngenicLayout } from "../ingenic/layout";
-import { registerIngenicSidebarSection } from "../ingenic/sidebar-section";
+import { registerIngenicSidebarSections } from "../ingenic/sidebar-section";
 
 /**
  * Wires the Ingenic layout into Discourse.
  *
- * The navigation is registered as a sidebar section rather than drawn into an
- * outlet. The home page is not drawn here at all: it is a registered homepage,
- * mounted by the plugin at `/`, so it renders on its own route.
+ * The navigation is registered as sidebar sections rather than drawn into an
+ * outlet — three of them, so that the developer resources can carry a heading
+ * while the forum above and the member's own entries below it do not. The home
+ * page is not drawn here at all: it is a registered homepage, mounted by the
+ * plugin at `/`, so it renders on its own route.
  *
  * The footer goes into above-footer, which is where the site's own footer
  * content lands, so it sits where a footer is expected and disappears with the
@@ -31,7 +33,7 @@ import { registerIngenicSidebarSection } from "../ingenic/sidebar-section";
  */
 export default apiInitializer((api) => {
   applyIngenicLayout();
-  registerIngenicSidebarSection(api);
+  registerIngenicSidebarSections(api);
 
   api.headerIcons.add("ingenic-locale", IngenicLocaleSwitcher, {
     before: "user-menu",

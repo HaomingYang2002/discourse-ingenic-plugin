@@ -273,7 +273,7 @@ copy of the category list.
 | Setting | Purpose |
 | --- | --- |
 | `ingenic_enabled` | Master switch |
-| `ingenic_nav_items` | JSON array — sidebar entries, their order, icon, target and visibility |
+| `ingenic_nav_items` | JSON array — sidebar entries: their icon, target, group (`forum` / `resources` / `member`), order within that group and visibility |
 | `ingenic_homepage_blocks` | JSON array — which homepage blocks render and in what order |
 | `ingenic_default_locale` | Fallback locale for documentation, downloads and boards |
 | `ingenic_docs_discussion_category` | Category used for "Discuss in forum" when a page has no linked topic |

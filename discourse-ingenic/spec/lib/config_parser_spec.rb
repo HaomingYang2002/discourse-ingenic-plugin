@@ -37,6 +37,49 @@ describe DiscourseIngenic::ConfigParser do
       expect(described_class.nav_items.first["href"]).to eq("/c/official-announcements")
     end
 
+    it "carries the group each entry belongs to" do
+      SiteSetting.ingenic_nav_items = [
+        { key: "docs", label: "Documentation", href: "/ingenic/docs", section: "resources" },
+        { key: "points", label: "Points", href: "/ingenic/points", section: "member" },
+        { key: "home", label: "Home", href: "/", section: "forum" },
+      ].to_json
+
+      expect(described_class.nav_items.map { |item| item["section"] }).to eq(
+        %w[resources member forum],
+      )
+    end
+
+    it "reads an entry in no group as the forum list" do
+      SiteSetting.ingenic_nav_items = [
+        { key: "home", label: "Home", href: "/" },
+      ].to_json
+
+      expect(described_class.nav_items.first["section"]).to eq("forum")
+    end
+
+    it "reads a group that does not exist as the forum list rather than losing the entry" do
+      SiteSetting.ingenic_nav_items = [
+        { key: "docs", label: "Documentation", href: "/ingenic/docs", section: "resource" },
+        { key: "home", label: "Home", href: "/", section: "Developer Center" },
+      ].to_json
+
+      items = described_class.nav_items
+
+      expect(items.size).to eq(2)
+      expect(items.map { |item| item["section"] }).to eq(%w[forum forum])
+    end
+
+    it "reads a group written with different case or spacing as the group meant" do
+      SiteSetting.ingenic_nav_items = [
+        { key: "docs", label: "Documentation", href: "/ingenic/docs", section: " Resources " },
+        { key: "points", label: "Points", href: "/ingenic/points", section: "MEMBER" },
+      ].to_json
+
+      expect(described_class.nav_items.map { |item| item["section"] }).to eq(
+        %w[resources member],
+      )
+    end
+
     it "degrades to an empty list when the JSON is malformed" do
       SiteSetting.ingenic_nav_items = "{not json"
       expect(described_class.nav_items).to eq([])

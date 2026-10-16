@@ -16,16 +16,25 @@ Discourse core. No other login method is added.
 
 ### Navigation and layout
 
-Discourse's own sidebar is kept whole — the community section, All categories
-and Tags are core's, and so are the show/hide, collapse and filter controls
-around them. The developer area is added *below* them as a first-class sidebar
-section, so the mobile drawer, the section filter, the collapse state and
-active-link handling all come from core rather than being reimplemented.
+Discourse's own sidebar is kept whole — the visitor's own sections, the category
+list and tags are core's, and so are the show/hide, collapse and filter controls
+around them. The Ingenic navigation is added to the same panel as three
+first-class sidebar sections, so the mobile drawer, the section filter, the
+collapse state and active-link handling all come from core rather than being
+reimplemented.
 
-It is registered with `api.addSidebarSection`, which appends to the same panel
-core's own sections render into. Its three entries — Online Documentation, SDK &
-Firmware Downloads, Development Boards — point at `/ingenic/docs`,
-`/ingenic/downloads` and `/ingenic/boards`.
+Three, because the navigation is three things, and the heading is what says so:
+
+| Group (`section`) | Drawn as | Entries |
+| --- | --- | --- |
+| `forum` | a plain list at the top, no heading | New Post (`/new-topic`), Home, Official Announcements, Technical Discussions |
+| `resources` | under the heading *Developer Resources* | Online Documentation, Open Source, SDK & Firmware Downloads, Development Boards |
+| `member` | a plain list at the bottom, no heading | Bounties, Points |
+
+Only the middle group is drawn with a heading. A heading over the topic list
+would be a label on the forum, and one over Bounties and Points would file them
+under the developer resources — which is where they are not: they are what a
+member has earned or set aside.
 
 A link stays highlighted for the whole subtree it points at, so a reader on
 `/ingenic/docs/t-series/t33/2.1.0/overview` still sees Documentation
@@ -35,14 +44,29 @@ An external entry is never highlighted.
 
 Navigation items live in the `ingenic_nav_items` site setting as JSON, so the
 Ingenic team can reorder, relabel, hide or repoint entries from the admin UI.
-Entries may target a category slug, an internal path or an external URL.
+Entries may target a category slug, an internal path or an external URL, and
+carry the group they belong to. An unknown group name is read as `forum`, so a
+typo moves a row rather than losing it; `position` orders entries within their
+group.
+
+Because core renders its own sections around the API-registered ones, "above
+Discourse's own sections" is a stylesheet decision rather than an order of
+registration: `ingenic_nav_order` puts the three groups at the top of the flex
+column (with the sidebar's filter box above them) or leaves them where they
+land.
 
 Theme settings control the sidebar's width and which side it renders on, whether
-the Ingenic section sits above or below Discourse's own sections, and an
-optional heading above it. The position flip re-points the container grid's
-areas and is scoped to the `md` breakpoint and up, because below that core takes
-the sidebar out of the grid entirely and shows it as a drawer — there is no
-column to move.
+the three groups sit above or below Discourse's own sections, and the heading
+over the middle group (`ingenic_nav_title`, default *Developer Resources* /
+「开发者资源」). The position flip re-points the container grid's areas and is
+scoped to the `md` breakpoint and up, because below that core takes the sidebar
+out of the grid entirely and shows it as a drawer — there is no column to move.
+
+Two of the icons the navigation draws are not in Discourse's own sprite subset:
+`microchip` (Development Boards) and `bullhorn` (Official Announcements). Both
+are declared in the plugin with `register_svg_icon`, because a list that lives in
+the theme's source is not collected for the sprite the way an icon named in a
+site setting is.
 
 ### Homepage
 
@@ -296,11 +320,24 @@ are what still has to be run on a real instance.
 ### Theme
 
 - [ ] theme installs from git and compiles without JS or SCSS errors
-- [ ] the Developer Center section appears below All categories, and in the mobile drawer
+- [ ] the sidebar shows New Post, Home, Official Announcements and Technical
+      Discussions; then **Developer Resources** over Online Documentation, Open
+      Source, SDK & Firmware Downloads and Development Boards; then Bounties and
+      Points with no heading of their own
+- [ ] only the Developer Resources group is drawn with a heading — the forum list
+      above it and Bounties/Points below it are plain lists
+- [ ] the Development Boards row draws a chip icon and the Official Announcements
+      row draws a megaphone (both need `register_svg_icon` in the plugin)
+- [ ] New Post opens the composer, and asks a signed-out visitor to sign in
+- [ ] all three groups appear in the mobile drawer
 - [ ] `ingenic_sidebar_position=right` moves the sidebar, above `md` only
 - [ ] `ingenic_sidebar_width` changes the column width
-- [ ] `ingenic_nav_order=first` puts the Ingenic section above Discourse's sections
-- [ ] reordering `ingenic_nav_items` reorders the sidebar after a reload
+- [ ] `ingenic_nav_order=first` puts the three groups above Discourse's own
+      sections, with the sidebar's filter box above them all
+- [ ] reordering `ingenic_nav_items` reorders the sidebar after a reload, within
+      the group each entry names
+- [ ] an entry whose `section` is misspelled appears in the forum list rather than
+      disappearing
 - [ ] an external nav entry is never highlighted; a docs entry stays highlighted
       on nested documentation pages
 - [ ] homepage blocks render in the configured order

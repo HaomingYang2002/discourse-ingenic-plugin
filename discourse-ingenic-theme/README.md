@@ -9,12 +9,19 @@ built from Discourse's public theme APIs so it keeps working across upgrades.
 
 ## What it provides
 
-- a **Developer Center** group in the sidebar, registered as a real Discourse
-  sidebar section, so it inherits the mobile drawer, the section filter, the
-  collapse state and active-link handling that core already implements — and so
-  it can sit inside the sidebar rather than beside it. Discourse's own Topics,
-  More and All categories sections are left exactly as they are.
-- admin-configurable navigation items (label, icon, target, order, visibility)
+- the sidebar's Ingenic navigation, in three groups: the forum at the top
+  (start a post, the front page, the forum's own sections), the developer
+  resources under their own heading (Documentation, Open Source, Downloads,
+  Development Boards), and what a member has earned or set aside at the bottom
+  (Bounties, Points). Only the middle group is drawn with a heading; the outer
+  two are plain lists, which is what keeps Bounties and Points out of the
+  developer resources. Each group is registered as a real Discourse sidebar
+  section, so they inherit the mobile drawer, the section filter, the collapse
+  state and active-link handling that core already implements — and sit inside
+  the sidebar rather than beside it. Discourse's own categories, tags and
+  visitor-made sections are left exactly as they are.
+- admin-configurable navigation items (label, icon, target, group, order,
+  visibility)
 - a sidebar that can be moved to either side and resized from theme settings
 - an admin-configurable homepage assembled from blocks
 - a documentation reader: a two-level product picker (series, then a flyout of
@@ -65,8 +72,8 @@ color scheme.
 | `ingenic_locales` | Languages the header's language switcher offers, in order. Hidden while fewer than two are listed. |
 | `ingenic_sidebar_width` | Width of the navigation sidebar on desktop, in pixels |
 | `ingenic_sidebar_position` | `left` or `right` |
-| `ingenic_nav_order` | `first` puts the Ingenic navigation above Discourse's own sidebar sections |
-| `ingenic_nav_title` | Optional heading above the navigation entries; empty renders a plain list |
+| `ingenic_nav_order` | `first` puts the Ingenic navigation above Discourse's own sidebar sections (categories, tags, the visitor's own) |
+| `ingenic_nav_title` | Heading over the developer-resources group; empty reads *Developer Resources* (开发者资源 in Chinese). The two lists around it are heading-less by design. |
 | `ingenic_hero_title` | Optional headline above the homepage blocks |
 | `ingenic_hero_subtitle` | Optional supporting line under the headline |
 
@@ -133,20 +140,29 @@ Navigation item shape:
   "label": "Documentation",
   "icon": "book",
   "href": "/ingenic/docs",
-  "position": 3,
+  "section": "resources",
+  "position": 4,
   "enabled": true,
   "external": false
 }
 ```
 
+`section` is which of the three sidebar groups the entry is drawn in: `forum`
+(the plain list at the top), `resources` (the group under the theme's heading) or
+`member` (the plain list at the bottom). `position` orders entries within their
+own group; the groups themselves always come in that order. An unknown group name
+is read as `forum`, so a typo moves a row rather than losing it.
+
 Use `"category": "technical-discussions"` instead of `href` to point at a
 Discourse category; it resolves to the category route automatically.
 
-Left empty, the theme ships its own list: Documentation, Downloads, Development
-Boards, Bounties and Points. A configured list **replaces** that one wholesale
-rather than merging with it, so a site that configured its navigation before the
-bounty board existed has no Bounties entry and will not grow one — add it, or
-clear the setting.
+Left empty, the theme ships its own list in the same three groups:
+New Post, Home, Official Announcements, Technical Discussions · Online
+Documentation, Open Source, SDK & Firmware Downloads, Development Boards ·
+Bounties, Points. A configured list **replaces** that one wholesale rather than
+merging with it, so a site that configured its navigation before the bounty board
+existed has no Bounties entry and will not grow one — add it, or clear the
+setting.
 
 A link stays highlighted for the whole subtree it points at, so
 `/ingenic/docs/t32pro/2.1.0/overview` still shows Documentation as active.
