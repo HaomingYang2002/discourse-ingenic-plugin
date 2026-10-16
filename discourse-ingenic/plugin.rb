@@ -30,6 +30,7 @@ require_relative "lib/ingenic/download_storage"
 require_relative "lib/ingenic/official_flair"
 require_relative "lib/ingenic/points"
 require_relative "lib/ingenic/point_events"
+require_relative "lib/ingenic/bounties"
 require_relative "lib/ingenic/config_export"
 
 # A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
@@ -57,17 +58,21 @@ require_relative "app/models/ingenic_footer_link"
 require_relative "app/models/ingenic_point_rule"
 require_relative "app/models/ingenic_point_entry"
 require_relative "app/models/ingenic_point_balance"
+require_relative "app/models/ingenic_bounty"
 
 require_relative "app/serializers/ingenic_version_serializer"
 require_relative "app/serializers/ingenic_product_serializer"
 require_relative "app/serializers/ingenic_page_serializer"
 require_relative "app/serializers/ingenic_page_list_serializer"
 require_relative "app/serializers/ingenic_board_serializer"
+require_relative "app/serializers/ingenic_bounty_serializer"
+require_relative "app/serializers/ingenic_bounty_topic_serializer"
 
 require_relative "app/mailers/ingenic_download_mailer"
 require_relative "app/jobs/regular/ingenic_download_request_email"
 require_relative "app/jobs/regular/ingenic_download_decision_email"
 require_relative "app/jobs/regular/ingenic_official_flair_sync"
+require_relative "app/jobs/scheduled/ingenic_bounty_expiry"
 
 require_relative "app/controllers/admin/ingenic/base_controller"
 require_relative "app/controllers/admin/ingenic_controller"
@@ -77,6 +82,7 @@ require_relative "app/controllers/ingenic_boards_controller"
 require_relative "app/controllers/ingenic_site_controller"
 require_relative "app/controllers/ingenic_points_controller"
 require_relative "app/controllers/ingenic_home_controller"
+require_relative "app/controllers/ingenic_bounties_controller"
 end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
@@ -164,6 +170,37 @@ after_initialize do
   add_to_serializer(:current_user, :can_manage_ingenic_content) do
     scope.can_manage_ingenic_content?
   end
+
+  # The 高分悬赏 on this topic — standing or settled — so the topic page can
+  # draw its banner without a second request. One lookup against the index on
+  # `topic_id`, and null — rather than absent — for the overwhelming majority of
+  # topics, which have no bounty and never will. The front end checks for the
+  # value; the attribute is always there when bounties are switched on, so the
+  # browser never has to tell "no bounty" from "the server did not say".
+  #
+  # Serialized here rather than returned as the row, so the page gets the shape
+  # `IngenicBountiesController` sends and not whatever the table happens to hold.
+  #
+  # The `include_condition` asks only about bounties: whether this plugin is on
+  # at all is already part of `add_to_serializer`, which leaves the attribute out
+  # when it is off.
+  add_to_serializer(
+    :topic_view,
+    :ingenic_bounty,
+    include_condition: -> { SiteSetting.ingenic_bounties_enabled },
+  ) do
+    bounty = Ingenic::Bounties.for_topic(object.topic)
+    bounty && IngenicBountySerializer.new(bounty, scope: scope, root: false).as_json
+  end
+
+  # Whether to offer the viewer the control that opens one. Answered here rather
+  # than worked out in the browser, which would be a guess about permissions the
+  # server has not granted yet.
+  add_to_serializer(
+    :topic_view,
+    :can_open_ingenic_bounty,
+    include_condition: -> { SiteSetting.ingenic_bounties_enabled },
+  ) { scope.can_open_ingenic_bounty?(object.topic) }
 
   # The front page, offered to Discourse's own `default_homepage` setting.
   #
@@ -306,5 +343,15 @@ after_initialize do
     # by contributing and spent on a download, and neither happens through this
     # address.
     get "/ingenic/points", to: "ingenic_points#show", as: :ingenic_points
+
+    # 高分悬赏. Two writes and no third: accepting an answer — which is what pays
+    # a bounty — is Discourse's own accepted answer and has no endpoint here, so
+    # there is no second way for the forum to be told which answer won.
+    #
+    # `:id` on the withdrawal is the bounty's, not the topic's: a topic can have
+    # a settled bounty and a standing one, and the withdrawal has to name which.
+    get "/ingenic/bounties", to: "ingenic_bounties#show", as: :ingenic_bounties
+    post "/ingenic/bounties", to: "ingenic_bounties#create", as: :ingenic_bounty_create
+    post "/ingenic/bounties/:id/cancel", to: "ingenic_bounties#cancel", as: :ingenic_bounty_cancel
   end
 end

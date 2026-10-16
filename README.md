@@ -5,7 +5,7 @@ First version of the Ingenic English Discourse forum implementation.
 This repository contains two independent Discourse installable pieces:
 
 - `discourse-ingenic/` — plugin: documentation products, versions, pages,
-  downloads, development boards, a points ledger and JSON endpoints.
+  downloads, development boards, a points ledger, bounties and JSON endpoints.
 - `discourse-ingenic-theme/` — theme: Ingenic layout, native Discourse sidebar
   navigation, homepage blocks and documentation UI.
 
@@ -24,8 +24,10 @@ admin UI as a theme zip.
 ## Content
 
 Documentation, download, development-board and points records live in the
-plugin's own tables. Normal editing is available from **Admin → Plugins →
-Ingenic**; the Rails console workflow in
+plugin's own tables. Bounties (高分悬赏) are opened by members on their own topics
+rather than by the team, so they have no admin screen: the points screen shows how
+much is set aside behind the standing offers. Normal editing is available from
+**Admin → Plugins → Ingenic**; the Rails console workflow in
 [`discourse-ingenic/docs/seeding.md`](discourse-ingenic/docs/seeding.md) — or its
 Chinese counterpart
 [`seeding.zh-CN.md`](discourse-ingenic/docs/seeding.zh-CN.md) — remains useful

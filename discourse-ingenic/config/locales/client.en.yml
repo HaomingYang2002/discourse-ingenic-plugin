@@ -237,6 +237,7 @@ en:
             spent: "Spent on downloads"
             reversed: "Taken back with a deleted post"
             adjusted: "Added or deducted by hand"
+            escrowed: "Set aside for bounties"
             holders: "Accounts holding points"
           rules_title: "What earns points"
           rules_hint: "Each action the forum reports, and what one occurrence is worth. Setting a number to zero, or switching a rule off, stops it earning without losing the entries already written under it — which is why there is no delete here. The label is what the ledger writes down at the time, so renaming it changes what the next one is worth rather than what last year's say."

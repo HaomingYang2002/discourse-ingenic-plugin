@@ -144,3 +144,54 @@ plugins:
   ingenic_points_exclude_staff:
     default: true
     client: false
+
+  # 高分悬赏: what a member may offer for an answer on their own topic, and how
+  # long the offer stands.
+  #
+  # A bounty is paid out of the asker's own points, which are set aside the
+  # moment the offer is opened. So a bounty cannot be opened on credit, and the
+  # points behind one cannot be spent on a download while it stands — they are
+  # out of the balance, and the bounty row is the promise that they come back.
+  #
+  # Accepting an answer is what pays it. There is no separate control for that:
+  # the topic author's own ✓ marks the answer and releases the points in the same
+  # motion, which is the only way the two can be guaranteed to agree about which
+  # answer was paid for. Un-accepting an answer does not take the points back —
+  # see Ingenic::Bounties for why.
+  #
+  # Two things have to be true for the feature to be offered at all: points have
+  # to be on, because an escrow is a movement in the ledger, and discourse-solved
+  # has to be installed, because a bounty nobody can settle is a promise the
+  # forum has no way to keep. The category also has to allow accepted answers;
+  # that is checked per topic rather than here.
+  #
+  # Switching this off stops new offers being opened. It does not strand the ones
+  # already standing: the expiry job goes on closing and refunding them, because
+  # points in escrow belong to a member whether or not the forum is still selling
+  # the feature.
+  ingenic_bounties_enabled:
+    default: true
+    client: false
+
+  # The smallest offer a bounty may be. A floor rather than nothing, because a
+  # question with five points on it is not worth anybody's afternoon, and a board
+  # full of those buries the ones that are.
+  ingenic_bounty_min_points:
+    default: 50
+    client: false
+
+  # The largest. A ceiling so that one member cannot put a question out of
+  # everybody else's reach — a bounty is a way of asking for attention, and there
+  # is a size past which it is a way of buying it.
+  ingenic_bounty_max_points:
+    default: 5000
+    client: false
+
+  # How long an offer stands before it is closed and the points go back to their
+  # owner. A fortnight is long enough for a question to find somebody who knows
+  # the answer, and short enough that points are not parked in escrow for a
+  # season. Setting this to 0 closes every new bounty on the next run of the
+  # expiry job, which is a way of switching the feature off that still refunds.
+  ingenic_bounty_expiry_days:
+    default: 14
+    client: false

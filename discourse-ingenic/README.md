@@ -17,6 +17,9 @@ and adds a developer area below them:
   application/purchase page.
 - **Points**, earned by contributing and spendable on a download, kept in an
   append-only ledger with editable rules and a member-facing page of their own.
+- **高分悬赏 (bounties)**: a member sets points aside on their own question and
+  pays them in full to whoever writes the answer they accept, with a board of
+  what is on offer across the forum.
 - **Scoped management**: a manager can be granted one product family and edit
   only that, enforced on the server for every write.
 - Read-only JSON endpoints under `/ingenic` that the companion theme renders,
@@ -70,6 +73,55 @@ Nothing here is allowed to fail a forum action: the handlers that hook into
 posting rescue everything and report to the log, because losing a point is a
 smaller harm than losing the post that earned it.
 
+## Bounties (高分悬赏)
+
+A member sets points aside on **their own** topic and pays them, in full, to
+whoever writes the answer they accept. What that buys is a question with a price
+on it: answering a hard one costs somebody an afternoon, and a board of what is
+on offer is what makes spending one worth it.
+
+The points are **escrowed, not promised**. Opening a bounty takes them off the
+asker's balance in the same transaction, as a negative ledger entry carrying the
+offer as its subject, so what has been offered cannot be spent on a download
+while it stands. Checking the balance at settlement time instead would let one
+member offer the same thousand points on five questions and settle whichever
+happened to be answered first.
+
+| State | What it means | The ledger |
+| --- | --- | --- |
+| `open` | The offer stands | Off the asker's balance (`bounty`) |
+| `accepted` | An answer was accepted | Paid to the answerer in full (`bounty_award`) |
+| `cancelled` | The asker withdrew it | Returned to the asker (`bounty_refund`) |
+| `expired` | Nobody answered in time | Returned to the asker (`bounty_refund`) |
+
+`open` is the only state a bounty leaves, and it never returns to it: one
+standing offer per topic, enforced by a partial unique index as well as by a
+check, so two forms submitted together cannot both open one. A settled row stays
+where it is, and the topic page draws it — what an answer was worth is half of
+what makes the board worth reading. Which answer won and who was paid are read
+off the accepted post rather than stored twice.
+
+**Accepting an answer is the payment, and it is final.** The ✓ is
+discourse-solved's own, so the bounty follows it: accepting marks the topic
+solved, closes the offer and moves the points in one transaction, under a row
+lock that makes the same bounty impossible to pay twice however many acceptances
+arrive at once. Unmarking the answer afterwards does not claw the points back.
+The answerer may have spent them, and taking them from somebody who did nothing
+wrong is a worse rule than living with an unmarked answer — an administrator can
+adjust two accounts by hand, but nobody can repair a state the software will not
+leave. Staff can accept on the asker's behalf; being the asker is what the offer
+is *for*, not a requirement of the mechanism.
+
+An offer nobody answers comes back on its own: a scheduled job refunds every open
+bounty past its deadline (`ingenic_bounty_expiry_days`, 14 by default), hourly
+rather than to the minute, since the points are in escrow either way. The asker
+may withdraw it before that, which is the same refund under a different reason.
+
+The feature needs the points system and discourse-solved, and is off if either is
+off. Switching bounties off stops the forum taking new offers and still lets the
+standing ones expire and refund — switching it off must not strand anybody's
+points.
+
 ## Requirements
 
 - Discourse `2026.10.0-latest` or later (developed against this version)
@@ -108,6 +160,12 @@ screen names accounts and moves their standing, and permissions decides who else
 may edit content — none of which is filed under a product or a board, so there is
 no scope an administrator could grant over it even if they wanted to.
 
+Bounties have no screen of their own, because nothing about them is an
+administrator's decision: members open them on their own topics and settle them
+by accepting an answer. What an administrator needs from them is on the points
+screen — how much is set aside behind the standing offers — and a payment that
+went wrong is repaired there, by adjusting the two accounts.
+
 The documentation screen edits the contents tree, decides which node an article
 belongs to, and edits articles under any version. A version that has not edited
 a page inherits it from the version before, and the screen says so: each page
@@ -142,8 +200,11 @@ Public, read-only except where noted:
 | POST | `/ingenic/downloads/:id/request` | Applies for an access-restricted resource (signed in) |
 | GET | `/ingenic/boards` | Published development boards; accepts `series` and `chip` |
 | GET | `/ingenic/points` | The reader's own balance, the price list and their own history |
+| GET | `/ingenic/bounties` | The standing offers, richest first, with the range a new one may be and the reader's balance |
+| POST | `/ingenic/bounties` | Opens an offer on one of the reader's own topics (signed in) |
+| POST | `/ingenic/bounties/:id/cancel` | Withdraws a standing offer and refunds it (signed in) |
 
-The two POSTs need a signed-in account; everything else is readable signed out.
+The POSTs need a signed-in account; everything else is readable signed out.
 Each GET answers two ways — JSON when the frontend asks for it with
 `Accept: application/json`, and the application shell when a visitor opens or
 refreshes the address directly. That is what makes a documentation or download
@@ -209,6 +270,10 @@ copy of the category list.
 | `ingenic_developer_form_fields` | JSON array describing the developer information form |
 | `ingenic_points_enabled` | Master switch for the points system; off leaves the ledger intact |
 | `ingenic_points_exclude_staff` | Whether administrators and moderators earn points |
+| `ingenic_bounties_enabled` | Master switch for bounties. Off stops new offers and still refunds the standing ones |
+| `ingenic_bounty_min_points` | The smallest offer a bounty may be |
+| `ingenic_bounty_max_points` | The largest offer a bounty may be |
+| `ingenic_bounty_expiry_days` | Days an offer stands before it is closed and refunded |
 
 The three JSON settings accept the shapes documented inline in
 `config/settings.yml`. The locale setting offers only the languages this
@@ -231,6 +296,7 @@ ingenic_permissions       scoped grants to a user or group
 ingenic_point_rules       what each action is worth, and what to call it
 ingenic_point_entries     the ledger: one append-only row per movement
 ingenic_point_balances    a running total per account, derived from the entries
+ingenic_bounties          one member's offer on one topic, and what became of it
 ```
 
 `ingenic_doc_pages` holds one row per page **per version it changed in**, not

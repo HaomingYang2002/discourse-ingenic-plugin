@@ -23,6 +23,12 @@ const DEFAULT_ITEMS = [
     href: "/ingenic/boards",
   },
   {
+    key: "bounties",
+    icon: "gift",
+    labelKey: "ingenic.nav.bounties",
+    href: "/ingenic/bounties",
+  },
+  {
     key: "points",
     icon: "star",
     labelKey: "ingenic.nav.points",

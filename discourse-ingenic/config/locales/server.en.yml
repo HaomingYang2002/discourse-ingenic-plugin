@@ -2,7 +2,7 @@ en:
   site_settings:
     ingenic_enabled: "Enable the Ingenic community extension (documentation versioning, downloads, development boards)."
     ingenic_nav_items: "Left navigation items as a JSON array. Controls label, icon, target, order and visibility."
-    ingenic_homepage_blocks: "Homepage blocks as a JSON array. Controls which blocks render and in what order. Types: categories (the forum's sections as a grid, with an entry to all of them), announcements, discussions, downloads, boards, promotions, html. Left empty, the home page ships the section grid on its own."
+    ingenic_homepage_blocks: "Homepage blocks as a JSON array. Controls which blocks render and in what order. Types: categories (the forum's sections as a grid, with an entry to all of them), bounties (the richest standing 高分悬赏, drawn only while there are some), announcements, discussions, downloads, boards, promotions, html. Left empty, the home page ships the section grid and the bounty panel on its own."
     ingenic_default_locale: "Locale used when documentation has no entry in the reader's language. Only languages this site can serve are offered; content rows must use the same code (zh_CN, not zh-CN)."
     ingenic_docs_discussion_category: "Category slug used for the 'Discuss in forum' link when a documentation page has no linked topic."
     ingenic_download_storage_path: "Directory holding uploaded SDK and firmware files. Empty uses <app>/ingenic-downloads. Must be outside public/."
@@ -11,6 +11,10 @@ en:
     ingenic_official_groups: "Groups whose members wear an official identity badge beside their username. A member already wearing a badge of their own keeps it."
     ingenic_points_enabled: "Award points for contributions, and let a resource cost points to unlock. Switching it off keeps every balance where it is."
     ingenic_points_exclude_staff: "Administrators and moderators do not earn points. A like from one still counts for the member who wrote the post."
+    ingenic_bounties_enabled: "Let a member offer points on their own topic, paid to whoever writes the answer they accept. Needs points and the solved plugin. Switching it off stops new offers and still refunds the standing ones."
+    ingenic_bounty_min_points: "The smallest offer a bounty may be."
+    ingenic_bounty_max_points: "The largest offer a bounty may be."
+    ingenic_bounty_expiry_days: "Days an offer stands before it is closed and the points are returned to the asker."
 
   ingenic:
     errors:
@@ -50,6 +54,26 @@ en:
       reversed_solution: "The accepted answer was unmarked"
       manual_reason: "Adjusted by an administrator"
       unlocked: "Unlocked %{resource}"
+
+    # 高分悬赏. The first three are written into the ledger as the reason a
+    # movement happened, so they read as sentences a year later, next to rows
+    # about posts and downloads that no longer exist. The rest are what a member
+    # is told when the forum will not do what they asked.
+    bounties:
+      escrow_reason: "Set aside for a bounty (%{points} points)"
+      award_reason: "Bounty paid for the accepted answer (%{points} points)"
+      cancel_reason: "Bounty withdrawn, points returned"
+      expire_reason: "Bounty expired unanswered, points returned"
+      cancelled: "The bounty has been withdrawn and your points are back."
+      no_topic: "That topic does not exist."
+      not_allowed: "You cannot open a bounty on that topic."
+      unavailable: "This forum is not taking bounties."
+      too_small: "A bounty has to be at least %{min} points."
+      too_large: "A bounty cannot be more than %{max} points."
+      taken: "That topic already has a bounty standing."
+      insufficient: "You do not have enough points to set that aside."
+      already: "That bounty has already been dealt with."
+      not_open: "That bounty is not standing any more."
 
   # Bodies and subjects for the download centre's emails. Email::MessageBuilder
   # reads these keys by name, so they have to live under the template name the

@@ -61,6 +61,14 @@ export default class IngenicPointsManager extends Component {
         label: i18n("admin.ingenic.points.totals.adjusted"),
         value: this.totals.adjusted,
       },
+      // Points behind a standing 悬赏 are not in anybody's balance — they were
+      // taken off the asker when the offer was opened — so without this figure
+      // the four above and the balances would look like they disagreed.
+      {
+        key: "escrowed",
+        label: i18n("admin.ingenic.points.totals.escrowed"),
+        value: this.totals.escrowed,
+      },
       { key: "holders", label: i18n("admin.ingenic.points.totals.holders"), value: this.totals.holders },
     ].map((row) => ({ ...row, value: row.value ?? 0 }));
   }

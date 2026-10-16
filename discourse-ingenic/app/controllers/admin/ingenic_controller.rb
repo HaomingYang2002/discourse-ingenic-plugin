@@ -991,6 +991,12 @@ module Admin
         "reversed" => (by_event[IngenicPointEntry::REVERSAL] || 0).abs,
         "spent" => (by_event[IngenicPointEntry::DOWNLOAD] || 0).abs,
         "adjusted" => by_event[IngenicPointEntry::MANUAL] || 0,
+        # Not a movement but a state: points currently set aside behind standing
+        # 悬赏. The bounty events themselves net to nothing — every escrow is
+        # either released or returned, and the two add up to what was taken — so
+        # they are not a bucket here. This is the figure an administrator
+        # actually wants, which is how much is promised right now.
+        "escrowed" => IngenicBounty.live.sum(:points),
         "holders" => IngenicPointBalance.where("points > 0").count,
       }
     end

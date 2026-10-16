@@ -1,4 +1,5 @@
 import { apiInitializer } from "discourse/lib/api";
+import IngenicBounty from "../components/ingenic-bounty";
 import IngenicFooter from "../components/ingenic-footer";
 import IngenicLocaleSwitcher from "../components/ingenic-locale-switcher";
 import { applyIngenicLayout } from "../ingenic/layout";
@@ -22,6 +23,11 @@ import { registerIngenicSidebarSection } from "../ingenic/sidebar-section";
  * and for a signed-in one it sits immediately left of the avatar. It renders
  * nothing at all unless more than one language is configured, so a
  * single-language forum does not carry a control with one option in it.
+ *
+ * The 高分悬赏 banner goes above the posts, which is the top of the question
+ * itself: what an answer here is worth is part of reading the question, and it
+ * belongs where somebody decides to answer rather than at the foot of the page.
+ * Like the footer, it decides what to draw from the outlet's own payload.
  */
 export default apiInitializer((api) => {
   applyIngenicLayout();
@@ -31,5 +37,6 @@ export default apiInitializer((api) => {
     before: "user-menu",
   });
 
+  api.renderInOutlet("topic-above-posts", IngenicBounty);
   api.renderInOutlet("above-footer", IngenicFooter);
 });

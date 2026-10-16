@@ -1,8 +1,8 @@
 # discourse-ingenic-theme
 
 Theme for the Ingenic community forum. Pairs with the `discourse-ingenic`
-plugin, which supplies the documentation, download and development board data
-this theme renders.
+plugin, which supplies the documentation, download, development board and bounty
+data this theme renders.
 
 It is deliberately **not** a copy of any existing Discourse theme. The layout is
 built from Discourse's public theme APIs so it keeps working across upgrades.
@@ -28,6 +28,11 @@ built from Discourse's public theme APIs so it keeps working across upgrades.
   application links
 - a points page at `/ingenic/points`, showing the reader their balance, what the
   forum pays for and their own history — read-only, and nobody else's rows
+- a **高分悬赏** board at `/ingenic/bounties`: what is on offer across the forum,
+  richest first, with the question, the amount and how long is left. On the topic
+  itself the same feature is a banner above the posts — the standing offer, with
+  a way to withdraw it for whoever may, or, once an answer has been accepted,
+  what was paid and to whom
 - English strings today, structured so more locales can be added later
 
 ## Installation
@@ -138,9 +143,10 @@ Use `"category": "technical-discussions"` instead of `href` to point at a
 Discourse category; it resolves to the category route automatically.
 
 Left empty, the theme ships its own list: Documentation, Downloads, Development
-Boards and Points. A configured list **replaces** that one wholesale rather than
-merging with it, so a site that configured its navigation before Points existed
-has no Points entry and will not grow one — add it, or clear the setting.
+Boards, Bounties and Points. A configured list **replaces** that one wholesale
+rather than merging with it, so a site that configured its navigation before the
+bounty board existed has no Bounties entry and will not grow one — add it, or
+clear the setting.
 
 A link stays highlighted for the whole subtree it points at, so
 `/ingenic/docs/t32pro/2.1.0/overview` still shows Documentation as active.
@@ -160,7 +166,7 @@ Homepage block shape:
 ```
 
 Supported block types: `announcements`, `discussions`, `downloads`, `boards`,
-`promotions`, `categories`, `html`.
+`bounties`, `promotions`, `categories`, `html`.
 
 The `categories` block is the one that makes the page a front page rather than a
 digest: it lists the forum's sections as cards, each linking into its category.
@@ -169,10 +175,16 @@ ones to show, in the order to show them; leave that out and it takes the busiest
 top-level sections up to `limit` (default 8). `"show_all": false` removes the
 **All sections** link that otherwise sits at the end of the block's heading.
 
-Left empty, the homepage shows the `categories` block and nothing else — the
-section grid alone, which is what a front page wants before anyone has decided
-which parts of the forum deserve a row. Unlike the navigation list, the fallback
-is a fallback: a configured list of blocks replaces it.
+The `bounties` block lists the richest standing offers, up to `limit` (default
+5), each linking into the question that carries it. It draws nothing at all while
+nothing is on offer — no heading, no empty row — which is what lets it sit on the
+front page of a forum that has not taken to bounties yet.
+
+Left empty, the homepage shows the `categories` block with the `bounties` panel
+underneath: the section grid, which is what a front page wants before anyone has
+decided which parts of the forum deserve a row, plus the one block that costs
+nothing to leave on. Unlike the navigation list, the fallback is a fallback: a
+configured list of blocks replaces it.
 
 ## The home page
 

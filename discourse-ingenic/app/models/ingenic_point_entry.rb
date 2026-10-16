@@ -14,13 +14,26 @@ class IngenicPointEntry < ActiveRecord::Base
 
   # Movements that are not one of the earning rules.
   #
-  # manual    an administrator adjusting an account, with a note
-  # download  a resource unlocked by spending points
-  # reversal  an award taken back because the post or the like behind it went
-  #           away
+  # manual         an administrator adjusting an account, with a note
+  # download       a resource unlocked by spending points
+  # reversal       an award taken back because the post or the like behind it
+  #                went away
+  # bounty         points set aside by opening a 高分悬赏 — negative, and on the
+  #                asker: the escrow leaves their balance so it cannot be spent
+  #                elsewhere while the offer stands
+  # bounty_award   the escrow released to the answerer
+  # bounty_refund  the escrow returned to the asker, because they withdrew the
+  #                offer or because nobody answered in time
+  #
+  # The three bounty movements all carry the bounty row as their subject, which
+  # is what makes each of them recordable exactly once: the same release cannot
+  # be written twice, and neither can the refund that follows a withdrawal.
   MANUAL = "manual"
   DOWNLOAD = "download"
   REVERSAL = "reversal"
+  BOUNTY = "bounty"
+  BOUNTY_AWARD = "bounty_award"
+  BOUNTY_REFUND = "bounty_refund"
 
   belongs_to :user
   belongs_to :awarded_by, class_name: "User", optional: true

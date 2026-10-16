@@ -75,7 +75,22 @@ module Ingenic
       complain(:like_destroyed, e)
     end
 
+    # An answer was accepted, and two separate things follow.
+    #
+    # The forum pays the answerer for answering — that is the rule, and who earns
+    # is `earns?` below. A 高分悬赏 on the topic is released to them as well, and
+    # that is not the forum's money: it is points the asker set aside, so it goes
+    # to whoever wrote the accepted answer whether or not the forum would have
+    # paid them for writing it.
+    #
+    # Each is guarded separately so that a bounty which cannot be settled does
+    # not cost the answerer the points the forum owes them, and neither of them
+    # can fail the acceptance itself.
     def solution_accepted(post)
+      return if post.nil?
+
+      settle_bounty(post)
+
       return unless awardable_post?(post)
 
       Ingenic::Points.award(
@@ -87,8 +102,24 @@ module Ingenic
       complain(:solution_accepted, e)
     end
 
+    # Unaccepting does not take a bounty back. What a bounty paid for has been
+    # paid for, and the reasoning is written out at Ingenic::Bounties.settle_for
+    # — the short version is that the forum's own rule can be reversed and
+    # re-earned while a released escrow can only be reversed once.
+    def settle_bounty(post)
+      Ingenic::Bounties.settle_for(post)
+    rescue StandardError => e
+      complain(:bounty_settlement, e)
+    end
+
     # Only fires when discourse-solved is in play. Registering it costs nothing
     # when it is not, which is why the plugin does not have to know.
+    #
+    # The forum's own award is taken back and a bounty is not: the two are
+    # different kinds of money. Points the forum gave for answering can be given
+    # again — and are, if the answer is accepted once more. Points a member set
+    # aside for an answer have already changed hands, and the reasoning for
+    # leaving them there is at Ingenic::Bounties.settle_for.
     def solution_unaccepted(post)
       return if post.nil?
 

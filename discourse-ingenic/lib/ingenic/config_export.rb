@@ -10,11 +10,11 @@ module Ingenic
   # means typing all of it a second time. That is the whole reason this exists.
   #
   # What is deliberately absent: anything a member produced. Point balances and
-  # entries, download requests and grants, developer profiles and download logs
-  # are a record of what people did, and one of those tables holds personal
-  # data about them. A copy of those is a database dump, which has a different
-  # lifetime and a different place to be kept, and is not something an admin
-  # should be able to email around as a YAML file.
+  # entries, bounties, download requests and grants, developer profiles and
+  # download logs are a record of what people did, and one of those tables holds
+  # personal data about them. A copy of those is a database dump, which has a
+  # different lifetime and a different place to be kept, and is not something an
+  # admin should be able to email around as a YAML file.
   #
   # Import is an upsert by natural key, and it never deletes. A row that exists
   # in the forum but not in the file stays where it is: the file says what the

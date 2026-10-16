@@ -6,6 +6,7 @@ import IngenicBlockCategories from "./ingenic-block-categories";
 import IngenicBlockTopics from "./ingenic-block-topics";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
+import IngenicBlockBounties from "./ingenic-block-bounties";
 import IngenicPromotions from "./ingenic-promotions";
 import { i18n } from "discourse-i18n";
 
@@ -19,13 +20,21 @@ const BLOCK_COMPONENTS = {
   discussions: IngenicBlockTopics,
   downloads: IngenicBlockDownloads,
   boards: IngenicBlockBoards,
+  bounties: IngenicBlockBounties,
 };
 
 // What the page shows before anyone has configured it. A front page made of
 // nothing but a banner is not a front page, and the sections grid is the one
 // block that needs no decision from an editor to be worth reading. Configured
 // blocks replace this list wholesale, the way the navigation setting does.
-const DEFAULT_BLOCKS = [{ type: "categories", position: 0 }];
+//
+// The bounty panel is here because it draws nothing while nothing is on offer:
+// it is a default that costs a forum with no bounties nothing, and the one
+// front-page block whose content the members produce themselves.
+const DEFAULT_BLOCKS = [
+  { type: "categories", position: 0 },
+  { type: "bounties", position: 1 },
+];
 
 /**
  * The home page.
@@ -74,6 +83,7 @@ export default class IngenicHomepage extends Component {
         <a href="/ingenic/docs">{{dIcon "book"}}{{i18n (themePrefix "ingenic.nav.docs")}}</a>
         <a href="/ingenic/downloads">{{dIcon "download"}}{{i18n (themePrefix "ingenic.nav.downloads")}}</a>
         <a href="/ingenic/boards">{{dIcon "microchip"}}{{i18n (themePrefix "ingenic.nav.boards")}}</a>
+        <a href="/ingenic/bounties">{{dIcon "gift"}}{{i18n (themePrefix "ingenic.nav.bounties")}}</a>
         <a href="/ingenic/points">{{dIcon "star"}}{{i18n (themePrefix "ingenic.nav.points")}}</a>
       </nav>
 

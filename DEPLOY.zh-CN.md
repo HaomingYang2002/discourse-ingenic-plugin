@@ -121,6 +121,10 @@ discourse-ingenic-theme.zip
 | `ingenic_official_groups` | 需要显示官方认证图标的群组名称，例如 `admins` |
 | `ingenic_points_enabled` | 开启；如果还没准备好上线可以关闭 |
 | `ingenic_points_exclude_staff` | 开启 |
+| `ingenic_bounties_enabled` | 开启；在允许成员挂悬赏之后再打开 |
+| `ingenic_bounty_min_points` | 10 |
+| `ingenic_bounty_max_points` | 1000 |
+| `ingenic_bounty_expiry_days` | 14 |
 
 `ingenic_download_storage_path` 决定上传的 SDK 和固件存放在哪里。这个目录必须
 放在 `public/` 之外：如果文件能被 Web 服务器直接访问，任何猜到地址的人都能下载，
@@ -170,13 +174,29 @@ discourse-ingenic-theme.zip
 两个设置都可以随时修改。把 `ingenic_points_exclude_staff` 关掉不会追溯补发站务
 人员之前发过的帖子，只对之后的帖子生效。
 
+`ingenic_bounties_enabled` 允许成员在自己的主题上挂出积分悬赏，采纳答案后全额
+支付给答主。它依赖积分系统和已解决插件，两者任一关闭时它也会自动关闭——悬赏本质
+是积分在流动，而结算依据是已解决插件的那个 ✓。关闭它只会停止接受新的悬赏，已经
+挂出的悬赏仍会到期并退回：这是有意为之，一个用来"停止新悬赏"的开关不应该把已经
+托管的积分卡死。
+
+`ingenic_bounty_min_points` 和 `ingenic_bounty_max_points` 是成员可以挂出的积分
+区间。`ingenic_bounty_expiry_days` 是悬赏的挂出天数，到期后自动结束并把积分退回
+给挂出悬赏的成员——要让"回答"这件事比悬赏本身更快。没有按版块区分的设置：悬赏
+属于主题，主题归属哪个版块只是附带信息。
+
+开启前需要知道的一点：积分是**托管**的。成员挂出 500 积分的悬赏后，在悬赏结束
+之前他就少了 500 积分可用于下载解锁。这是机制本身而不是副作用——正是它挡住了
+"同一个人把同样的 500 积分挂在十个问题上"——但也是第一次使用时最容易让人意外的
+地方。
+
 `ingenic_nav_items` 和 `ingenic_homepage_blocks` 都是 JSON 配置，可选填。
 如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航：在线文档、下载中心、
-开发板、积分。
+开发板、高分悬赏、积分。
 
 **一旦配置了 `ingenic_nav_items`，它会整体替换主题自带的列表**，而不是与之合并。
-因此在积分功能上线之前就已经配置过导航的站点，不会有"积分"入口，也不会自动多出
-一个：需要自己在 JSON 里补上，或者清空这个设置、以上面的列表为起点重新配置。
+因此在悬赏功能上线之前就已经配置过导航的站点，不会有"高分悬赏"入口，也不会自动
+多出一个：需要自己在 JSON 里补上，或者清空这个设置、以上面的列表为起点重新配置。
 
 一个可直接修改的 `ingenic_nav_items` 示例：
 
@@ -188,7 +208,8 @@ discourse-ingenic-theme.zip
   { "key": "docs",      "label": "Documentation",          "icon": "book",      "href": "/ingenic/docs",        "position": 3, "enabled": true },
   { "key": "downloads", "label": "Downloads",              "icon": "download",  "href": "/ingenic/downloads",   "position": 4, "enabled": true },
   { "key": "boards",    "label": "Development Boards",     "icon": "microchip", "href": "/ingenic/boards",     "position": 5, "enabled": true },
-  { "key": "points",    "label": "Points",                 "icon": "star",      "href": "/ingenic/points",     "position": 6, "enabled": true }
+  { "key": "bounties",  "label": "Bounties",               "icon": "gift",      "href": "/ingenic/bounties",   "position": 6, "enabled": true },
+  { "key": "points",    "label": "Points",                 "icon": "star",      "href": "/ingenic/points",     "position": 7, "enabled": true }
 ]
 ```
 
@@ -200,17 +221,20 @@ discourse-ingenic-theme.zip
 
 ```json
 [
-  { "type": "promotions",    "enabled": true, "position": 0 },
-  { "type": "announcements", "enabled": true, "position": 2, "limit": 5,  "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 3, "limit": 10, "category": "technical-discussions" },
-  { "type": "downloads",     "enabled": true, "position": 4, "limit": 6 },
-  { "type": "boards",        "enabled": true, "position": 5, "limit": 4 }
+  { "type": "categories",    "enabled": true, "position": 0 },
+  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
+  { "type": "promotions",    "enabled": true, "position": 2 },
+  { "type": "announcements", "enabled": true, "position": 3, "limit": 5,  "category": "official-announcements" },
+  { "type": "discussions",   "enabled": true, "position": 4, "limit": 10, "category": "technical-discussions" },
+  { "type": "downloads",     "enabled": true, "position": 5, "limit": 6 },
+  { "type": "boards",        "enabled": true, "position": 6, "limit": 4 }
 ]
 ```
 
 `promotions` 对应在 **Ingenic → Site → Promotions** 中维护的活动推广位；没有配置
-任何活动时该模块不显示。如果填入的类型名没有对应的组件，该模块同样不会显示，
-所以写错名字的表现是"一直不出现"。
+任何活动时该模块不显示。`bounties` 模块列出积分最高的进行中悬赏，没有悬赏时不
+显示任何内容，所以从第一天起就可以一直开着。如果填入的类型名没有对应的组件，该
+模块同样不会显示，所以写错名字的表现是"一直不出现"。
 
 ### 首页
 
@@ -232,19 +256,21 @@ SiteSetting.default_homepage = "ingenic-home"
 只有 `ingenic_enabled` 开启时这个选项才会出现在列表里。如果站点已经选中它、之后又
 关掉了插件，站点会回落到普通首页，而不是报错。
 
-首页的内容是：一个横幅、四个工具页面入口（在线文档、下载中心、开发板商店、积分），
-然后是首页模块。它**不是**主题列表，也没有自己的最新/热门/新帖标签页——那些标签属于
-主题列表，而主题列表现在在别的地方。在导航里选择 **最新** 会进入最新主题列表，首页
-仍然在原处；在此之前，首页是画在主题列表上方的，一切换标签就跟着消失了。
+首页的内容是：一个横幅、五个工具页面入口（在线文档、下载中心、开发板商店、高分
+悬赏、积分），然后是首页模块。它**不是**主题列表，也没有自己的最新/热门/新帖标签
+页——那些标签属于主题列表，而主题列表现在在别的地方。在导航里选择 **最新** 会进入
+最新主题列表，首页仍然在原处；在此之前，首页是画在主题列表上方的，一切换标签就跟着
+消失了。
 
 首页自己的地址是 `/ingenic/home`，因此可以直接写进链接，刷新也仍然是同一个页面。
 
-一个可直接修改的 `ingenic_homepage_blocks` 示例——只显示版块网格，这也是留空时的
-默认效果：
+一个可直接修改的 `ingenic_homepage_blocks` 示例——版块网格加悬赏版块，这也是留空
+时的默认效果：
 
 ```json
 [
-  { "type": "categories", "enabled": true, "position": 0, "limit": 8 }
+  { "type": "categories", "enabled": true, "position": 0, "limit": 8 },
+  { "type": "bounties",   "enabled": true, "position": 1, "limit": 4 }
 ]
 ```
 
@@ -253,13 +279,18 @@ SiteSetting.default_homepage = "ingenic-home"
 版块及其顺序；不加则按主题数取最活跃的一级版块，数量由 `limit` 决定。
 `"show_all": false` 会去掉标题末尾的 **所有版块** 链接。
 
+`bounties` 列出积分最高的进行中悬赏；没有悬赏时它什么都不显示——没有标题，也没有
+空行——所以在论坛还没用起悬赏之前一直开着也没有副作用。默认模块里带上它，正是这个
+原因。
+
 如果想同时保留公告和技术讨论模块，把它们排在后面：
 
 ```json
 [
   { "type": "categories",    "enabled": true, "position": 0, "limit": 8 },
-  { "type": "announcements", "enabled": true, "position": 1, "limit": 5, "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 2, "limit": 6, "category": "technical-discussions" }
+  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
+  { "type": "announcements", "enabled": true, "position": 2, "limit": 5, "category": "official-announcements" },
+  { "type": "discussions",   "enabled": true, "position": 3, "limit": 6, "category": "technical-discussions" }
 ]
 ```
 
@@ -392,12 +423,16 @@ rails c
 - [ ] `/ingenic/points` 向已登录成员显示自己的余额、价目表和自己的变动记录，且看不到别人的
 - [ ] 管理员手工调整某个账号后余额随之变化，填写的备注成为该条流水的原因
 - [ ] 关闭 `ingenic_points_enabled` 后，标价资源免费下载且不再发放积分；重新打开后余额仍在
+- [ ] 在自己的主题上，**为本帖挂出悬赏** 会显示可挂区间和当前余额；挂出后积分立即从余额中扣除，**Ingenic → Points** 中能看到这部分被托管
+- [ ] 进行中的悬赏会同时显示在主题页、首页悬赏版块和 `/ingenic/bounties` 上；不是本人的访问者看不到撤回入口
+- [ ] 在该主题采纳答案后，积分全额支付给答主、悬赏关闭，主题上会显示支付了多少、支付给了谁
+- [ ] 撤回进行中的悬赏会把积分退回；无人回答的悬赏在 `ingenic_bounty_expiry_days` 到期后的一个小时内自动退回
 - [ ] `/ingenic/boards` 显示开发板，配置了购买链接的卡片会显示 **Buy now** 按钮
 - [ ] 页头最右侧出现语言切换器——未登录时在 **登录** 按钮旁，已登录时在头像旁；选 **中文** 后页面以中文重新加载，选 **English** 能切回
 - [ ] 登录状态下的切换同样有效——该选择在退出再登录后依然保留
 - [ ] Ingenic 导航出现在 Discourse 侧边栏中，移动端抽屉中也能看到
 - [ ] 把文档地址复制到新浏览器标签页，可以直接打开
-- [ ] `/` 就是首页：横幅、四个工具入口、版块卡片，且**没有**主题列表，也没有最新/热门标签页
+- [ ] `/` 就是首页：横幅、五个工具入口、版块卡片，且**没有**主题列表，也没有最新/热门标签页
 - [ ] 在导航里选 **最新** 会进入主题列表，返回首页时首页仍然在
 - [ ] 版块模块标题末尾的 **所有版块** 链接进入 `/categories`
 - [ ] 点击版块卡片会进入对应分类
@@ -476,9 +511,9 @@ rake ingenic:import_config[/shared/ingenic-config.yml]
 录入的内容：产品树、版本、页面、下载目录与分类、开发板、文档权限、活动推广位、页脚、
 社交链接和积分规则。
 
-文件里**刻意不包含任何成员产生的数据**。积分余额、积分流水、下载申请、授权记录、开发者
-资料、下载记录，记录的都是人做过什么，其中开发者资料还是个人信息。那些东西属于数据库
-备份，是另一类副本、另一套保管方式，需要的话请直接做数据库备份。
+文件里**刻意不包含任何成员产生的数据**。积分余额、积分流水、高分悬赏、下载申请、
+授权记录、开发者资料、下载记录，记录的都是人做过什么，其中开发者资料还是个人信息。
+那些东西属于数据库备份，是另一类副本、另一套保管方式，需要的话请直接做数据库备份。
 
 `import_config` 按自然键 upsert——产品由 slug 与语言标识，版本由所属产品与 slug 标识，
 依此类推——所以同一个文件导入两次，第二次不会有任何改动。它从不删除：存在于论坛但不在
@@ -507,7 +542,9 @@ rake ingenic:doctor
 
 - 插件 RSpec 测试已经编写，但尚未实际运行；
 - 主题尚未经过 Discourse 的完整资源编译流程；
-- 尚未在浏览器中进行实际渲染测试。
+- 尚未在浏览器中进行实际渲染测试；
+- 悬赏数据表尚未由 migration 真正建出，每小时运行一次的到期任务也从未触发过——
+  托管、支付、退回三条路径都有测试覆盖，但还没有真实积分流动过。
 
 已经完成的校验包括：
 

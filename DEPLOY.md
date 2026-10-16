@@ -109,6 +109,10 @@ The theme is not a component and does not need one.
 | `ingenic_official_groups` | the groups whose members should wear the official badge, e.g. `admins` |
 | `ingenic_points_enabled` | on, unless you are not ready for it yet |
 | `ingenic_points_exclude_staff` | on |
+| `ingenic_bounties_enabled` | on, once you are ready to let members offer points |
+| `ingenic_bounty_min_points` | 10 |
+| `ingenic_bounty_max_points` | 1000 |
+| `ingenic_bounty_expiry_days` | 14 |
 
 `ingenic_download_storage_path` holds the uploaded SDKs and firmware. It has to
 be outside `public/`: a file the web server will serve to anyone who guesses
@@ -173,13 +177,33 @@ Both settings can be changed at any time. Turning `ingenic_points_exclude_staff`
 off does not back-pay the posts staff have already written; it applies from the
 next one.
 
+`ingenic_bounties_enabled` lets a member offer points on their own question,
+paid in full to whoever writes the answer they accept. It needs the points system
+and discourse-solved, and is off on its own if either of those is off — a bounty
+is points moving, and the answer it settles on is discourse-solved's ✓.
+Switching it off stops the forum taking new offers and still lets the standing
+ones run out and refund; that is deliberate, because a switch meant to stop new
+offers should not strand points that are already set aside.
+
+The floor and the ceiling are what a member may offer, in points.
+`ingenic_bounty_expiry_days` is how long an offer stands before it is closed and
+the points go back to whoever offered them — long enough that answering takes
+less time than the offer does. There is no per-category setting: a bounty belongs
+to a topic, and a topic belongs to a category only incidentally.
+
+Worth knowing before switching this on: the points are **escrowed**, so a member
+who offers 500 points has 500 fewer to spend on a download until the offer is
+settled. That is the mechanism rather than a side effect — it is what stops one
+member offering the same 500 points on ten questions — but it is the part that
+surprises people the first time.
+
 `ingenic_nav_items` and `ingenic_homepage_blocks` are JSON. Both are optional —
 with `ingenic_nav_items` left empty the theme falls back to its shipped
-navigation (Documentation, Downloads, Development Boards, Points).
+navigation (Documentation, Downloads, Development Boards, Bounties, Points).
 
 **A configured `ingenic_nav_items` replaces the shipped list wholesale**, it does
-not merge with it. So a site that configured its navigation before Points
-existed has no Points entry and will not grow one: add it to the JSON, or clear
+not merge with it. So a site that configured its navigation before Bounties
+existed has no Bounties entry and will not grow one: add it to the JSON, or clear
 the setting and start from the list below.
 
 A starting `ingenic_nav_items`:
@@ -192,7 +216,8 @@ A starting `ingenic_nav_items`:
   { "key": "docs",      "label": "Documentation",        "icon": "book",      "href": "/ingenic/docs",   "position": 3, "enabled": true },
   { "key": "downloads", "label": "Downloads",            "icon": "download",  "href": "/ingenic/downloads", "position": 4, "enabled": true },
   { "key": "boards",    "label": "Development Boards",   "icon": "microchip", "href": "/ingenic/boards", "position": 5, "enabled": true },
-  { "key": "points",    "label": "Points",               "icon": "star",      "href": "/ingenic/points", "position": 6, "enabled": true }
+  { "key": "bounties",  "label": "Bounties",             "icon": "gift",      "href": "/ingenic/bounties", "position": 6, "enabled": true },
+  { "key": "points",    "label": "Points",               "icon": "star",      "href": "/ingenic/points", "position": 7, "enabled": true }
 ]
 ```
 
@@ -204,18 +229,22 @@ A starting `ingenic_homepage_blocks`:
 
 ```json
 [
-  { "type": "promotions",    "enabled": true, "position": 0 },
-  { "type": "announcements", "enabled": true, "position": 2, "limit": 5,  "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 3, "limit": 10, "category": "technical-discussions" },
-  { "type": "downloads",     "enabled": true, "position": 4, "limit": 6 },
-  { "type": "boards",        "enabled": true, "position": 5, "limit": 4 }
+  { "type": "categories",    "enabled": true, "position": 0 },
+  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
+  { "type": "promotions",    "enabled": true, "position": 2 },
+  { "type": "announcements", "enabled": true, "position": 3, "limit": 5,  "category": "official-announcements" },
+  { "type": "discussions",   "enabled": true, "position": 4, "limit": 10, "category": "technical-discussions" },
+  { "type": "downloads",     "enabled": true, "position": 5, "limit": 6 },
+  { "type": "boards",        "enabled": true, "position": 6, "limit": 4 }
 ]
 ```
 
 `promotions` draws the activity slots managed in **Ingenic → Site → Promotions**;
-with no promotions configured the block renders nothing. A supported type with
-no component behind it also renders nothing, so a mistyped name is a block that
-silently never appears.
+with no promotions configured the block renders nothing. The `bounties` block
+lists the richest standing offers and renders nothing while there are none, so it
+is safe to leave on from the first day. A supported type with no component behind
+it also renders nothing, so a mistyped name is a block that silently never
+appears.
 
 ### The front page
 
@@ -238,10 +267,10 @@ The option is listed only while `ingenic_enabled` is on. A site that has it
 selected and then switches the plugin off falls back to the ordinary homepage
 instead of showing an error.
 
-What the front page is: a banner, a strip of the four tool pages
-(Documentation, Downloads, Development Boards, Points), and then the homepage
-blocks. It is **not** a topic list and it has no latest/hot/new tabs of its own
-— those belong to the topic lists, which are now somewhere else. Choosing
+What the front page is: a banner, a strip of the five tool pages
+(Documentation, Downloads, Development Boards, Bounties, Points), and then the
+homepage blocks. It is **not** a topic list and it has no latest/hot/new tabs of
+its own — those belong to the topic lists, which are now somewhere else. Choosing
 *Latest* in the navigation goes to the latest topics and leaves the front page
 where it is; before, the front page was drawn above whatever list you were on
 and disappeared the moment you switched to one.
@@ -249,12 +278,13 @@ and disappeared the moment you switched to one.
 Its own address is `/ingenic/home`, so a link to it can be written down and a
 refresh serves the same page.
 
-A starting `ingenic_homepage_blocks` for a front page — the section grid and
-nothing else, which is also what an empty setting gives you:
+A starting `ingenic_homepage_blocks` for a front page — the section grid plus the
+bounty panel, which is also what an empty setting gives you:
 
 ```json
 [
-  { "type": "categories", "enabled": true, "position": 0, "limit": 8 }
+  { "type": "categories", "enabled": true, "position": 0, "limit": 8 },
+  { "type": "bounties",   "enabled": true, "position": 1, "limit": 4 }
 ]
 ```
 
@@ -264,13 +294,19 @@ to name the sections and their order; leave it out and it takes the busiest
 top-level ones up to `limit`. `"show_all": false` drops the **All sections**
 link at the end of the block's heading.
 
+`bounties` lists the richest standing offers and draws nothing at all — no
+heading, no empty row — while there are none, which is what makes it safe to
+leave on before the forum has taken to bounties. It is the one block that is in
+the default set for that reason.
+
 To keep the announcements and discussions blocks as well, put them after it:
 
 ```json
 [
   { "type": "categories",    "enabled": true, "position": 0, "limit": 8 },
-  { "type": "announcements", "enabled": true, "position": 1, "limit": 5, "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 2, "limit": 6, "category": "technical-discussions" }
+  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
+  { "type": "announcements", "enabled": true, "position": 2, "limit": 5, "category": "official-announcements" },
+  { "type": "discussions",   "enabled": true, "position": 3, "limit": 6, "category": "technical-discussions" }
 ]
 ```
 
@@ -459,12 +495,16 @@ Open these and check each one:
 - [ ] `/ingenic/points` shows the signed-in member their balance, the price list and their own history — and nobody else's
 - [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
 - [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
+- [ ] on a question of your own, **Set a bounty on this question** names the range and your balance, and setting one takes the points off your balance at once — **Ingenic → Points** then shows them set aside
+- [ ] the standing offer shows on the topic itself, on the front page's bounty panel and on `/ingenic/bounties`, and a member who is not you sees no way to withdraw it
+- [ ] accepting an answer on that topic pays the answerer in full, closes the offer, and the topic then says what was paid and to whom
+- [ ] withdrawing a standing offer hands the points back, and one nobody answers comes back on its own within the hour after `ingenic_bounty_expiry_days`
 - [ ] `/ingenic/boards` shows boards, and a board with a purchase link shows a **Buy now** button
 - [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; picking **中文** reloads the page in Chinese, and picking **English** brings it back
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
-- [ ] `/` is the front page: banner, the four tool links, and the section cards — with **no** topic list and no latest/hot tabs on it
+- [ ] `/` is the front page: banner, the five tool links, and the section cards — with **no** topic list and no latest/hot tabs on it
 - [ ] choosing **Latest** in the navigation goes to the topic list and the front page is still there when you come back to it
 - [ ] the **All sections** link at the end of the section block opens `/categories`
 - [ ] a section card links into its own category
@@ -525,9 +565,9 @@ tree, versions, pages, the download catalogue and its categories, boards,
 documentation permissions, promotions, the footer, social links and point rules.
 
 It deliberately holds **nothing members produced**. Point balances, point
-entries, download applications, access grants, developer profiles and the
-download record are a record of what people did, and one of those tables holds
-personal data about them. A copy of that is a database dump, which is a
+entries, bounties, download applications, access grants, developer profiles and
+the download record are a record of what people did, and one of those tables
+holds personal data about them. A copy of that is a database dump, which is a
 different thing with a different lifetime; take one of those if you need it.
 
 `import_config` is an upsert by natural key — a product is identified by its
@@ -562,6 +602,9 @@ in the environment this was built in, so:
 - the plugin's spec suite is written but has never been executed
 - the theme has never been compiled by Discourse's asset pipeline
 - nothing has been rendered in a browser
+- the bounty table has never been created by a migration, and the hourly job that
+  expires offers has never fired — the escrow, the release and the refund are
+  covered by specs, but no points have moved for real
 
 What *was* done: every file was parsed (Babel and Glimmer for the theme's
 JavaScript, tree-sitter for Ruby, a YAML parser for the settings and locale

@@ -85,8 +85,9 @@ module Ingenic
 
     # Takes points off an account for something it is buying.
     #
-    # Answers rather than raises, because the caller is a download and "you have
-    # not got enough" is a state to show, not an error page:
+    # Answers rather than raises, because the caller is a member in the middle
+    # of a form and "you have not got enough" is a state to show, not an error
+    # page:
     #
     #   :spent        the points are gone and the thing is theirs
     #   :already      it was bought before, so nothing more is owed
@@ -94,7 +95,13 @@ module Ingenic
     #
     # The balance is read with a row lock inside the transaction, so two
     # purchases arriving together cannot both pass a check made outside one.
-    def spend(user:, points:, subject:, reason:)
+    #
+    # `event` names what was bought, and defaults to the download because that
+    # is the ordinary case. The other is a bounty: the points leave the balance
+    # the same way when an offer is opened, which is the whole point of escrow —
+    # what is set aside cannot be spent on something else while it is promised
+    # to somebody.
+    def spend(user:, points:, subject:, reason:, event: IngenicPointEntry::DOWNLOAD)
       cost = points.to_i
       return :insufficient if user.nil? || cost <= 0 || !enabled?
 
@@ -111,7 +118,7 @@ module Ingenic
           record(
             user: user,
             points: -cost,
-            event: IngenicPointEntry::DOWNLOAD,
+            event: event,
             reason: reason,
             subject: subject,
           )
