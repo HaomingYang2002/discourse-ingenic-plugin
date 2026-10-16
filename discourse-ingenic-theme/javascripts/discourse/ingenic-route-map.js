@@ -13,8 +13,14 @@
  * splat cannot swallow it — that URL is what a "Documentation" navigation entry
  * points at, and the component replaces it with the canonical product path once
  * the plugin has resolved which product to start from.
+ *
+ * The home page is the first entry because it is the front page. The plugin
+ * offers it to Discourse's `default_homepage` setting, so a visitor who opens
+ * `/` is served this route; `/ingenic/home` is the same page at its own
+ * address, which is what a link to the home page and a browser refresh use.
  */
 export default function () {
+  this.route("ingenic-home", { path: "/ingenic/home" });
   this.route("ingenic-docs-index", { path: "/ingenic/docs" });
   this.route("ingenic-docs", { path: "/ingenic/docs/*path" });
   this.route("ingenic-downloads", { path: "/ingenic/downloads" });

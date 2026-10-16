@@ -65,5 +65,49 @@ describe DiscourseIngenic::ConfigParser do
       SiteSetting.ingenic_homepage_blocks = "[]not json"
       expect(described_class.homepage_blocks).to eq([])
     end
+
+    describe "the categories block" do
+      it "reads the named sections in the order they were written" do
+        SiteSetting.ingenic_homepage_blocks = [
+          { type: "categories", categories: %w[official-announcements technical-discussions] },
+        ].to_json
+
+        block = described_class.homepage_blocks.first
+
+        expect(block["categories"]).to eq(%w[official-announcements technical-discussions])
+      end
+
+      it "reads a comma-separated line as the same list" do
+        SiteSetting.ingenic_homepage_blocks = [
+          { type: "categories", categories: "official-announcements, technical-discussions" },
+        ].to_json
+
+        expect(described_class.homepage_blocks.first["categories"]).to eq(
+          %w[official-announcements technical-discussions],
+        )
+      end
+
+      it "drops empty entries and surrounding spaces" do
+        SiteSetting.ingenic_homepage_blocks = [
+          { type: "categories", categories: ["  official-announcements  ", "", nil] },
+        ].to_json
+
+        expect(described_class.homepage_blocks.first["categories"]).to eq(%w[official-announcements])
+      end
+
+      it "leaves the list empty when no sections are named" do
+        SiteSetting.ingenic_homepage_blocks = [{ type: "categories" }].to_json
+
+        expect(described_class.homepage_blocks.first["categories"]).to eq([])
+      end
+
+      it "shows the all-sections entry unless it is turned off" do
+        SiteSetting.ingenic_homepage_blocks = [{ type: "categories" }].to_json
+        expect(described_class.homepage_blocks.first["show_all"]).to eq(true)
+
+        SiteSetting.ingenic_homepage_blocks = [{ type: "categories", show_all: false }].to_json
+        expect(described_class.homepage_blocks.first["show_all"]).to eq(false)
+      end
+    end
   end
 end

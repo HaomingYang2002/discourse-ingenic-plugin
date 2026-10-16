@@ -76,10 +76,26 @@ require_relative "app/controllers/ingenic_downloads_controller"
 require_relative "app/controllers/ingenic_boards_controller"
 require_relative "app/controllers/ingenic_site_controller"
 require_relative "app/controllers/ingenic_points_controller"
+require_relative "app/controllers/ingenic_home_controller"
 end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
+
+# The icons the theme ships with when `ingenic_nav_items` is left empty, plus
+# the ones its own pages draw.
+#
+# Icons an administrator names in that setting are collected for the sprite
+# automatically — it is an object list with an icon field, and the sprite is
+# built from the settings as well as from code. A list that lives in the
+# theme's source is not, so the ones the theme falls back to are named here or
+# they render as nothing. `book`, `download`, `star` and `circle` are already
+# in Discourse's own subset; `microchip` is not, and the Development Boards
+# entry is the one that would go missing.
 register_svg_icon "book"
+register_svg_icon "download"
+register_svg_icon "microchip"
+register_svg_icon "star"
+register_svg_icon "circle"
 
 after_initialize do
   reloadable_patch do
@@ -148,6 +164,32 @@ after_initialize do
   add_to_serializer(:current_user, :can_manage_ingenic_content) do
     scope.can_manage_ingenic_content?
   end
+
+  # The front page, offered to Discourse's own `default_homepage` setting.
+  #
+  # Discourse resolves `/` from that setting, and a plugin can put a page of its
+  # own there instead of one of the built-in topic lists. That is what makes
+  # this a front page rather than a panel on somebody else's: `/` is the Ingenic
+  # home and nothing else, with no topic list under it and no filter bar above
+  # it, while the topic lists keep the addresses they always had — /latest,
+  # /top — and the sidebar keeps them one click away.
+  #
+  # The theme used to draw this page into the discovery route's
+  # `before-topic-list` outlet instead. An outlet is a guest on another route's
+  # page, which is why picking "Latest" took the home page away with it.
+  #
+  # `enabled` rather than nothing: with the plugin switched off the setting
+  # falls back to the top menu homepage instead of offering a page that is not
+  # there. Anonymous visitors get it too — a forum whose front page needs an
+  # account has no front page.
+  register_homepage(
+    "ingenic-home",
+    name: "ingenic.homepage_option",
+    path: "/ingenic/home",
+    route: "ingenic_home#index",
+    anonymous: true,
+    enabled: -> { SiteSetting.ingenic_enabled },
+  )
 
   # Keep the public surface under /ingenic so the plugin can coexist with
   # Discourse's own routes and be replaced without changing core URLs.
@@ -229,6 +271,12 @@ after_initialize do
       put "/footer-links/:id" => "admin/ingenic#update_footer_link", format: false
       delete "/footer-links/:id" => "admin/ingenic#destroy_footer_link", format: false
     end
+
+    # The front page at its canonical address. Discourse mounts the page chosen
+    # in `default_homepage` at `/` itself; this is the same page under a path of
+    # its own, which is what the client route and every link to the home page
+    # use, and what makes the address survive a refresh.
+    get "/ingenic/home", to: "ingenic_home#index", as: :ingenic_home
 
     get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root
     get "/ingenic/docs/*path", to: "ingenic_docs#show", as: :ingenic_documentation

@@ -49,10 +49,22 @@ module DiscourseIngenic
             "category" => item["category"].to_s,
             "title" => item["title"].to_s,
             "html" => item["html"].to_s,
+            # The categories block. An empty list means "the busiest ones",
+            # which is what a front page wants before anyone has decided which
+            # sections deserve the space.
+            "categories" => slug_list(item["categories"]),
+            "show_all" => item["show_all"] != false,
           }
         end
         .select { |item| item["type"].present? }
         .sort_by { |item| item["position"] }
+    end
+
+    # Written as a list, or as the comma-separated line an admin is more likely
+    # to type into a one-line field.
+    def slug_list(raw)
+      list = raw.is_a?(Array) ? raw : raw.to_s.split(",")
+      list.map { |slug| slug.to_s.strip }.reject(&:empty?)
     end
 
     # A nav entry may point at a Discourse category slug, an internal path or an

@@ -12,8 +12,18 @@ zh_CN:
     home:
       title: "使用君正芯片开发"
       subtitle: "面向君正开发者的文档、资源与技术讨论。"
+      eyebrow: "君正开发者社区"
       quick_links: "君正快速链接"
       empty: "暂无内容。"
+      sections:
+        title: "论坛版块"
+        all: "所有版块"
+        empty: "暂无可查看的版块。"
+        topic_count:
+          # Chinese has one plural form, so both keys read the same here. Kept
+          # in pairs so the two locale files have the same shape.
+          one: "%{count} 个主题"
+          other: "%{count} 个主题"
     promotions:
       title: "近期活动"
     locale:

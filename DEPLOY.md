@@ -52,6 +52,11 @@ The rebuild runs the plugin's migrations and creates its eighteen tables. It
 takes a few minutes, and the forum is offline while it runs — there is no
 zero-downtime rebuild in `discourse_docker`.
 
+A **rebuild** is what is needed here, not a container restart: the front page
+added a controller and a route, and Discourse reads a plugin's files at boot.
+Updating only the theme is the other case — a theme zip upload needs no rebuild
+at all.
+
 Confirm the plugin loaded:
 
 ```bash
@@ -73,9 +78,15 @@ Then:
 1. Open the theme and pick the **Ingenic Light** colour scheme. This is where the
    accent colour lives — the standard colour pickers edit it, and there is no
    separate brand-colour setting. It ships a light sky blue: accent
-   `#1976d2`, text `#12263a`, header `#f4f9fd`, highlight `#cfe8fb`. If the
+   `#2FC1FF`, text `#12263a`, header `#f2f9fd`, highlight `#cfe8fb`. If the
    header comes out grey rather than faintly blue, the theme is still on the
    site's old colour scheme and this step was missed.
+
+   The accent is deliberately pale, which means it is a surface rather than a
+   letter. The theme handles that itself: links and button labels are painted
+   with a readable sibling of the same hue (see **Colours** in the theme's
+   README). If you change the accent to a deeper blue, the theme still works —
+   you will simply have a darker link colour than it needs.
 2. Set it as the site's default theme, or make it a selectable one first and
    switch over once you are happy with it.
 
@@ -206,6 +217,63 @@ with no promotions configured the block renders nothing. A supported type with
 no component behind it also renders nothing, so a mistyped name is a block that
 silently never appears.
 
+### The front page
+
+The plugin offers its home page to Discourse as a **homepage**, so this is one
+core setting rather than a plugin one:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `default_homepage` | the Ingenic home page (stored value `ingenic-home`) | Makes `/` the front page |
+
+Admin → Settings → Interface, or by console:
+
+```bash
+./launcher enter app
+rails c
+SiteSetting.default_homepage = "ingenic-home"
+```
+
+The option is listed only while `ingenic_enabled` is on. A site that has it
+selected and then switches the plugin off falls back to the ordinary homepage
+instead of showing an error.
+
+What the front page is: a banner, a strip of the four tool pages
+(Documentation, Downloads, Development Boards, Points), and then the homepage
+blocks. It is **not** a topic list and it has no latest/hot/new tabs of its own
+— those belong to the topic lists, which are now somewhere else. Choosing
+*Latest* in the navigation goes to the latest topics and leaves the front page
+where it is; before, the front page was drawn above whatever list you were on
+and disappeared the moment you switched to one.
+
+Its own address is `/ingenic/home`, so a link to it can be written down and a
+refresh serves the same page.
+
+A starting `ingenic_homepage_blocks` for a front page — the section grid and
+nothing else, which is also what an empty setting gives you:
+
+```json
+[
+  { "type": "categories", "enabled": true, "position": 0, "limit": 8 }
+]
+```
+
+`categories` lists the forum's sections as cards, each one linking into its
+category. Add `"categories": ["official-announcements", "technical-discussions"]`
+to name the sections and their order; leave it out and it takes the busiest
+top-level ones up to `limit`. `"show_all": false` drops the **All sections**
+link at the end of the block's heading.
+
+To keep the announcements and discussions blocks as well, put them after it:
+
+```json
+[
+  { "type": "categories",    "enabled": true, "position": 0, "limit": 8 },
+  { "type": "announcements", "enabled": true, "position": 1, "limit": 5, "category": "official-announcements" },
+  { "type": "discussions",   "enabled": true, "position": 2, "limit": 6, "category": "technical-discussions" }
+]
+```
+
 ### Language
 
 The interface language is Discourse's own feature, so these are core settings
@@ -218,10 +286,11 @@ switcher works at all:
 | `allow_user_locale` | on (already the default) | With it off nobody may choose a language, and the switcher hides itself |
 | `set_locale_from_cookie` | on | A signed-out reader's choice is kept in a cookie, and Discourse does not read that cookie back while this is off — the switch then looks like it does nothing |
 
-The switcher sits in the header beside the search box and offers the languages
-listed in the theme's `ingenic_locales` setting — `en` and `zh_CN` by default.
-Each language is labelled in its own language, so a reader who cannot read the
-current one can still find theirs.
+The switcher sits at the far right of the header — signed out, just left of the
+**Log in** button; signed in, immediately left of the avatar — and offers the
+languages listed in the theme's `ingenic_locales` setting, `en` and `zh_CN` by
+default. Each language is labelled in its own language, so a reader who cannot
+read the current one can still find theirs.
 
 Discourse remembers a language in two places and the switcher writes to
 whichever one applies: a signed-in account carries its own preference (the same
@@ -391,11 +460,15 @@ Open these and check each one:
 - [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
 - [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
 - [ ] `/ingenic/boards` shows boards, and a board with a purchase link shows a **Buy now** button
-- [ ] the header shows a language switcher beside the search box; picking **中文** reloads the page in Chinese, and picking **English** brings it back
+- [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; picking **中文** reloads the page in Chinese, and picking **English** brings it back
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
-- [ ] `/` shows the homepage blocks above the topic list, and the promotions you configured in **Ingenic → Site**
+- [ ] `/` is the front page: banner, the four tool links, and the section cards — with **no** topic list and no latest/hot tabs on it
+- [ ] choosing **Latest** in the navigation goes to the topic list and the front page is still there when you come back to it
+- [ ] the **All sections** link at the end of the section block opens `/categories`
+- [ ] a section card links into its own category
+- [ ] the promotions you configured in **Ingenic → Site** appear on the front page if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
 - [ ] a member of a listed `ingenic_official_groups` group wears its badge beside their username, and a member who picked a badge of their own keeps it
 - [ ] Google, GitHub and email sign-in all still work

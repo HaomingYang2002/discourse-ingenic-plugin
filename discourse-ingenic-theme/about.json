@@ -8,9 +8,9 @@
     "Ingenic Light": {
       "primary": "12263a",
       "secondary": "ffffff",
-      "tertiary": "1976d2",
-      "quaternary": "0d5b9e",
-      "header_background": "f4f9fd",
+      "tertiary": "2fc1ff",
+      "quaternary": "0cbbff",
+      "header_background": "f2f9fd",
       "header_primary": "12263a",
       "highlight": "cfe8fb",
       "danger": "d64545",

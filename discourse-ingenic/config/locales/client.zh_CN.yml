@@ -289,3 +289,13 @@ zh_CN:
         revoke: "撤销"
         delete: "删除"
         empty: "暂无记录。"
+
+    # 站点设置 default_homepage（默认首页）中这一项的名称。该设置在管理后台，
+    # 管理后台按 admin_js 查找文案；同一个下拉在后台之外也会被读取，因此两个
+    # 词根下都定义一份，而不是赌其中一个。
+    ingenic:
+      homepage_option: "君正首页"
+
+  js:
+    ingenic:
+      homepage_option: "君正首页"

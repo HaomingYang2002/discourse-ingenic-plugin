@@ -132,6 +132,7 @@ Public, read-only except where noted:
 
 | Method | Path | Description |
 | --- | --- | --- |
+| GET | `/ingenic/home` | The front page. Serves the shell; the page itself is built in the browser |
 | GET | `/ingenic/docs` | The first published series, its first chip, and that chip's default version |
 | GET | `/ingenic/docs/*path` | `/<series>[/<chip>[/<version>[/<page>]]]` — each level filled in from the one before when omitted |
 | GET | `/ingenic/docs-search` | Full-text search across the documentation |
@@ -153,6 +154,46 @@ controller splits the path itself, so adding a level later does not mean
 touching the route table. The bare `/ingenic/docs` is declared separately
 because a glob only matches when the slash is present. Search is a sibling of
 the glob rather than a path inside it, so a chip called `search` stays usable.
+
+## The front page
+
+The plugin registers the Ingenic home page with Discourse as a candidate
+**homepage** — `register_homepage` in `plugin.rb`, called after the plugin's
+own settings are available so the option can be conditioned on them:
+
+```ruby
+register_homepage(
+  "ingenic-home",
+  name: "ingenic.homepage_option",
+  path: "/ingenic/home",
+  route: "ingenic_home#index",
+  anonymous: true,
+  enabled: -> { SiteSetting.ingenic_enabled },
+)
+```
+
+What that buys, in the order it matters:
+
+- The option appears in the site's **`default_homepage`** setting, and
+  Discourse mounts the page at `/` itself when it is selected. The front page is
+  therefore a destination of its own, not a block drawn over a topic list, so
+  choosing *Latest* in the navigation goes to the latest topics and does not
+  take the front page with it.
+- `/ingenic/home` remains the page's own address. Discourse mounts the chosen
+  homepage at `/` but the option's `path` is what a link, a refresh and a
+  shared URL use.
+- `anonymous: true` means a signed-out visitor gets the front page rather than
+  being redirected to the latest topics.
+- `enabled` is read whenever the homepage is resolved, so switching
+  `ingenic_enabled` off hands the site back to its ordinary homepage without
+  anyone having to edit a second setting.
+
+`IngenicHomeController#index` renders nothing but the application shell. The
+page's content — the blocks and the sections they list — is assembled in the
+browser from data the site already sends: the homepage blocks through the site
+serializer, and the categories from `site.json`, which the server has already
+filtered for the reader's permissions. There is no second endpoint and no second
+copy of the category list.
 
 ## Site settings
 

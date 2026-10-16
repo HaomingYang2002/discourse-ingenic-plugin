@@ -12,8 +12,16 @@ en:
     home:
       title: "Build with Ingenic"
       subtitle: "Documentation, resources, and technical discussions for Ingenic developers."
+      eyebrow: "Ingenic developer community"
       quick_links: "Ingenic quick links"
       empty: "Nothing here yet."
+      sections:
+        title: "Forum sections"
+        all: "All sections"
+        empty: "No sections are visible to you yet."
+        topic_count:
+          one: "%{count} topic"
+          other: "%{count} topics"
     promotions:
       title: "What's on"
     locale:

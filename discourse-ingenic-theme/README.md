@@ -90,10 +90,24 @@ The palette is a light sky blue, and it lives in two places:
   `--ingenic-surface-border` are what the theme's own surfaces use.
 
 Nothing outside that block names a colour, so the shade of the whole theme is
-edited in those two places and nowhere else. The accent is checked against WCAG
-AA on white: `#1976d2` is 4.6:1, which is why it is that depth of blue rather
-than a lighter, prettier one — a sky blue that passes as a link colour on white
-is darker than a sky blue that only fills buttons.
+edited in those two places and nowhere else.
+
+The accent is `#2FC1FF`: a sky blue a shade paler than `#0CBBFF`, which is the
+shade the theme is meant to have. That shade is a surface, not a letter — as
+text on white it is 2.4:1, and white on it is 1.9:1 — so the two places where the
+accent has to be read are named separately:
+
+- `--ingenic-link`, `#0f7fa8` — the same hue one step down, 4.5:1 on white. It
+  is what links, hover states and the eyebrow use, and it is also written into
+  `--d-link-color` and `--d-nav-color--*` so the whole forum, not just this
+  theme's own components, keeps legible links.
+- `--ingenic-accent-ink` — the colour that goes *on* an accent fill. It resolves
+  to `primary`, so a filled button is a pale sky with navy words on it rather
+  than white words that cannot be read. Written into `--d-button-primary-*`.
+
+Both follow the scheme: move `tertiary` and they move with it, because they are
+the same hue either side of it. The theme's stylesheet is loaded after the colour
+scheme's, so the `:root` block here overrides the scheme's own variables.
 
 Typography and spacing are Discourse's own scale (`--font-up-*`, `--space-*`,
 `--font-family`), not the theme's invention, so they follow whatever the site's
@@ -145,8 +159,40 @@ Homepage block shape:
 }
 ```
 
-Supported block types: `search`, `announcements`, `discussions`, `downloads`,
-`boards`, `html`.
+Supported block types: `announcements`, `discussions`, `downloads`, `boards`,
+`promotions`, `categories`, `html`.
+
+The `categories` block is the one that makes the page a front page rather than a
+digest: it lists the forum's sections as cards, each linking into its category.
+Give it `"categories": ["announcements", "technical-discussions"]` to name the
+ones to show, in the order to show them; leave that out and it takes the busiest
+top-level sections up to `limit` (default 8). `"show_all": false` removes the
+**All sections** link that otherwise sits at the end of the block's heading.
+
+Left empty, the homepage shows the `categories` block and nothing else — the
+section grid alone, which is what a front page wants before anyone has decided
+which parts of the forum deserve a row. Unlike the navigation list, the fallback
+is a fallback: a configured list of blocks replaces it.
+
+## The home page
+
+The front page is not a page the theme draws over a topic list. It is a
+**registered homepage**: the plugin offers it to Discourse as one of the
+choices in `default_homepage`, and Discourse mounts it at `/` itself. That is
+why choosing *Latest* no longer empties the page — the front page and the topic
+lists are separate destinations rather than one page with a switch on it.
+
+To use it, set the site's **`default_homepage`** setting (Admin → Settings →
+Interface) to the Ingenic home page; the value stored is `ingenic-home`. The
+option only appears in that list while the plugin is enabled, and a site that
+has it selected falls back to the ordinary homepage if the plugin is switched
+off. Its own address is `/ingenic/home`, so a link to it can be written down,
+and refreshing it serves the page rather than redirecting to the latest topic.
+
+The page is assembled in the browser from data the site already sends (the
+category list in `site.json`, the homepage blocks from the plugin), so the
+server action behind it renders nothing but the application shell. There is no
+second copy of the categories to keep in step.
 
 ## Adding a language
 

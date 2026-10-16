@@ -289,3 +289,14 @@ en:
         revoke: "Revoke"
         delete: "Delete"
         empty: "No records are available."
+
+    # The name of this plugin's front page in the site's default_homepage
+    # setting. That setting lives in the admin screens, which look a key up in
+    # the admin bundle, and the same option is also read outside them — so the
+    # name is defined under both roots rather than betting on one.
+    ingenic:
+      homepage_option: "Ingenic home page"
+
+  js:
+    ingenic:
+      homepage_option: "Ingenic home page"
