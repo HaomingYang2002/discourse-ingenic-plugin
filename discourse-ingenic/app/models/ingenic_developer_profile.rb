@@ -9,6 +9,11 @@
 class IngenicDeveloperProfile < ActiveRecord::Base
   self.table_name = "ingenic_developer_profiles"
 
+  # Required, and deleted with the account rather than kept without it. The
+  # ledger keeps a deleted member's movements because the forum's books are not
+  # about that person; a profile is the opposite — it is answers about somebody,
+  # collected for the team to read, and there is no reading to be done once they
+  # are gone.
   belongs_to :user
 
   validates :user_id, uniqueness: true

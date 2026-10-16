@@ -29,6 +29,7 @@ en:
       storage_unavailable: "Uploaded files cannot be written. Check the download storage path."
       user_not_found: "No such account."
       points_amount_blank: "Enter a number of points to add or deduct."
+      applicant_deleted: "The account that applied has been deleted, so there is no one to grant access to."
     developer_form:
       missing: "%{field} is required."
     downloads:

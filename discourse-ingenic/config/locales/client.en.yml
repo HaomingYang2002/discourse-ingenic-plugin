@@ -290,6 +290,10 @@ en:
         revoke: "Revoke"
         delete: "Delete"
         empty: "No records are available."
+        # Shown where a row would name a member whose account has been deleted.
+        # The row is kept — it is a movement in the ledger, an application or a
+        # grant — and this is what is left of the name.
+        deleted_member: "deleted account"
 
     # The name of this plugin's front page in the site's default_homepage
     # setting. That setting lives in the admin screens, which look a key up in

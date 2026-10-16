@@ -13,6 +13,11 @@ module Jobs
       request = IngenicDownloadRequest.find_by(id: args[:request_id])
       return if request.nil? || request.pending?
 
+      # The applicant's account can be deleted between the decision and this job
+      # running — and there is then nobody to write to. The decision itself is
+      # already recorded, which is the part that matters.
+      return if request.user.nil?
+
       message =
         IngenicDownloadMailer.request_decided(
           request.user.email,

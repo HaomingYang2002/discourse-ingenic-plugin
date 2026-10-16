@@ -10,13 +10,23 @@
 class IngenicDownloadGrant < ActiveRecord::Base
   self.table_name = "ingenic_download_grants"
 
-  belongs_to :user
+  # Optional for the same reason the application is: the account a grant was
+  # written for can be deleted, and the row stays behind as the record that it
+  # was granted, with the account blanked. A blanked grant lets nobody in — every
+  # lookup for one is made by account id — so what it still says is only that
+  # access was given here once.
+  belongs_to :user, optional: true
   belongs_to :download, class_name: "IngenicDownload"
   belongs_to :request, class_name: "IngenicDownloadRequest", optional: true
   belongs_to :granted_by, class_name: "User", optional: true
   belongs_to :revoked_by, class_name: "User", optional: true
 
-  validates :user_id, uniqueness: { scope: :download_id }
+  # One row per account per resource, which the unique index behind this also
+  # enforces. Skipped when the account is blank: two deleted accounts that were
+  # each granted the same resource leave two rows with nothing in that column,
+  # and revoking one of them is still something an administrator may do. The
+  # index still refuses a second row for an account that does exist.
+  validates :user_id, uniqueness: { scope: :download_id }, allow_nil: true
 
   scope :active, -> { where(revoked_at: nil).where("expires_at IS NULL OR expires_at > ?", Time.zone.now) }
 

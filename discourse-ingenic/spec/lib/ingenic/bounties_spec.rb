@@ -294,6 +294,25 @@ describe Ingenic::Bounties do
 
       expect(described_class.expire_due!).to eq(0)
     end
+
+    # The asker's account can be deleted while their offer stands. The offer is
+    # still closed on time — it is not theirs to hold open — and the refund is
+    # written against nobody, because there is no account left to hold the
+    # points. What must not happen is the job stopping here: it closes every due
+    # offer in one pass, and an orphan that raised would strand all the others.
+    it "closes an offer whose asker has been deleted" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+      bounty.update!(expires_at: 1.minute.ago)
+      IngenicBounty.where(id: bounty.id).update_all(user_id: nil)
+      IngenicPointBalance.where(user_id: asker.id).delete_all
+
+      expect(described_class.expire_due!).to eq(1)
+
+      expect(bounty.reload.state).to eq(IngenicBounty::EXPIRED)
+      refund = IngenicPointEntry.find_by(event: IngenicPointEntry::BOUNTY_REFUND, subject_id: bounty.id)
+      expect(refund.user_id).to be_nil
+      expect(refund.points).to eq(100)
+    end
   end
 
   describe ".for_topic" do

@@ -3,6 +3,11 @@
 class IngenicPermission < ActiveRecord::Base
   self.table_name = "ingenic_permissions"
 
+  # One principal: a member or a group, exactly one of the two, which is what
+  # the check constraint in the migration enforces. Both are optional here so a
+  # row can name either, and both keys cascade — a permission granted to an
+  # account or a group that no longer exists has nothing left to permit, and the
+  # constraint means it cannot be kept with its principal blanked either.
   belongs_to :user, optional: true
   belongs_to :group, optional: true
 

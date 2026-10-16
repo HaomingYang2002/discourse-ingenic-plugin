@@ -172,7 +172,11 @@ module Ingenic
     # import, or after somebody has been editing rows in the database. It is
     # also the reason a balance can be trusted without being the authority.
     def rebuild!
-      totals = IngenicPointEntry.group(:user_id).sum(:points)
+      # Movements recorded for an account that has since been deleted are left
+      # out rather than added up under nobody: there is no balance to correct for
+      # them, and a row here with no account would put a phantom holder on the
+      # screens that count them.
+      totals = IngenicPointEntry.where.not(user_id: nil).group(:user_id).sum(:points)
       now = Time.zone.now
       corrected = 0
 
@@ -204,13 +208,21 @@ module Ingenic
     # transaction at the database, not merely the statement, so without it a
     # refused duplicate would take the caller's whole transaction down with it
     # and the lock would be released by an error rather than by an answer.
+    #
+    # A movement with no account behind it is written all the same. That is what
+    # the reversal of a deleted member's award is, and what the refund of a
+    # bounty they left standing is: the escrow is a row in this table, and the
+    # movement that closes it has to be a row here too, or the ledger would show
+    # points that left an account and never came back. There is no balance to
+    # move in that case — nobody holds a total — and the entry is the whole of
+    # what is left to record.
     def record(user:, points:, event:, reason:, subject: nil, note: nil, by: nil)
       entry = nil
 
       ActiveRecord::Base.transaction(requires_new: true) do
         entry =
           IngenicPointEntry.create!(
-            user_id: user.id,
+            user_id: user&.id,
             points: points,
             event: event,
             reason: reason,
@@ -218,7 +230,7 @@ module Ingenic
             note: note,
             awarded_by_id: by&.id,
           )
-        IngenicPointBalance.bump!(user.id, points)
+        IngenicPointBalance.bump!(user.id, points) if user
       end
 
       entry

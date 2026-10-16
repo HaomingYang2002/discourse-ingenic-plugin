@@ -72,7 +72,13 @@ export default class IngenicDownloadQueue extends Component {
         {{#each this.requests as |request|}}
           <section class="ingenic-admin-list__row">
             <div>
-              <strong>{{request.username}}</strong>
+              <strong>
+                {{#if request.username}}
+                  {{request.username}}
+                {{else}}
+                  {{i18n "admin.ingenic.deleted_member"}}
+                {{/if}}
+              </strong>
               <span class="ingenic-admin-list__badge">{{request.status}}</span>
               <div class="ingenic-admin-list__meta">
                 {{request.download_name}} · {{request.user_email}} · {{request.created_at}}

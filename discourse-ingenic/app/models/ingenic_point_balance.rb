@@ -10,6 +10,11 @@
 class IngenicPointBalance < ActiveRecord::Base
   self.table_name = "ingenic_point_balances"
 
+  # Required, unlike the ledger row beside it: a total is a number an account
+  # holds, and there is nothing holding one once the account is gone. Deleting a
+  # member therefore takes their balance row with them and leaves their movements
+  # in the ledger — the pair to expect, since the number is recomputable from the
+  # rows and nothing is lost that was not derived from them anyway.
   belongs_to :user
 
   validates :points, numericality: { only_integer: true }

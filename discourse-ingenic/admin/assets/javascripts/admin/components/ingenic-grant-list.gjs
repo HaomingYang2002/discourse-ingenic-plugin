@@ -45,7 +45,13 @@ export default class IngenicGrantList extends Component {
         {{#each this.grants as |grant|}}
           <section class="ingenic-admin-list__row">
             <div>
-              <strong>{{grant.username}}</strong>
+              <strong>
+                {{#if grant.username}}
+                  {{grant.username}}
+                {{else}}
+                  {{i18n "admin.ingenic.deleted_member"}}
+                {{/if}}
+              </strong>
               <div class="ingenic-admin-list__meta">
                 {{grant.download_name}} ·
                 {{#if grant.active}}

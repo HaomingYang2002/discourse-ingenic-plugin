@@ -304,6 +304,19 @@ per version: a version with no row for a slug inherits the nearest earlier
 version that has one. That is what keeps a documentation set from multiplying
 by its version count.
 
+A member can be deleted. Every reference to `users` here either **nullifies** —
+the row stays with the account blanked, which is what a ledger entry, an
+application, a grant and a bounty do — or **cascades**, where the row is about
+the person rather than about the forum: a developer profile, a cached balance, a
+permission granted to someone who no longer exists. Plain references would make
+deleting an active member fail with a foreign key violation, in an admin screen
+that has no way to explain itself. Where the account is blanked the screens show
+*a deleted account* rather than a blank. `Ingenic::Points.record` writes a
+movement with no account behind it for the two paths that meet this: the
+reversal of a deleted member's award, and the refund of a bounty they left
+standing — the escrow is a ledger row, so the movement that closes it has to be
+one too.
+
 Every content table carries a `locale` column, so additional languages can be
 enabled later without a schema migration. Codes are Discourse's own (`zh_CN`,
 `pt_BR`), because they are compared against `I18n.locale` — the language the

@@ -471,6 +471,40 @@ Points are a plugin feature; the page is reached through the theme's navigation.
 The theme ships a Points entry, and a site that has configured its own
 `ingenic_nav_items` needs to add one itself.
 
+### Deleting a member
+
+Deleting an account in **Admin → Users** works even for a member who has been
+here a while. It did not always: anyone who had earned a point, applied for a
+download or set a bounty had rows pointing at their account with a key that
+refused to let go, and nothing in the plugin was listening for the deletion —
+so the admin screen answered with a database error instead. The plugin's
+references to `users` are now either **nullifying**, where the row stays and the
+account is blanked, or **cascading**, where the row is about the person rather
+than about the forum.
+
+| Table | What happens to their rows |
+| --- | --- |
+| `ingenic_point_entries` | kept, account blanked — the ledger still has to add up |
+| `ingenic_bounties` | kept, account blanked; a settled bounty stays on its topic |
+| `ingenic_download_requests` | kept, account blanked — the application and the answer it got are the record of a decision |
+| `ingenic_download_grants` | kept, account blanked — it lets nobody in, and still says access was granted once |
+| `ingenic_developer_profiles` | deleted — it is answers about a person, not about the forum |
+| `ingenic_point_balances` | deleted — a cached total nobody holds, recomputable from the ledger |
+| `ingenic_permissions` | deleted — a grant to an account or a group that no longer exists |
+| `ingenic_download_logs` | deleted (this was already the case) |
+
+Two consequences worth knowing before deleting somebody:
+
+- A standing bounty whose asker has gone is still paid if an answer is accepted,
+  and still expires at its deadline and returns the points. If the asker is gone
+  at that point the refund has nowhere to land and is recorded against nobody —
+  the escrow left an account, and there is no account left to return it to. The
+  ledger shows it rather than losing it.
+- An application from a deleted account cannot be approved: there would be no
+  account to hold the access. The queue shows the row with **deleted account**
+  where the name was, approving it says why it cannot be, and declining it still
+  works. The same label appears in the points ledger and the access list.
+
 Use `docs/seeding.md` for console examples and migration/bootstrap workflows —
 in English, or `docs/seeding.zh-CN.md` in Chinese. They cover the same ground:
 both are worth skimming, and the Chinese one is the one to hand to somebody who
@@ -509,6 +543,7 @@ Open these and check each one:
 - [ ] buying it costs the points once; downloading it a second time costs nothing
 - [ ] `/ingenic/points` shows the signed-in member their balance, the price list and their own history — and nobody else's
 - [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
+- [ ] deleting a test member who has points, an application or a bounty goes through without a database error, and their movements are still in **Ingenic → Points → Recent movements** with **deleted account** where the name was
 - [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
 - [ ] on a question of your own, **Set a bounty on this question** names the range and your balance, and setting one takes the points off your balance at once — **Ingenic → Points** then shows them set aside
 - [ ] the standing offer shows on the topic itself, on the front page's bounty panel and on `/ingenic/bounties`, and a member who is not you sees no way to withdraw it
@@ -621,6 +656,8 @@ in the environment this was built in, so:
 - the bounty table has never been created by a migration, and the hourly job that
   expires offers has never fired — the escrow, the release and the refund are
   covered by specs, but no points have moved for real
+- no account has been deleted from a real forum, so the keys that let a member's
+  rows stay behind have only been checked against the migrations that write them
 
 What *was* done: every file was parsed (Babel and Glimmer for the theme's
 JavaScript, tree-sitter for Ruby, a YAML parser for the settings and locale

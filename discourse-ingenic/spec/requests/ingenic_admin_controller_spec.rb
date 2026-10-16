@@ -268,6 +268,62 @@ describe Admin::IngenicController do
     end
   end
 
+  # An application outlives the account that made it: deleting a member blanks
+  # the applicant on their rows rather than taking the rows with them, and the
+  # queue then has a row with nobody to name. Two things have to hold — the
+  # screen still draws, and access cannot be granted to an account that is not
+  # there.
+  describe "the access queue, with an applicant who has been deleted" do
+    fab!(:applicant) { Fabricate(:user) }
+    fab!(:gated_download) do
+      IngenicDownload.create!(
+        name: "T33 SDK",
+        product_slug: "t33",
+        locale: "en",
+        access_level: IngenicDownload::APPROVAL_REQUIRED,
+      )
+    end
+    fab!(:application) do
+      IngenicDownloadRequest.create!(user: applicant, download: gated_download, message: "Board bring-up")
+    end
+
+    before do
+      # What the nullifying foreign key does to the row when the account is
+      # destroyed.
+      IngenicDownloadRequest.where(id: application.id).update_all(user_id: nil)
+      application.reload
+    end
+
+    it "lists the application without a name instead of failing" do
+      get "/admin/plugins/discourse-ingenic/download-requests"
+
+      expect(response.status).to eq(200)
+      row = response.parsed_body["requests"].first
+      expect(row["id"]).to eq(application.id)
+      expect(row["username"]).to be_nil
+      expect(row["message"]).to eq("Board bring-up")
+    end
+
+    it "refuses to approve it, because there is no account to let in" do
+      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/approve"
+
+      expect(response.status).to eq(422)
+      expect(response.parsed_body["errors"].first).to eq(
+        I18n.t("ingenic.admin_errors.applicant_deleted"),
+      )
+      expect(IngenicDownloadGrant.count).to eq(0)
+      expect(application.reload.status).to eq(IngenicDownloadRequest::PENDING)
+    end
+
+    it "still records a decision to decline it" do
+      put "/admin/plugins/discourse-ingenic/download-requests/#{application.id}/reject",
+          params: { note: "no account" }
+
+      expect(response.status).to eq(200)
+      expect(application.reload.status).to eq(IngenicDownloadRequest::REJECTED)
+    end
+  end
+
   describe "GET /admin/plugins/discourse-ingenic/downloads" do
     it "offers the record tab to an administrator" do
       get "/admin/plugins/discourse-ingenic/downloads"

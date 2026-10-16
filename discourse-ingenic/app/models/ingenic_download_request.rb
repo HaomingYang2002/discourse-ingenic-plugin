@@ -13,7 +13,11 @@ class IngenicDownloadRequest < ActiveRecord::Base
   REJECTED = "rejected"
   STATUSES = [PENDING, APPROVED, REJECTED].freeze
 
-  belongs_to :user
+  # The applicant can be deleted while the application is still in the queue.
+  # The row stays — it is the record that somebody asked and what the team
+  # answered — with the account blanked, which is why this is optional. It
+  # cannot be approved afterwards: there would be no account to hold the access.
+  belongs_to :user, optional: true
   belongs_to :download, class_name: "IngenicDownload"
   belongs_to :reviewed_by, class_name: "User", optional: true
 

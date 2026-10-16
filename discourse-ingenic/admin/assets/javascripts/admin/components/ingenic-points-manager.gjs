@@ -360,7 +360,13 @@ export default class IngenicPointsManager extends Component {
           {{#each this.entries as |entry|}}
             <tr>
               <td>{{entry.created_at}}</td>
-              <td>{{entry.username}}</td>
+              <td>
+                {{#if entry.username}}
+                  {{entry.username}}
+                {{else}}
+                  {{i18n "admin.ingenic.deleted_member"}}
+                {{/if}}
+              </td>
               <td>{{entry.points}}</td>
               <td>{{entry.event}}</td>
               <td>{{entry.reason}}</td>

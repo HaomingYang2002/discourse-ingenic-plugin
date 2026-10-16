@@ -35,7 +35,13 @@ class IngenicPointEntry < ActiveRecord::Base
   BOUNTY_AWARD = "bounty_award"
   BOUNTY_REFUND = "bounty_refund"
 
-  belongs_to :user
+  # The account the movement was for. A row outlives its account: deleting a
+  # member blanks this and leaves the movement in the ledger, which is what keeps
+  # the books adding up — and what the reversal of an award they earned, or the
+  # refund of a bounty they left standing, has to be written against afterwards.
+  # Optional for that reason, and not because an award can be made to nobody:
+  # every movement the plugin writes on purpose names an account.
+  belongs_to :user, optional: true
   belongs_to :awarded_by, class_name: "User", optional: true
   belongs_to :subject, polymorphic: true, optional: true
 

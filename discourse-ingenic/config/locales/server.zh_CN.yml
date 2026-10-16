@@ -29,6 +29,7 @@ zh_CN:
       storage_unavailable: "无法写入上传的文件。请检查下载存储路径。"
       user_not_found: "账号不存在。"
       points_amount_blank: "请输入要增加或扣除的积分数。"
+      applicant_deleted: "申请人的账号已被删除，没有账号可以授予访问权限。"
     developer_form:
       missing: "%{field}为必填项。"
     downloads:

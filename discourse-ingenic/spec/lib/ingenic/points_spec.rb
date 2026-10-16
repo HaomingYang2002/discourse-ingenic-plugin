@@ -286,6 +286,56 @@ describe Ingenic::Points do
     end
   end
 
+  # What a deleted member leaves behind. The account is gone and the movements
+  # stay, so the plugin's own paths run into rows with nobody behind them: the
+  # reversal of an award they earned, the refund of a bounty they left standing.
+  # Neither may raise on the way — the bounty expiry job closes every due offer
+  # in one pass, so an orphan that raised would strand every offer queued behind
+  # it — and neither may put a total on an account that does not exist.
+  describe "a movement with no account behind it" do
+    it "writes the entry and moves no balance" do
+      entry =
+        described_class.record(
+          user: nil,
+          points: 20,
+          event: IngenicPointEntry::BOUNTY_REFUND,
+          reason: "the offer expired",
+        )
+
+      expect(entry.user_id).to be_nil
+      expect(IngenicPointEntry.where(user_id: nil).count).to eq(1)
+      expect(IngenicPointBalance.where(user_id: nil)).to be_empty
+    end
+
+    it "still takes back an award whose account has gone" do
+      entry = described_class.award(user: user, event: IngenicPointRule::POST_CREATED)
+      # The state deleting the member leaves the ledger in: the row stays, the
+      # account on it is blanked, and the balance row goes with the account.
+      IngenicPointEntry.where(id: entry.id).update_all(user_id: nil)
+      IngenicPointBalance.where(user_id: user.id).delete_all
+
+      reversal = described_class.reverse(entry.reload, reason: "the post went away")
+
+      expect(reversal.user_id).to be_nil
+      expect(reversal.points).to eq(-entry.points)
+    end
+
+    it "leaves such an entry out of the rebuilt totals" do
+      described_class.record(
+        user: nil,
+        points: 20,
+        event: IngenicPointEntry::BOUNTY_REFUND,
+        reason: "the offer expired",
+      )
+
+      described_class.rebuild!
+
+      # No balance row for nobody: the totals are what members hold, and a row
+      # here would count as a holder on the admin screen.
+      expect(IngenicPointBalance.where(user_id: nil)).to be_empty
+    end
+  end
+
   describe ".total_for" do
     it "reads nothing for an account that has never earned" do
       expect(described_class.total_for(other_user)).to eq(0)

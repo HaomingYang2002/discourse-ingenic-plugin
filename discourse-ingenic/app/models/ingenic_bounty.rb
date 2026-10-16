@@ -24,7 +24,14 @@ class IngenicBounty < ActiveRecord::Base
   STATES = [OPEN, ACCEPTED, CANCELLED, EXPIRED].freeze
 
   belongs_to :topic
-  belongs_to :user
+
+  # The member who offered it. A settled bounty is the record of what an answer
+  # was worth and stays on the topic after its asker has gone — with the name
+  # blanked, which is what makes this optional. A standing one whose asker is
+  # deleted is still paid if an answer is accepted, and still expires at its
+  # deadline; the refund is then recorded against nobody, there being no account
+  # left to hold the points.
+  belongs_to :user, optional: true
   belongs_to :accepted_post, class_name: "Post", optional: true
   belongs_to :accepted_by, class_name: "User", optional: true
 

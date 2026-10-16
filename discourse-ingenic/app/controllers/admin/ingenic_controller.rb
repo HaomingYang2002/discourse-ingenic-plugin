@@ -308,6 +308,15 @@ module Admin
     def approve_request
       authorize_ingenic!(permissions: true)
       request = IngenicDownloadRequest.find(params[:id])
+
+      # The applicant's account can have been deleted while the application sat
+      # in the queue, and there is then nothing to approve *for*: a grant is a
+      # row naming an account. Refused as a sentence the queue already knows how
+      # to show, rather than by writing access for nobody.
+      if request.user.nil?
+        return render_json_error(I18n.t("ingenic.admin_errors.applicant_deleted"), status: 422)
+      end
+
       request.approve!(
         current_user,
         note: params[:note].to_s.strip.presence,
@@ -920,8 +929,11 @@ module Admin
         "created_at" => request.created_at.iso8601,
         "reviewed_at" => request.reviewed_at&.iso8601,
         "user_id" => request.user_id,
-        "username" => request.user.username,
-        "user_email" => request.user.email,
+        # A deleted applicant leaves both blank. The queue draws the row without
+        # a name rather than dropping it: the application and the answer it got
+        # are still the record of what happened here.
+        "username" => request.user&.username,
+        "user_email" => request.user&.email,
         "download_id" => request.download_id,
         "download_name" => request.download.name,
         "profile_summary" => profile&.summary(limit: 6).presence,
@@ -932,7 +944,9 @@ module Admin
       {
         "id" => grant.id,
         "user_id" => grant.user_id,
-        "username" => grant.user.username,
+        # Blank for a grant whose account has been deleted, which lets nobody in
+        # and is still worth showing as a decision that was made.
+        "username" => grant.user&.username,
         "download_id" => grant.download_id,
         "download_name" => grant.download.name,
         "active" => grant.active?,

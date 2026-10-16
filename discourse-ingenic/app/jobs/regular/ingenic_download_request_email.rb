@@ -14,6 +14,11 @@ module Jobs
       request = IngenicDownloadRequest.find_by(id: args[:request_id])
       return if request.nil?
 
+      # The notification names the applicant, so with the account gone there is
+      # nothing to tell the team about. The application is in the queue either
+      # way, which is where they would read it.
+      return if request.user.nil?
+
       to_address = args[:to_address].presence || SiteSetting.ingenic_download_admin_email
       if to_address.blank?
         # Nothing to send to and nowhere to say so, so this is logged and

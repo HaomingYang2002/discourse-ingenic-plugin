@@ -92,6 +92,11 @@ module Ingenic
     # bounty names a topic and a topic can be in a category the viewer has no
     # business knowing about. A board that leaked those titles would be a worse
     # leak than a topic list, because it would also say how much was on offer.
+    #
+    # An offer whose asker has been deleted stays on the board: the points are
+    # still set aside, the question is still there, and the answerer is still
+    # paid — a row with nobody to name is still a bounty, and the page leaves out
+    # the name it does not have.
     def board(guardian:, limit: 10)
       return IngenicBounty.none if guardian.nil?
 
@@ -319,6 +324,11 @@ module Ingenic
         locked = IngenicBounty.lock.find_by(id: bounty.id)
         next if locked.nil? || !locked.open?
 
+        # The asker may have been deleted while their offer stood, in which case
+        # the refund has no account to land on and `Points.record` writes it
+        # against nobody. It is still written: the escrow is a row in the ledger,
+        # and closing the bounty without the movement that closes it would leave
+        # the books saying that points left an account and never came back.
         entry =
           Points.record(
             user: locked.user,
