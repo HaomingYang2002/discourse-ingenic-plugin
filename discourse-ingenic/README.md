@@ -117,10 +117,22 @@ bounty past its deadline (`ingenic_bounty_expiry_days`, 14 by default), hourly
 rather than to the minute, since the points are in escrow either way. The asker
 may withdraw it before that, which is the same refund under a different reason.
 
+An offer also ends with its topic. Permanently deleting a topic returns whatever
+is still standing on it, in the deletion's own transaction: the offer is closed,
+the points go back to the asker and the row is then removed with the topic. That
+order is the whole point — the escrow is a ledger row, and a bounty row that
+disappeared without being closed would take the only record of points owed with
+it. A settled offer just goes with the topic: the answerer keeps what they were
+paid, and what is lost is the note of what the question was worth. Moving a topic
+to the trash is not a deletion — the offer stands until its deadline, and the
+board stops drawing it in the meantime.
+
 The feature needs the points system and discourse-solved, and is off if either is
 off. Switching bounties off stops the forum taking new offers and still lets the
 standing ones expire and refund — switching it off must not strand anybody's
-points.
+points. The same holds for a topic being deleted: the points come back whether or
+not bounties are switched on, since a setting must never be a way to keep what a
+member set aside while it was on.
 
 ## Requirements
 
@@ -316,6 +328,14 @@ movement with no account behind it for the two paths that meet this: the
 reversal of a deleted member's award, and the refund of a bounty they left
 standing — the escrow is a ledger row, so the movement that closes it has to be
 one too.
+
+A topic is the other kind of reference. `ingenic_bounties.topic_id` **cascades**,
+because every way a bounty is read goes through its topic — the topic page asks
+what is on offer, the board reaches offers by way of the topics the viewer may
+see, and accepting an answer looks one up by the post's topic — so a bounty
+standing on nothing is not a record of anything. The cascade is paired with a
+`before_destroy` callback on `Topic` that closes the standing offers first, which
+is what keeps it from destroying escrowed points: `Ingenic::Bounties.refund_for_topic!`.
 
 Every content table carries a `locale` column, so additional languages can be
 enabled later without a schema migration. Codes are Discourse's own (`zh_CN`,

@@ -63,6 +63,7 @@ zh_CN:
       award_reason: "悬赏支付：采纳的答案（%{points} 积分）"
       cancel_reason: "悬赏已撤回，积分退回"
       expire_reason: "悬赏到期未采纳，积分退回"
+      topic_removed_reason: "悬赏所在主题已删除，积分退回"
       cancelled: "悬赏已撤回，积分已退回您的账户。"
       no_topic: "该主题不存在。"
       not_allowed: "您无法在该主题上挂出悬赏。"

@@ -411,4 +411,108 @@ describe Ingenic::Bounties do
       expect(described_class.board(guardian: nil)).to be_empty
     end
   end
+
+  describe ".refund_for_topic!" do
+    it "gives a standing offer back and closes it" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+
+      expect(described_class.refund_for_topic!(topic)).to eq(1)
+
+      expect(balance_of(asker)).to eq(500)
+      expect(bounty.reload.state).to eq(IngenicBounty::CANCELLED)
+
+      refund =
+        IngenicPointEntry.find_by(
+          event: IngenicPointEntry::BOUNTY_REFUND,
+          subject_id: bounty.id,
+        )
+      expect(refund.points).to eq(100)
+      expect(refund.reason).to eq(I18n.t("ingenic.bounties.topic_removed_reason"))
+    end
+
+    it "leaves a settled offer alone" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+      described_class.accept!(bounty: bounty, post: answer_on(topic), by: asker)
+
+      expect(described_class.refund_for_topic!(topic)).to eq(0)
+
+      expect(bounty.reload.state).to eq(IngenicBounty::ACCEPTED)
+      expect(IngenicPointEntry.where(event: IngenicPointEntry::BOUNTY_REFUND)).to be_empty
+    end
+
+    it "says so and writes nothing for a topic with no offer" do
+      expect(described_class.refund_for_topic!(other_topic)).to eq(0)
+      expect(balance_of(asker)).to eq(500)
+    end
+
+    it "does nothing without a topic" do
+      expect(described_class.refund_for_topic!(nil)).to eq(0)
+    end
+
+    # Not held behind the switch, for the same reason the expiry job is not: a
+    # setting must never be a way to keep points a member set aside while it was
+    # on.
+    it "gives the points back while bounties are switched off" do
+      described_class.open!(topic: topic, user: asker, points: 100)
+      SiteSetting.ingenic_bounties_enabled = false
+
+      expect(described_class.refund_for_topic!(topic)).to eq(1)
+      expect(balance_of(asker)).to eq(500)
+    end
+  end
+
+  describe "a topic being deleted" do
+    # The foreign key cascades, so the rows would go with the topic whether or
+    # not anything refunded them — and a row that went without a refund would
+    # take the only record of points owed with it. This is that the plugin gets
+    # there first.
+    it "removes the offer and gives the points back" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+
+      topic.destroy!
+
+      expect(IngenicBounty.where(id: bounty.id)).to be_empty
+      expect(balance_of(asker)).to eq(500)
+
+      refund =
+        IngenicPointEntry.find_by(
+          event: IngenicPointEntry::BOUNTY_REFUND,
+          subject_id: bounty.id,
+        )
+      expect(refund.points).to eq(100)
+      expect(refund.user_id).to eq(asker.id)
+    end
+
+    # What an answer was worth goes with the question it answered. Nobody is paid
+    # a second time, and the answerer keeps what they were already paid.
+    it "takes a settled offer with it and pays nobody again" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+      described_class.accept!(bounty: bounty, post: answer_on(topic), by: asker)
+
+      topic.destroy!
+
+      expect(IngenicBounty.where(id: bounty.id)).to be_empty
+      expect(IngenicPointEntry.where(event: IngenicPointEntry::BOUNTY_REFUND)).to be_empty
+      expect(balance_of(answerer)).to eq(100)
+    end
+
+    it "destroys a topic that never had a bounty" do
+      expect { other_topic.destroy! }.not_to raise_error
+
+      expect(IngenicPointEntry.where(event: IngenicPointEntry::BOUNTY_REFUND)).to be_empty
+    end
+
+    # A topic in the trash is not a deleted topic: the row is still there, the
+    # offer is still the asker's, and the board stops drawing it because the
+    # topic is not visible. It ends the way every other offer does, at its
+    # deadline.
+    it "leaves the offer standing when the topic is only trashed" do
+      bounty = described_class.open!(topic: topic, user: asker, points: 100)
+
+      topic.trash!(asker)
+
+      expect(bounty.reload.state).to eq(IngenicBounty::OPEN)
+      expect(balance_of(asker)).to eq(400)
+    end
+  end
 end

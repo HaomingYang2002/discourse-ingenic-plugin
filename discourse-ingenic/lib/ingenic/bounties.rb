@@ -209,6 +209,46 @@ module Ingenic
       expired
     end
 
+    # Every standing offer on one topic, closed and given back. What deleting a
+    # topic asks for.
+    #
+    # The points behind a standing offer are escrowed rather than promised — off
+    # the asker's balance since the offer was opened — so a bounty row that
+    # disappeared without this would take with it the only thing that would ever
+    # have moved them back, and leave the asker short by an amount nobody could
+    # account for afterwards. The topic going is not the asker's doing, so this
+    # is the refund a withdrawal and an expiry also are, under a reason that says
+    # which of the three happened.
+    #
+    # Written as `cancelled` rather than under a fourth word of its own: the row
+    # is removed by the cascade in the same transaction this runs in, so nothing
+    # will ever read that state back. What records what happened is the ledger's
+    # reason, which is where a member reading their own history wants the answer.
+    #
+    # No `by:` — a `before_destroy` callback is not told which administrator
+    # deleted the topic, and naming one would be a guess. The staff action log is
+    # where "who" is kept.
+    #
+    # Deliberately not guarded on the feature being switched on, for the same
+    # reason `expire_due!` is not: bounties being off stops new offers, and a
+    # switch must never be a way to destroy what members set aside while it was
+    # on.
+    def refund_for_topic!(topic)
+      return 0 if topic.nil?
+
+      closed = 0
+
+      IngenicBounty.live.where(topic_id: topic.id).find_each do |bounty|
+        closed += 1 if refund!(
+          bounty: bounty,
+          state: IngenicBounty::CANCELLED,
+          reason: I18n.t("ingenic.bounties.topic_removed_reason"),
+        ) == :refunded
+      end
+
+      closed
+    end
+
     # An answer was accepted: pays the topic's standing bounty, if it has one.
     #
     # Reached from Discourse's own accepted-answer event, so it runs in the

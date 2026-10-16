@@ -505,6 +505,48 @@ Two consequences worth knowing before deleting somebody:
   where the name was, approving it says why it cannot be, and declining it still
   works. The same label appears in the points ledger and the access list.
 
+### Deleting a topic
+
+Permanently deleting a topic works even when it carries a **高分悬赏**, standing
+or settled. It did not always: `ingenic_bounties.topic_id` was a plain key, and
+the database refused to delete a topic that had a bounty on it — including one
+settled long ago, since a settled bounty stays on its topic as the record of what
+an answer was worth. The refusal came out worse than a refusal. `PostDestroyer`
+deletes a topic's replies first, each in its own transaction, and only then
+destroys the topic, so the error landed on the last step and left the topic
+stripped of its answers and still standing, behind an error page that explained
+none of it.
+
+Now the key cascades, and the plugin refunds on the way out:
+
+| The topic's bounty | What happens when the topic is deleted |
+| --- | --- |
+| standing | closed and the points returned to the asker before the topic goes |
+| settled | removed with the topic; the answerer keeps what they were paid |
+| none | nothing to do |
+
+The refund is a ledger entry like any other, so the asker's history says
+**Bounty returned because its topic was deleted** and their balance is whole
+again. It runs inside the deletion's own transaction: either the topic, its
+bounty rows and the movements that close them all go, or none of them do.
+
+Two things to know:
+
+- **Delete topics through the interface, a rake task, or `destroy` /
+  `destroy_all`.** A `Topic.where(...).delete_all` from the console runs no
+  callbacks at all: the cascade removes the bounty rows without refunding
+  anybody, and the points are gone with no movement to account for them. The
+  same happens if the plugin itself is switched off with `ingenic_enabled` —
+  a switched-off plugin registers no callbacks — so switching the whole
+  extension off is the one act that can cost a member their escrow. Switching
+  off only `ingenic_bounties_enabled` costs nothing: the offer still comes back.
+  Moving a topic to the trash is not a deletion at all — the offer stands, the
+  board stops drawing it, and it ends at its deadline as usual.
+- Deleting a topic moves points, so the asker's ledger tells them why. It does
+  not record *who* deleted it — a `before_destroy` callback is not told which
+  administrator pressed the button, and naming one would be a guess. **Admin →
+  Logs → Staff actions** is where that is kept.
+
 Use `docs/seeding.md` for console examples and migration/bootstrap workflows —
 in English, or `docs/seeding.zh-CN.md` in Chinese. They cover the same ground:
 both are worth skimming, and the Chinese one is the one to hand to somebody who
@@ -544,6 +586,7 @@ Open these and check each one:
 - [ ] `/ingenic/points` shows the signed-in member their balance, the price list and their own history — and nobody else's
 - [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
 - [ ] deleting a test member who has points, an application or a bounty goes through without a database error, and their movements are still in **Ingenic → Points → Recent movements** with **deleted account** where the name was
+- [ ] permanently deleting a test topic that carries a standing bounty goes through, the asker's balance is whole again, and **Ingenic → Points → Recent movements** shows it with **Bounty returned because its topic was deleted** as the reason
 - [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
 - [ ] on a question of your own, **Set a bounty on this question** names the range and your balance, and setting one takes the points off your balance at once — **Ingenic → Points** then shows them set aside
 - [ ] the standing offer shows on the topic itself, on the front page's bounty panel and on `/ingenic/bounties`, and a member who is not you sees no way to withdraw it
@@ -658,6 +701,9 @@ in the environment this was built in, so:
   covered by specs, but no points have moved for real
 - no account has been deleted from a real forum, so the keys that let a member's
   rows stay behind have only been checked against the migrations that write them
+- no topic has been permanently deleted from a real forum either, so the cascade
+  key and the `before_destroy` refund that runs ahead of it have only been
+  checked against the migration and the specs that cover them
 
 What *was* done: every file was parsed (Babel and Glimmer for the theme's
 JavaScript, tree-sitter for Ruby, a YAML parser for the settings and locale

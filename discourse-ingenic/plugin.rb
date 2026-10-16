@@ -157,6 +157,36 @@ after_initialize do
   on(:accepted_solution) { |post| Ingenic::PointEvents.solution_accepted(post) }
   on(:unaccepted_solution) { |post| Ingenic::PointEvents.solution_unaccepted(post) }
 
+  # Deleting a topic takes its 高分悬赏 with it, and the points behind a standing
+  # one come back on the way out.
+  #
+  # The foreign key cascades, because a bounty is read through its topic — the
+  # topic page asks what stands on it, the board reaches offers by way of the
+  # topics the viewer may see, accepting an answer looks one up by the post's
+  # topic — so an offer standing on nothing is not a record of anything. That is
+  # only safe alongside this handler: the points behind a standing offer are
+  # escrowed, off the asker's balance since the offer was opened, so a row
+  # removed without being closed takes the only thing that would ever have moved
+  # them back with it. The refund runs inside the deletion's own transaction, so
+  # the topic, the bounty rows and the movements that close them either all
+  # happen or none of them do.
+  #
+  # `before_destroy` rather than the `:topic_destroyed` event, because of when
+  # that event fires: `PostDestroyer` destroys the topic row inside its own
+  # transaction and triggers the event afterwards, by which time the row is gone
+  # — and it fires for a topic that was only moved to the trash as well, which is
+  # not a deletion the offer cares about.
+  #
+  # Asked of the database only while a topic is being destroyed, and answered by
+  # one indexed lookup that finds nothing for all but a handful of topics. Two
+  # ways past it, both worth knowing: a `delete_all` runs no callbacks at all,
+  # and `add_model_callback` stands aside while the whole plugin is switched off
+  # — in either case the cascade removes the rows without giving anything back.
+  # The escrow entry stays in the ledger, so what was lost is still visible, but
+  # it has stopped being recoverable. `DEPLOY.md` says so where administrators
+  # are told what they may do with a topic.
+  add_model_callback(Topic, :before_destroy) { Ingenic::Bounties.refund_for_topic!(self) }
+
   # Navigation and homepage layout are admin-editable, so they are shipped to
   # the client through the site serializer rather than baked into the theme.
   add_to_serializer(:site, :ingenic_nav_items, include_condition: -> { SiteSetting.ingenic_enabled }) do

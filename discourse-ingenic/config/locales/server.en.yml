@@ -65,6 +65,7 @@ en:
       award_reason: "Bounty paid for the accepted answer (%{points} points)"
       cancel_reason: "Bounty withdrawn, points returned"
       expire_reason: "Bounty expired unanswered, points returned"
+      topic_removed_reason: "Bounty returned because its topic was deleted"
       cancelled: "The bounty has been withdrawn and your points are back."
       no_topic: "That topic does not exist."
       not_allowed: "You cannot open a bounty on that topic."
