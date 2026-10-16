@@ -173,6 +173,11 @@ module Admin
             admin_download_json(download, pending[download.id] || 0, granted[download.id] || 0)
           end,
         access_levels: IngenicDownload::ACCESS_LEVELS,
+        # The languages this Discourse can serve, each labelled with the
+        # name its own speakers use: the same list core's language
+        # pickers offer, so a value no visitor's locale can equal is not
+        # something an administrator can type in by hand.
+        locales: locale_options,
         # Sent with the listing so the editor can offer the classification
         # without a second request. Includes retired entries, because a resource
         # filed under one has to keep showing it until it is reclassified.
@@ -230,7 +235,17 @@ module Admin
       record = IngenicDownload.new(download_params)
       uploaded = apply_upload(record)
 
-      if record.save
+      begin
+        saved = record.save
+      rescue StandardError
+        # A refusal that raises - a foreign key, a constraint - never reaches
+        # the branch below, and the file this request just wrote would sit
+        # on disk with nothing naming it.
+        ::Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        raise
+      end
+
+      if saved
         render_json_dump(download: admin_download_json(record, *counts_for(record)))
       else
         # The bytes are already on disk by the time validation runs, and nothing
@@ -248,7 +263,16 @@ module Admin
       replaced = record.storage_path
       uploaded = apply_upload(record)
 
-      if record.save
+      begin
+        saved = record.save
+      rescue StandardError
+        # The row still points at the file it already had, so only the
+        # upload this request wrote is cleaned up.
+        ::Ingenic::DownloadStorage.delete(uploaded) if uploaded
+        raise
+      end
+
+      if saved
         # Replacing an upload orphans the file it replaced.
         ::Ingenic::DownloadStorage.delete(replaced) if replaced.present? && replaced != record.storage_path
         render_json_dump(download: admin_download_json(record, *counts_for(record)))
@@ -597,6 +621,16 @@ module Admin
       permitted
     end
 
+    # The languages this Discourse can serve, each labelled with the name
+    # its own speakers use. Free text in this field is how a resource ends
+    # up filed under a spelling no visitor's locale ever equals: invisible
+    # to everyone, and silent about it.
+    def locale_options
+      LocaleSiteSetting.values.map do |option|
+        { value: option[:value], name: option[:native_name].presence || option[:value] }
+      end
+    end
+
     def download_params
       permitted =
         params.permit(
@@ -618,9 +652,11 @@ module Admin
           :point_cost,
         )
 
-      # "No category" comes back from the picker as an empty string, which the
-      # foreign key would refuse; null is the value that means unfiled.
-      permitted[:category_id] = permitted[:category_id].presence
+      # "No category" comes back from the picker as an empty string, or as
+      # the sentinel the ui-kit select uses for its first option. The
+      # foreign key would refuse either, and null means unfiled.
+      category_id = permitted[:category_id].to_s
+      permitted[:category_id] = nil if category_id.empty? || category_id == "__NONE__"
       permitted
     end
 
@@ -742,6 +778,7 @@ module Admin
           "architecture",
           "file_url",
           "file_size",
+          "original_filename",
           "sha256",
           "released_on",
           "published",

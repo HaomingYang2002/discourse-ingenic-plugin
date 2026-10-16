@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { on } from "@ember/modifier";
+import { service } from "@ember/service";
 import { fn } from "@ember/helper";
 import { ajax } from "discourse/lib/ajax";
 import { i18n } from "discourse-i18n";
@@ -19,7 +20,7 @@ const BLANK = {
   button_href: "",
   button_external: false,
   image_url: "",
-  locale: "en",
+  locale: "",
   starts_at: "",
   ends_at: "",
   position: 0,
@@ -35,6 +36,15 @@ const BLANK = {
  * a fourth is added, or one taken down, without a deploy.
  */
 export default class IngenicPromotionManager extends Component {
+  @service siteSettings;
+
+  // A new row is filed in the language this site serves rather than in
+  // English: a row under a locale no reader's interface uses is a row nobody
+  // finds, and nothing reports the mistake.
+  get defaultLocale() {
+    return this.siteSettings.ingenic_default_locale || "";
+  }
+
   @tracked records = this.args.promotions ?? [];
   @tracked draft = null;
   @tracked busy = false;
@@ -43,7 +53,7 @@ export default class IngenicPromotionManager extends Component {
 
   @action
   startNew() {
-    this.draft = { ...BLANK };
+    this.draft = { ...BLANK, locale: this.defaultLocale };
     this.message = null;
     this.error = null;
   }
@@ -66,6 +76,23 @@ export default class IngenicPromotionManager extends Component {
     this.draft = null;
     this.message = null;
     this.error = null;
+  }
+
+  // The text fields are bound one way, and a re-render puts the draft back
+  // into them, over whatever was typed: the draft never heard about the
+  // typing. Keeping it in step as the form is filled in is what stops a click
+  // on a select - or a save the server refuses - from emptying the form.
+  @action
+  field(event) {
+    const { name, type, value, checked } = event.target;
+
+    // The selects keep the draft in step in their own handlers, and a file
+    // input's value is a fake path rather than a filename.
+    if (!name || type === "file" || type.startsWith("select")) {
+      return;
+    }
+
+    this.draft[name] = type === "checkbox" ? checked : value;
   }
 
   @action
@@ -136,7 +163,7 @@ export default class IngenicPromotionManager extends Component {
       </div>
 
       {{#if this.draft}}
-        <form class="ingenic-admin-form" {{on "submit" this.save}}>
+        <form class="ingenic-admin-form" {{on "submit" this.save}} {{on "input" this.field}}>
           <h3>
             {{#if this.draft.id}}
               {{i18n "admin.ingenic.promotions.edit_title"}}

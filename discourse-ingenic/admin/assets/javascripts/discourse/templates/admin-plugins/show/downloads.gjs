@@ -130,6 +130,7 @@ export default class AdminPluginsShowDownloads extends Component {
           @downloads={{this.args.model.resources.downloads}}
           @categories={{this.args.model.resources.categories}}
           @accessLevels={{this.args.model.resources.access_levels}}
+          @locales={{this.args.model.resources.locales}}
           @storageWritable={{this.args.model.resources.storage_writable}}
         />
       {{/if}}

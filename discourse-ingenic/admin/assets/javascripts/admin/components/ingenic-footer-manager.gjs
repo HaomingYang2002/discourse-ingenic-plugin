@@ -75,6 +75,23 @@ export default class IngenicFooterManager extends Component {
     this.error = null;
   }
 
+  // The text fields are bound one way, and a re-render puts the draft back
+  // into them, over whatever was typed: the draft never heard about the
+  // typing. Keeping it in step as the form is filled in is what stops a click
+  // on a select - or a save the server refuses - from emptying the form.
+  @action
+  field(event) {
+    const { name, type, value, checked } = event.target;
+
+    // The selects keep the draft in step in their own handlers, and a file
+    // input's value is a fake path rather than a filename.
+    if (!name || type === "file" || type.startsWith("select")) {
+      return;
+    }
+
+    this.draft[name] = type === "checkbox" ? checked : value;
+  }
+
   @action
   async save(event) {
     event.preventDefault();
@@ -188,7 +205,7 @@ export default class IngenicFooterManager extends Component {
       </div>
 
       {{#if this.draft}}
-        <form class="ingenic-admin-form" {{on "submit" this.save}}>
+        <form class="ingenic-admin-form" {{on "submit" this.save}} {{on "input" this.field}}>
           <h3>
             {{#if this.isLink}}
               {{#if this.draft.id}}

@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { on } from "@ember/modifier";
+import { service } from "@ember/service";
 import { fn, get } from "@ember/helper";
 import { ajax } from "discourse/lib/ajax";
 import DNativeSelect from "discourse/ui-kit/d-native-select";
@@ -15,7 +16,7 @@ const BLANK = {
   product_slug: "",
   category_id: "",
   version: "",
-  locale: "en",
+  locale: "",
   name: "",
   description: "",
   platform: "",
@@ -40,6 +41,8 @@ const BLANK = {
  * arrives, so the form does not have to arbitrate between them.
  */
 export default class IngenicDownloadManager extends Component {
+  @service siteSettings;
+
   @tracked records = this.args.downloads ?? [];
   @tracked draft = null;
   @tracked busy = false;
@@ -70,16 +73,63 @@ export default class IngenicDownloadManager extends Component {
     return key ? i18n(`${key}_hint`) : null;
   }
 
+  // The languages this Discourse serves, sent with the listing. A list
+  // rather than free text because the front end matches this value against
+  // the reader's locale: a spelling no reader's locale equals is a resource
+  // no reader can find, and the mistake reports nothing.
+  get localeOptions() {
+    const options = [...(this.args.locales ?? [])];
+    const current = this.draft?.locale;
+
+    // A row filed before a language was switched off still has to show
+    // what it is filed under, or the field would read blank.
+    if (current && !options.some((option) => option.value === current)) {
+      options.unshift({ value: current, name: current });
+    }
+
+    return options.length ? options : [{ value: this.defaultLocale, name: this.defaultLocale }];
+  }
+
+  // New content is filed in the language this site serves rather than in
+  // English: the readers are the ones who have to find it.
+  get defaultLocale() {
+    return this.siteSettings.ingenic_default_locale || "";
+  }
+
+  // An uploaded file carries its own digest; the legacy column is what a
+  // hand-entered URL used to come with. Showing whichever exists is what
+  // keeps this field from reading blank on a file the server hashed.
+  get checksum() {
+    return this.draft?.file_sha256 || this.draft?.sha256 || "";
+  }
+
+  // What the row already holds, said in the form rather than left to the
+  // file input: an empty file input says "no file chosen" even when the
+  // stored file is intact.
+  get storedFileLabel() {
+    const name = this.draft?.original_filename;
+
+    if (!name) {
+      return null;
+    }
+
+    return this.draft?.file_size ? `${name} (${this.draft.file_size})` : name;
+  }
+
   @action
   startNew() {
-    this.draft = { ...BLANK };
+    this.draft = { ...BLANK, locale: this.defaultLocale };
     this.message = null;
     this.error = null;
   }
 
   @action
   edit(record) {
-    this.draft = { ...record, file_url: record.file_url ?? "" };
+    this.draft = {
+      ...record,
+      file_url: record.file_url ?? "",
+      locale: record.locale || this.defaultLocale,
+    };
     this.message = null;
     this.error = null;
   }
@@ -91,8 +141,8 @@ export default class IngenicDownloadManager extends Component {
     this.error = null;
   }
 
-  // The ui-kit select drives the draft rather than the form, so the two values
-  // it owns are kept in step here. They are still submitted as form fields: the
+  // The ui-kit selects drive the draft rather than the form, so the values they
+  // own are kept in step here. They are still submitted as form fields: the
   // select carries a name and the browser reads the chosen option back out.
   @action
   pickCategory(value) {
@@ -102,6 +152,28 @@ export default class IngenicDownloadManager extends Component {
   @action
   pickAccessLevel(value) {
     this.draft = { ...this.draft, access_level: value };
+  }
+
+  @action
+  pickLocale(value) {
+    this.draft = { ...this.draft, locale: value };
+  }
+
+  // The text fields are bound one way, and a re-render puts the draft back
+  // into them, over whatever was typed: the draft never heard about the
+  // typing. Keeping it in step as the form is filled in is what stops a click
+  // on a select - or a save the server refuses - from emptying the form.
+  @action
+  field(event) {
+    const { name, type, value, checked } = event.target;
+
+    // The selects keep the draft in step in their own handlers, and a file
+    // input's value is a fake path rather than a filename.
+    if (!name || type === "file" || type.startsWith("select")) {
+      return;
+    }
+
+    this.draft[name] = type === "checkbox" ? checked : value;
   }
 
   @action
@@ -181,7 +253,7 @@ export default class IngenicDownloadManager extends Component {
       </div>
 
       {{#if this.draft}}
-        <form class="ingenic-admin-form" {{on "submit" this.save}}>
+        <form class="ingenic-admin-form" {{on "submit" this.save}} {{on "input" this.field}}>
           <h3>
             {{#if this.draft.id}}
               {{i18n "admin.ingenic.downloads.edit_title"}}
@@ -236,7 +308,20 @@ export default class IngenicDownloadManager extends Component {
 
           <label>
             <span>{{i18n "admin.ingenic.downloads.fields.locale"}}</span>
-            <input name="locale" value={{this.draft.locale}} />
+            {{! The ui-kit select rather than free text: the value is
+                matched against the reader's locale, so a spelling nobody
+                else uses hides the resource from everyone. }}
+            <DNativeSelect
+              name="locale"
+              @includeNone={{false}}
+              @value={{this.draft.locale}}
+              @onChange={{this.pickLocale}}
+              as |select|
+            >
+              {{#each this.localeOptions as |option|}}
+                <select.Option @value={{option.value}}>{{option.name}}</select.Option>
+              {{/each}}
+            </DNativeSelect>
           </label>
 
           <label>
@@ -274,6 +359,12 @@ export default class IngenicDownloadManager extends Component {
             <input type="file" name="file" />
           </label>
 
+          {{#if this.storedFileLabel}}
+            <p class="ingenic-admin-form__hint">
+              {{i18n "admin.ingenic.downloads.fields.stored_file" file=this.storedFileLabel}}
+            </p>
+          {{/if}}
+
           <p class="ingenic-admin-form__hint">
             {{i18n "admin.ingenic.downloads.fields.file_hint"}}
           </p>
@@ -290,8 +381,12 @@ export default class IngenicDownloadManager extends Component {
 
           <label>
             <span>{{i18n "admin.ingenic.downloads.fields.sha256"}}</span>
-            <input name="sha256" value={{this.draft.sha256}} />
+            <input name="sha256" value={{this.checksum}} />
           </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.downloads.fields.sha256_hint"}}
+          </p>
 
           <label>
             <span>{{i18n "admin.ingenic.downloads.fields.released_on"}}</span>
