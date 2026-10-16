@@ -167,11 +167,6 @@ html.ingenic-nav-first .sidebar-sections {
 // The site-wide search block at the top of the homepage. It is a section like
 // any other, so it keeps that section's frame and only adds the emphasis that
 // makes it read as the first thing to do on the page.
-.ingenic-hero {
-  background: var(--tertiary-low);
-  padding: 2rem 1.25rem;
-}
-
 .ingenic-search {
   width: 100%;
   max-width: 40rem;
@@ -1149,4 +1144,71 @@ html.ingenic-nav-first .sidebar-sections {
 .ingenic-section__header h2 a:hover,
 .ingenic-section__header h2 a:focus {
   text-decoration: underline;
+}
+
+// The language switcher in the header's icon row.
+//
+// Modelled on the one Discourse ships in
+// app/assets/stylesheets/common/base/header.scss, and using the same variables,
+// so it sits among the header icons rather than beside them. Written out here
+// rather than borrowed from core's rule set because core's is keyed to the
+// identifier of its own switcher, and two menus answering to one identifier is
+// a collision waiting for whoever turns content localization on.
+.ingenic-locale {
+  display: flex;
+  align-items: center;
+
+  &__current {
+    color: var(--header_primary-high);
+    font-size: var(--font-down-1);
+  }
+
+  // DMenu builds its trigger with `-trigger` on the identifier it was given.
+  &-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    margin-right: var(--space-2);
+    border: 1px solid var(--header_primary-low-mid);
+
+    html.anon & {
+      // matches the log-in button's height for anyone signed out
+      padding: var(--space-2);
+      font-size: var(--font-down-1);
+    }
+
+    .d-icon {
+      width: 1em;
+      font-size: var(--font-down-2);
+      color: var(--d-header-icon-color);
+    }
+
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        border: 1px solid var(--header_primary-medium);
+        background: var(--d-header-icon-background--hover);
+
+        .ingenic-locale__current {
+          color: var(--header_primary);
+        }
+
+        .d-icon {
+          color: var(--d-header-icon-color--hover);
+        }
+      }
+    }
+  }
+}
+
+// The open menu floats above the header, so it has to outrank it.
+.fk-d-menu.ingenic-locale-content {
+  margin-top: -0.75em;
+  z-index: z("header");
+}
+
+.ingenic-locale__option.--selected button {
+  font-weight: bold;
+  color: var(--tertiary);
 }

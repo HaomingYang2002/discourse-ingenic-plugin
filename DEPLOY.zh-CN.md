@@ -189,7 +189,6 @@ discourse-ingenic-theme.zip
 ```json
 [
   { "type": "promotions",    "enabled": true, "position": 0 },
-  { "type": "search",        "enabled": true, "position": 1 },
   { "type": "announcements", "enabled": true, "position": 2, "limit": 5,  "category": "official-announcements" },
   { "type": "discussions",   "enabled": true, "position": 3, "limit": 10, "category": "technical-discussions" },
   { "type": "downloads",     "enabled": true, "position": 4, "limit": 6 },
@@ -201,10 +200,30 @@ discourse-ingenic-theme.zip
 任何活动时该模块不显示。如果填入的类型名没有对应的组件，该模块同样不会显示，
 所以写错名字的表现是"一直不出现"。
 
+### 界面语言
+
+界面语言是 Discourse 自带的能力，所以下面三项是核心设置，不是插件设置。它们决定
+页头的语言切换器能不能用：
+
+| 设置 | 取值 | 原因 |
+|---|---|---|
+| `default_locale` | `en` | 首次访问的访客看到的语言 |
+| `allow_user_locale` | 开（默认已经是开） | 关闭后任何人都不能选择语言，切换器会自动隐藏 |
+| `set_locale_from_cookie` | 开 | 未登录访客的选择保存在 cookie 里；这一项关闭时 Discourse 不会回读该 cookie，表现就是"点了没反应" |
+
+切换器位于页头搜索框旁，提供的语言来自主题设置 `ingenic_locales`，默认为
+`en|zh_CN`。每一项都用该语言自己的写法显示，所以看不懂当前界面语言的访客也能找到
+自己要选的那一项。
+
+Discourse 把语言记在两个地方，切换器写的是当前生效的那一个：已登录账号使用账号自己
+的语言偏好（在个人偏好设置里也能改），未登录访客则读 cookie。已登录的访客不会读
+cookie——这是 Discourse 的规则，不是插件的行为。
+
 ### 主题设置
 
 | 设置 | 默认值 | 作用 |
 |---|---:|---|
+| `ingenic_locales` | `en\|zh_CN` | 页头切换器提供的语言；少于两项时切换器不显示 |
 | `ingenic_sidebar_width` | 272 | 桌面端侧边栏宽度，单位为像素 |
 | `ingenic_sidebar_position` | `left` | 侧边栏位置，可改为 `right` |
 | `ingenic_nav_order` | `first` | Ingenic 导航位于 Discourse 原生区段之前或之后 |
@@ -310,6 +329,8 @@ rails c
 - [ ] 管理员手工调整某个账号后余额随之变化，填写的备注成为该条流水的原因
 - [ ] 关闭 `ingenic_points_enabled` 后，标价资源免费下载且不再发放积分；重新打开后余额仍在
 - [ ] `/ingenic/boards` 显示开发板，配置了购买链接的卡片会显示 **Buy now** 按钮
+- [ ] 页头搜索框旁出现语言切换器；选 **中文** 后页面以中文重新加载，选 **English** 能切回
+- [ ] 登录状态下的切换同样有效——该选择在退出再登录后依然保留
 - [ ] Ingenic 导航出现在 Discourse 侧边栏中，移动端抽屉中也能看到
 - [ ] 把文档地址复制到新浏览器标签页，可以直接打开
 - [ ] `/` 在主题列表上方显示首页模块，以及在 **Ingenic → Site** 中配置的活动推广位
@@ -356,7 +377,62 @@ cd /var/discourse
 
 ---
 
-## 7. 当前验证范围
+## 7. 把配置搬到另一台机器
+
+本论坛的配置由两部分组成：插件的设置与内容，以及主题的设置。两者分开导出，因为它们
+属于不同的对象。
+
+### 主题设置
+
+**管理后台 → 自定义 → 主题 → Ingenic Community → 导出** 会生成一个 zip，其中
+settings 字段带的是主题当前的值，所以在另一台机器上导入这个 zip 就能带上主题设置。
+zip 里没有别的——主题的文件来自本仓库。
+
+### 插件设置与内容
+
+```bash
+cd /var/www/discourse
+
+# 把这个插件拥有的全部配置写进一个文件
+rake ingenic:export_config[/shared/ingenic-config.yml]
+
+# 只看文件里有什么，不改动任何数据
+rake ingenic:show_config[/shared/ingenic-config.yml]
+
+# 应用它——第二个参数表示执行后整体回滚
+rake ingenic:import_config[/shared/ingenic-config.yml,dry]
+rake ingenic:import_config[/shared/ingenic-config.yml]
+```
+
+文件里包含插件的站点设置（你改过的那些，仍处于默认值的不会写进去），以及管理员在后台
+录入的内容：产品树、版本、页面、下载目录与分类、开发板、文档权限、活动推广位、页脚、
+社交链接和积分规则。
+
+文件里**刻意不包含任何成员产生的数据**。积分余额、积分流水、下载申请、授权记录、开发者
+资料、下载记录，记录的都是人做过什么，其中开发者资料还是个人信息。那些东西属于数据库
+备份，是另一类副本、另一套保管方式，需要的话请直接做数据库备份。
+
+`import_config` 按自然键 upsert——产品由 slug 与语言标识，版本由所属产品与 slug 标识，
+依此类推——所以同一个文件导入两次，第二次不会有任何改动。它从不删除：存在于论坛但不在
+文件里的记录会原样保留，并在结尾以 `Left alone` 列出，由你决定怎么处理。整个导入在一个
+事务里完成，文件被拒绝时论坛保持原样。
+
+上传的 SDK 与固件文件本身也不在文件里，只有指向它们的记录，包括每个文件被写入的路径。
+把下载目录一起拷过来的机器可以直接恢复出可用的下载中心；没有那些文件的机器会得到指向
+不存在文件的记录。
+
+### 每次部署之后
+
+```bash
+rake ingenic:doctor
+```
+
+它会检查那几个"设错了也不会报错"的设置——插件被关掉、没人能切换语言、下载目录不可写
+——并指出需要改哪一项。
+
+---
+
+## 8. 当前验证范围
 
 本项目尚未在真实运行中的 Discourse 实例执行。当前构建环境没有 Ruby、bundler
 和数据库，因此：

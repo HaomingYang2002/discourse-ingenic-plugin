@@ -25,7 +25,7 @@ plugins:
     multiline: true
 
   # JSON array controlling which blocks appear on the custom homepage and in
-  # what order. Supported types: promotions, search, announcements, discussions,
+  # what order. Supported types: promotions, announcements, discussions,
   # downloads, boards.
   #
   # A type with no component behind it renders nothing, so a name that is not in
@@ -33,7 +33,6 @@ plugins:
   #
   # [
   #   { "type": "promotions",    "enabled": true,  "position": 0 },
-  #   { "type": "search",        "enabled": true,  "position": 1 },
   #   { "type": "announcements", "enabled": true,  "position": 2, "limit": 5, "category": "official-announcements" },
   #   { "type": "discussions",   "enabled": true,  "position": 3, "limit": 10, "category": "technical-discussions" },
   #   { "type": "downloads",     "enabled": true,  "position": 4, "limit": 6 },

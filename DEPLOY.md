@@ -191,7 +191,6 @@ A starting `ingenic_homepage_blocks`:
 ```json
 [
   { "type": "promotions",    "enabled": true, "position": 0 },
-  { "type": "search",        "enabled": true, "position": 1 },
   { "type": "announcements", "enabled": true, "position": 2, "limit": 5,  "category": "official-announcements" },
   { "type": "discussions",   "enabled": true, "position": 3, "limit": 10, "category": "technical-discussions" },
   { "type": "downloads",     "enabled": true, "position": 4, "limit": 6 },
@@ -204,10 +203,34 @@ with no promotions configured the block renders nothing. A supported type with
 no component behind it also renders nothing, so a mistyped name is a block that
 silently never appears.
 
+### Language
+
+The interface language is Discourse's own feature, so these are core settings
+rather than plugin ones. Three of them decide whether the header's language
+switcher works at all:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `default_locale` | `en` | The language a first-time visitor gets |
+| `allow_user_locale` | on (already the default) | With it off nobody may choose a language, and the switcher hides itself |
+| `set_locale_from_cookie` | on | A signed-out reader's choice is kept in a cookie, and Discourse does not read that cookie back while this is off — the switch then looks like it does nothing |
+
+The switcher sits in the header beside the search box and offers the languages
+listed in the theme's `ingenic_locales` setting — `en` and `zh_CN` by default.
+Each language is labelled in its own language, so a reader who cannot read the
+current one can still find theirs.
+
+Discourse remembers a language in two places and the switcher writes to
+whichever one applies: a signed-in account carries its own preference (the same
+one under the account's preferences), and a signed-out visitor is served from
+the cookie. A reader who is signed in never sees the cookie — that is
+Discourse's rule, not the plugin's.
+
 ### Theme settings
 
 | Setting | Default | Effect |
 | --- | --- | --- |
+| `ingenic_locales` | `en\|zh_CN` | The languages the header's switcher offers; it stays hidden with fewer than two |
 | `ingenic_sidebar_width` | 272 | Sidebar width on desktop |
 | `ingenic_sidebar_position` | left | Move the sidebar to the right |
 | `ingenic_nav_order` | first | Ingenic navigation above or below Discourse's own sections |
@@ -365,6 +388,8 @@ Open these and check each one:
 - [ ] an administrator adjusting an account by hand moves the balance and writes the note as the reason
 - [ ] with `ingenic_points_enabled` off, a priced resource downloads free and nobody earns anything; the balances are still there when it goes back on
 - [ ] `/ingenic/boards` shows boards, and a board with a purchase link shows a **Buy now** button
+- [ ] the header shows a language switcher beside the search box; picking **中文** reloads the page in Chinese, and picking **English** brings it back
+- [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
 - [ ] `/` shows the homepage blocks above the topic list, and the promotions you configured in **Ingenic → Site**
@@ -386,6 +411,70 @@ inside the container and is the fastest way to check the endpoints.
   `plugins/`) and rebuild. The plugin's tables are left in place — they are
   named `ingenic_*` and nothing else reads them, so leaving them costs nothing
   and keeps the content if you reinstall.
+
+---
+
+## 7. Moving a configuration to another machine
+
+Two things make up this forum's configuration: the plugin's settings and content,
+and the theme's settings. They are exported separately because they belong to
+different objects.
+
+### Theme settings
+
+**Admin → Customize → Themes → Ingenic Community → Export** writes a zip whose
+settings field carries the values currently in the theme, so importing that zip
+on another machine brings the theme's settings with it. Nothing else is in there
+— the theme's files come from this repository.
+
+### Plugin settings and content
+
+```bash
+cd /var/www/discourse
+
+# write everything this plugin owns into one file
+rake ingenic:export_config[/shared/ingenic-config.yml]
+
+# see what a file holds, without touching anything
+rake ingenic:show_config[/shared/ingenic-config.yml]
+
+# apply it — the second argument rolls the whole thing back afterwards
+rake ingenic:import_config[/shared/ingenic-config.yml,dry]
+rake ingenic:import_config[/shared/ingenic-config.yml]
+```
+
+The file holds the plugin's site settings (the ones you changed, not the ones
+still on their defaults) and the content an administrator typed in: the product
+tree, versions, pages, the download catalogue and its categories, boards,
+documentation permissions, promotions, the footer, social links and point rules.
+
+It deliberately holds **nothing members produced**. Point balances, point
+entries, download applications, access grants, developer profiles and the
+download record are a record of what people did, and one of those tables holds
+personal data about them. A copy of that is a database dump, which is a
+different thing with a different lifetime; take one of those if you need it.
+
+`import_config` is an upsert by natural key — a product is identified by its
+slug and locale, a version by its product and slug, and so on — so importing the
+same file twice changes nothing the second time. It never deletes: a row that
+exists in the forum but not in the file is left alone and reported as
+`Left alone` at the end, for you to decide about. The whole import runs in one
+transaction, so a file it refuses leaves the forum exactly as it was.
+
+Uploaded SDK and firmware files are not in the file either — only the rows that
+point at them, including the path each upload was written to. A machine whose
+download directory was copied across restores to a working download centre; a
+machine without those files gets rows pointing at files that are not there.
+
+### After any deployment
+
+```bash
+rake ingenic:doctor
+```
+
+It checks the handful of settings whose wrong value produces no error anywhere —
+the plugin switched off, a language nobody can switch, a download directory
+nothing can be written to — and names what to change.
 
 ---
 

@@ -57,12 +57,18 @@ color scheme.
 
 | Setting | Purpose |
 | --- | --- |
+| `ingenic_locales` | Languages the header's language switcher offers, in order. Hidden while fewer than two are listed. |
 | `ingenic_sidebar_width` | Width of the navigation sidebar on desktop, in pixels |
 | `ingenic_sidebar_position` | `left` or `right` |
 | `ingenic_nav_order` | `first` puts the Ingenic navigation above Discourse's own sidebar sections |
 | `ingenic_nav_title` | Optional heading above the navigation entries; empty renders a plain list |
 | `ingenic_hero_title` | Optional headline above the homepage blocks |
 | `ingenic_hero_subtitle` | Optional supporting line under the headline |
+
+The language switcher in the header also needs two of Discourse's own site
+settings: `allow_user_locale` (on by default) and `set_locale_from_cookie`.
+Without the second one a signed-out reader's choice goes into a cookie the
+server will not read back, which looks like a switch that does nothing.
 
 There is no setting for showing or hiding the sidebar or for collapsing it:
 Discourse already has both in the interface, and a second control would fight

@@ -48,12 +48,12 @@ describe DiscourseIngenic::ConfigParser do
       SiteSetting.ingenic_homepage_blocks = [
         { type: "downloads", position: 2 },
         { type: "", position: 1 },
-        { type: "search", position: 0 },
+        { type: "boards", position: 0 },
       ].to_json
 
       blocks = described_class.homepage_blocks
 
-      expect(blocks.map { |block| block["type"] }).to eq(%w[search downloads])
+      expect(blocks.map { |block| block["type"] }).to eq(%w[boards downloads])
     end
 
     it "applies a default limit when none is given" do

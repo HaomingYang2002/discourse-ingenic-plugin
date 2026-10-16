@@ -30,6 +30,7 @@ require_relative "lib/ingenic/download_storage"
 require_relative "lib/ingenic/official_flair"
 require_relative "lib/ingenic/points"
 require_relative "lib/ingenic/point_events"
+require_relative "lib/ingenic/config_export"
 
 # A plugin's `app/` tree is not autoloaded. Discourse either namespaces it
 # behind a Rails::Engine or expects the plugin to require each file, and this

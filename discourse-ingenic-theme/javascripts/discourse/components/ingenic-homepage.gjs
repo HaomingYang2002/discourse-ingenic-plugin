@@ -4,12 +4,13 @@ import { service } from "@ember/service";
 import IngenicBlockTopics from "./ingenic-block-topics";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
-import IngenicBlockSearch from "./ingenic-block-search";
 import IngenicPromotions from "./ingenic-promotions";
 import { i18n } from "discourse-i18n";
 
+// Search is deliberately absent: the header already carries the forum's own
+// search, and a second box on the homepage that ran the same query was one
+// place too many to type it.
 const BLOCK_COMPONENTS = {
-  search: IngenicBlockSearch,
   promotions: IngenicPromotions,
   announcements: IngenicBlockTopics,
   discussions: IngenicBlockTopics,

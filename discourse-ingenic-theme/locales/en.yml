@@ -13,10 +13,11 @@ en:
       title: "Build with Ingenic"
       subtitle: "Documentation, resources, and technical discussions for Ingenic developers."
       quick_links: "Ingenic quick links"
-      search_placeholder: "Search the community"
       empty: "Nothing here yet."
     promotions:
       title: "What's on"
+    locale:
+      title: "Change site language"
     footer:
       platforms: "Find us"
       close: "Close"

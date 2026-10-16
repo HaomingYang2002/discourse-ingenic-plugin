@@ -47,7 +47,7 @@ column to move.
 ### Homepage
 
 The homepage is assembled from blocks listed in `ingenic_homepage_blocks`.
-Supported types: `search`, `announcements`, `discussions`, `downloads`,
+Supported types: `announcements`, `discussions`, `downloads`,
 `boards`, `docs`, `html`. Order and visibility are admin-controlled; unknown
 types are ignored rather than rendered broken. The blocks render above the topic
 list through the `before-topic-list` outlet, so the forum's own list is not

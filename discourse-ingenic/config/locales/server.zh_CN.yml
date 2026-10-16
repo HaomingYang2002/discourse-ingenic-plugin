@@ -1,0 +1,94 @@
+zh_CN:
+  site_settings:
+    ingenic_enabled: "启用君正社区扩展（文档版本管理、下载中心、开发板商店）。"
+    ingenic_nav_items: "左侧导航项，使用 JSON 数组。可设置标签、图标、链接目标、排序和可见性。"
+    ingenic_homepage_blocks: "首页区块，使用 JSON 数组。可设置显示哪些区块及其顺序。"
+    ingenic_default_locale: "当文档没有读者所用语言的版本时使用的语言。此处仅提供本站支持的语言；内容记录必须使用相同的代码（zh_CN，而非 zh-CN）。"
+    ingenic_docs_discussion_category: "当文档页面没有关联主题时，「在论坛中讨论」链接所使用的分类标识。"
+    ingenic_download_storage_path: "存放已上传 SDK 和固件文件的目录。留空则使用 <app>/ingenic-downloads。必须位于 public/ 之外。"
+    ingenic_download_admin_email: "开发者申请受访问限制的下载时接收通知的邮箱地址。"
+    ingenic_developer_form_fields: "描述开发者资料表单的 JSON 数组。留空则使用内置字段。"
+    ingenic_official_groups: "成员用户名旁显示官方身份标识的用户组。已拥有自身标识的成员将保留原有标识。"
+    ingenic_points_enabled: "为贡献发放积分，并允许资源消耗积分解锁。关闭后所有积分余额保持不变。"
+    ingenic_points_exclude_staff: "管理员和版主不会获得积分。他们的点赞仍会计入发帖用户。"
+
+  ingenic:
+    errors:
+      product_not_found: "未找到该文档产品。"
+      version_not_found: "未找到该文档版本。"
+      page_not_found: "未找到该文档页面。"
+      invalid_nav_items: "ingenic_nav_items 不是有效的 JSON：%{message}"
+      invalid_homepage_blocks: "ingenic_homepage_blocks 不是有效的 JSON：%{message}"
+    admin_errors:
+      has_children: "该记录包含子记录，无法删除。"
+      page_not_found: "该页面在此版本及其继承的任何版本中都不存在。"
+      storage_unavailable: "无法写入上传的文件。请检查下载存储路径。"
+      user_not_found: "账号不存在。"
+      points_amount_blank: "请输入要增加或扣除的积分数。"
+    developer_form:
+      missing: "%{field}为必填项。"
+    downloads:
+      not_available: "该文件不可用。"
+      not_signed_in: "请登录后下载该文件。"
+      profile_required: "请填写开发者资料以下载该文件。"
+      request_required: "该文件需审核通过后方可下载。"
+      request_pending: "您的申请正在审核中。"
+      request_rejected: "您的申请已被拒绝。"
+      already_requested: "您已有申请正在审核中。"
+      request_created: "您的申请已发送至君正团队。"
+      profile_saved: "您的开发者资料已保存。"
+      not_published: "该资源未发布。"
+      request_not_needed: "该资源无需申请。"
+      not_enough_points: "您需要 %{points} 积分才能解锁该文件。"
+      unlocked: "已解锁，现在可以下载了。"
+
+    # Why points were taken back. Written into the ledger as the reason, so it
+    # stays readable after the post that caused it is gone.
+    points:
+      reversed_post: "对应的帖子已删除"
+      reversed_like: "对应的点赞已取消"
+      reversed_solution: "采纳的答案已被取消采纳"
+      manual_reason: "由管理员调整"
+      unlocked: "解锁了 %{resource}"
+
+  # Bodies and subjects for the download centre's emails. Email::MessageBuilder
+  # reads these keys by name, so they have to live under the template name the
+  # mailer passes.
+  ingenic_download_request_received:
+    subject_template: "[%{site_name}] 下载访问申请：%{resource_name}"
+    text_body_template: |
+      %{applicant_name}（%{applicant_username}）申请访问受限下载资源。
+
+      资源：%{resource_name}
+      产品：%{resource_product}
+      版本：%{resource_version}
+
+      开发者资料：
+      %{profile_summary}
+
+      申请人留言：
+      %{applicant_message}
+
+      审核该申请：%{review_url}
+
+  ingenic_download_request_approved:
+    subject_template: "[%{site_name}] 下载访问已批准：%{resource_name}"
+    text_body_template: |
+      您好 %{recipient_username}：
+
+      您对 %{resource_name} 的访问申请已获批准。
+
+      现在即可下载：%{downloads_url}
+
+      团队备注：
+      %{review_note}
+
+  ingenic_download_request_rejected:
+    subject_template: "[%{site_name}] 下载访问申请：%{resource_name}"
+    text_body_template: |
+      您好 %{recipient_username}：
+
+      您对 %{resource_name} 的访问申请未获批准。
+
+      团队备注：
+      %{review_note}

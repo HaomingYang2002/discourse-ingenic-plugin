@@ -38,3 +38,8 @@ ingenic_hero_subtitle:
   default: ""
   type: string
   description: "Optional supporting text shown under the homepage headline."
+
+ingenic_locales:
+  default: "en|zh_CN"
+  type: list
+  description: "The languages the header's language switcher offers, most-used first. Each entry is a locale code (en, zh_CN); the menu labels them in their own language. The switcher is hidden while fewer than two are listed, and English is the language a first-time visitor gets — set it in the site's default locale setting, not here."
