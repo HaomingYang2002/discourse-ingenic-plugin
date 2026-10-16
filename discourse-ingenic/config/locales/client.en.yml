@@ -87,6 +87,8 @@ en:
             file: "Upload a file"
             file_hint: "Uploading replaces the file URL below; leaving it empty keeps the file that is already stored. Files are stored outside the web root and streamed through the plugin, so an access level means something."
             stored_file: "Currently stored: %{file}"
+            choose_file: "Choose a file"
+            replacing_file: "Saving will replace the stored file with %{file}"
             file_url: "File URL"
             file_size: "File size"
             sha256: "Checksum"

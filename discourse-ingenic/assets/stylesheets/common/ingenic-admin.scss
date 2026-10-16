@@ -354,6 +354,46 @@
   gap: 0.4rem;
 }
 
+// The file control. A browser draws a caption beside a file input -
+// "no file chosen", in whatever language it is running in - and no
+// property sets that text, so the control is taken out of the layout and
+// the button that replaces it is the plugin's own. What is stored, and
+// what choosing a file would do to it, are said in the hint under the
+// field rather than by the control.
+.ingenic-admin-form {
+  .ingenic-admin-upload {
+    position: relative;
+  }
+
+  .ingenic-admin-upload__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    clip-path: inset(50%);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .ingenic-admin-upload__button {
+    align-self: flex-start;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--primary-medium);
+    border-radius: 6px;
+    color: var(--primary);
+    font-size: var(--font-0);
+    cursor: pointer;
+  }
+
+  // The input is off the screen but still the control a keyboard
+  // reaches, so the button is what shows where the focus is.
+  .ingenic-admin-upload__input:focus-visible + .ingenic-admin-upload__button {
+    outline: 2px solid var(--tertiary);
+    outline-offset: 2px;
+  }
+}
+
 // Site content ----------------------------------------------------------------
 
 // Links inside a footer column's row. Indented and unbulleted, because a

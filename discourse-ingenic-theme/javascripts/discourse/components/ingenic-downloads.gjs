@@ -113,6 +113,21 @@ export default class IngenicDownloads extends Component {
         actionHint: entry.hint ? this.#label(entry.hint, { points: price }) : null,
         linkTarget: "_blank",
         linkRel: "noopener noreferrer",
+        // What the card says about the file, on one line under its name.
+        // These were a definition list, which put every label above its
+        // value and let a 64-character checksum wrap down the card. A
+        // checksum is what somebody verifying a download needs rather
+        // than what somebody choosing one needs: the admin screen is
+        // where it is shown.
+        metaLine: [
+          download.category_name,
+          download.version,
+          download.platform,
+          download.file_size,
+          download.released_on,
+        ]
+          .filter(Boolean)
+          .join(" · "),
       };
     });
   }
@@ -461,30 +476,13 @@ export default class IngenicDownloads extends Component {
           {{#each this.cards as |card|}}
             <article class="ingenic-card ingenic-card--download">
               <div class="ingenic-card__title">{{card.name}}</div>
-              <div class="ingenic-card__meta">
-                {{#if card.category_name}}{{card.category_name}}{{/if}}
-                {{#if card.version}}· {{card.version}}{{/if}}
-                {{#if card.platform}}· {{card.platform}}{{/if}}
-              </div>
+              {{#if card.metaLine}}
+                <div class="ingenic-card__meta">{{card.metaLine}}</div>
+              {{/if}}
 
               {{#if card.description}}
                 <p>{{card.description}}</p>
               {{/if}}
-
-              <dl class="ingenic-card__meta">
-                {{#if card.file_size}}
-                  <dt>{{i18n (themePrefix "ingenic.downloads.size")}}</dt>
-                  <dd>{{card.file_size}}</dd>
-                {{/if}}
-                {{#if card.released_on}}
-                  <dt>{{i18n (themePrefix "ingenic.downloads.released")}}</dt>
-                  <dd>{{card.released_on}}</dd>
-                {{/if}}
-                {{#if card.sha256}}
-                  <dt>{{i18n (themePrefix "ingenic.downloads.checksum")}}</dt>
-                  <dd><code>{{card.sha256}}</code></dd>
-                {{/if}}
-              </dl>
 
               <div class="ingenic-card__actions">
                 {{#if card.isLink}}

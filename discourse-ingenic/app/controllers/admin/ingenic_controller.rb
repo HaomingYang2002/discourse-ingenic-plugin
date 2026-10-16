@@ -621,14 +621,31 @@ module Admin
       permitted
     end
 
-    # The languages this Discourse can serve, each labelled with the name
-    # its own speakers use. Free text in this field is how a resource ends
-    # up filed under a spelling no visitor's locale ever equals: invisible
-    # to everyone, and silent about it.
+    # The languages this site actually publishes in, each labelled with the
+    # name its own speakers use. The front end shows a resource to whoever
+    # is reading in that locale, so a resource filed under a language the
+    # site does not serve is one nobody ever sees - and, like a
+    # misspelling, it reports nothing. Discourse carries translations for
+    # forty languages this site does not publish in, so they are not
+    # offered.
     def locale_options
-      LocaleSiteSetting.values.map do |option|
-        { value: option[:value], name: option[:native_name].presence || option[:value] }
+      names = LocaleSiteSetting.values.index_by { |option| option[:value].to_s }
+
+      served_locales.map do |code|
+        { value: code, name: names.dig(code, :native_name).presence || code }
       end
+    end
+
+    # What this site serves, rather than what Discourse has translations
+    # for: the language an anonymous reader gets, the plugin's own default,
+    # and the languages content localisation is switched on for.
+    def served_locales
+      codes = [SiteSetting.default_locale, SiteSetting.ingenic_default_locale]
+      if SiteSetting.content_localization_enabled
+        codes.concat(Array(SiteSetting.content_localization_supported_locales))
+      end
+
+      codes.map { |code| code.to_s.strip }.reject(&:empty?).uniq
     end
 
     def download_params

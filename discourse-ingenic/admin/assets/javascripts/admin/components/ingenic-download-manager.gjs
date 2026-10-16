@@ -48,6 +48,10 @@ export default class IngenicDownloadManager extends Component {
   @tracked busy = false;
   @tracked message = null;
   @tracked error = null;
+  // The file that has been chosen but not saved yet. A browser will not
+  // let a filename be written into a file input, so the name is kept here
+  // and drawn in the form rather than by the control.
+  @tracked chosenFile = null;
 
   // The classification list is editable, so it arrives with the listing rather
   // than being a fixed set here. An empty list is a normal state: nothing has
@@ -103,9 +107,8 @@ export default class IngenicDownloadManager extends Component {
     return this.draft?.file_sha256 || this.draft?.sha256 || "";
   }
 
-  // What the row already holds, said in the form rather than left to the
-  // file input: an empty file input says "no file chosen" even when the
-  // stored file is intact.
+  // What the row already holds. The file input cannot say it - a browser
+  // will not let a filename be written into one - so the form says it.
   get storedFileLabel() {
     const name = this.draft?.original_filename;
 
@@ -119,6 +122,7 @@ export default class IngenicDownloadManager extends Component {
   @action
   startNew() {
     this.draft = { ...BLANK, locale: this.defaultLocale };
+    this.chosenFile = null;
     this.message = null;
     this.error = null;
   }
@@ -130,6 +134,7 @@ export default class IngenicDownloadManager extends Component {
       file_url: record.file_url ?? "",
       locale: record.locale || this.defaultLocale,
     };
+    this.chosenFile = null;
     this.message = null;
     this.error = null;
   }
@@ -137,6 +142,7 @@ export default class IngenicDownloadManager extends Component {
   @action
   cancel() {
     this.draft = null;
+    this.chosenFile = null;
     this.message = null;
     this.error = null;
   }
@@ -157,6 +163,14 @@ export default class IngenicDownloadManager extends Component {
   @action
   pickLocale(value) {
     this.draft = { ...this.draft, locale: value };
+  }
+
+  // A chosen file is not a draft value: it is the browser's FileList on
+  // the control, and the filename is the only part of it the form can
+  // usefully show.
+  @action
+  pickFile(event) {
+    this.chosenFile = event.target.files?.[0]?.name ?? null;
   }
 
   // The text fields are bound one way, and a re-render puts the draft back
@@ -205,6 +219,7 @@ export default class IngenicDownloadManager extends Component {
         ? this.records.map((record) => (record.id === saved.id ? saved : record))
         : [...this.records, saved];
       this.draft = null;
+      this.chosenFile = null;
       this.message = i18n("admin.ingenic.saved");
     } catch (failure) {
       this.error = this.#errorMessage(failure);
@@ -354,12 +369,28 @@ export default class IngenicDownloadManager extends Component {
             {{i18n "admin.ingenic.downloads.fields.point_cost_hint"}}
           </p>
 
-          <label>
+          <label class="ingenic-admin-upload">
             <span>{{i18n "admin.ingenic.downloads.fields.file"}}</span>
-            <input type="file" name="file" />
+            {{! The control is kept for what it does - a click anywhere
+                in this label opens the picker - and taken out of the
+                layout: a browser prints its own caption beside a file
+                input and no property sets that text. }}
+            <input
+              class="ingenic-admin-upload__input"
+              type="file"
+              name="file"
+              {{on "change" this.pickFile}}
+            />
+            <span class="ingenic-admin-upload__button">
+              {{i18n "admin.ingenic.downloads.fields.choose_file"}}
+            </span>
           </label>
 
-          {{#if this.storedFileLabel}}
+          {{#if this.chosenFile}}
+            <p class="ingenic-admin-form__hint">
+              {{i18n "admin.ingenic.downloads.fields.replacing_file" file=this.chosenFile}}
+            </p>
+          {{else if this.storedFileLabel}}
             <p class="ingenic-admin-form__hint">
               {{i18n "admin.ingenic.downloads.fields.stored_file" file=this.storedFileLabel}}
             </p>
