@@ -598,8 +598,13 @@ module Admin
       params.permit(:kind, :parent_id, :slug, :name, :description, :locale, :published, :position)
     end
 
+    # No `published`: a version has no such column, and permitting one made a
+    # request that carried it (the shape an older client would send, and the
+    # shape every other form in this controller sends) raise
+    # `UnknownAttributeError` — a 500 where the version should simply have been
+    # created. What a reader may see is decided page by page.
     def version_params
-      params.permit(:product_id, :slug, :label, :locale, :latest, :deprecated, :released_on, :position, :published)
+      params.permit(:product_id, :slug, :label, :locale, :latest, :deprecated, :released_on, :position)
     end
 
     def page_params

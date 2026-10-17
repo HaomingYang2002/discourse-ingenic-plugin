@@ -31,6 +31,37 @@ describe Admin::IngenicController do
     end
   end
 
+  describe "POST /admin/plugins/discourse-ingenic/documentation/versions" do
+    fab!(:chip) do
+      IngenicDocProduct.create!(
+        slug: "t33",
+        name: "T33",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "en",
+      )
+    end
+
+    # A version has no `published` column, and `published` is what every other
+    # form in this controller sends. Permitting it made the request raise
+    # `UnknownAttributeError` — a 500 where a row should have been written — so
+    # the parameter list is the thing under test, not the version.
+    it "creates a version even when the request carries a published flag" do
+      expect {
+        post "/admin/plugins/discourse-ingenic/documentation/versions.json",
+             params: {
+               product_id: chip.id,
+               slug: "v1",
+               label: "v1.0",
+               locale: "en",
+               published: true,
+             }
+      }.to change(IngenicDocVersion, :count).by(1)
+
+      expect(response.status).to eq(200)
+    end
+  end
+
   describe "GET /admin/plugins/discourse-ingenic/boards" do
     it "offers the chips a board can be filed against, with their series" do
       IngenicDocProduct.create!(
