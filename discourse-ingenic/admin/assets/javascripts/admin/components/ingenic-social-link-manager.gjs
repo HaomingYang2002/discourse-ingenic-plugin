@@ -19,6 +19,7 @@ const BLANK = {
   image_url: "",
   qr_image_url: "",
   qr_caption: "",
+  icon_only: false,
   position: 0,
   published: true,
 };
@@ -105,6 +106,7 @@ export default class IngenicSocialLinkManager extends Component {
 
     const form = new FormData(event.target);
     form.set("published", String(event.target.elements.published.checked));
+    form.set("icon_only", String(event.target.elements.icon_only.checked));
 
     const id = this.draft.id;
 
@@ -212,6 +214,15 @@ export default class IngenicSocialLinkManager extends Component {
 
           <p class="ingenic-admin-form__hint">
             {{i18n "admin.ingenic.social_links.fields.image_hint"}}
+          </p>
+
+          <label class="checkbox-label">
+            <input type="checkbox" name="icon_only" checked={{this.draft.icon_only}} />
+            <span>{{i18n "admin.ingenic.social_links.fields.icon_only"}}</span>
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.social_links.fields.icon_only_hint"}}
           </p>
 
           <label>

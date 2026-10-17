@@ -480,17 +480,23 @@ Reading this screen is administrator-only, not just writing it: the ledger names
 accounts, and an adjustment moves a member's standing. A product or board scoped
 permission does not reach it — there is no product a points balance belongs to.
 
-**Site** — the parts of the site that are content rather than forum, in four
+**Site** — the parts of the site that are content rather than forum, in six
 tabs. *Home page* is the layout: which blocks the front page draws, in what
 order, each one's heading, width and size. A block is added from this tab, moved
 with the arrows, removed, or edited in place, and the whole list is saved
-together. *Promotions* are the homepage activity slots, each with a picture, a
-headline and a destination. *Partner platforms* is the strip in the footer,
-which takes either a link or a QR code image — a platform whose home is a web
-page gets a link, one that lives in an app gets a code the visitor scans.
-*Footer columns* are the footer's link columns and the section jump links at
-the bottom of every page: as many as you want, each with its own heading and its
-own ordered links.
+together. *Home cards* are the cards under Popular sections: each names a
+category to borrow its address, colour, icon and topic count, or carries a link
+of its own — which is how the documentation reader gets a card without the
+forum inventing a category for it. *Promotions* are the homepage activity slots,
+each with a picture, a headline and a destination. *Header buttons* are the
+short row in the middle of the header, between the logo and the search: each is
+a label, a built-in icon or an image URL, and a destination, and can be drawn as
+its icon alone. *Partner platforms* is the strip in the footer, which takes
+either a link or a QR code image — a platform whose home is a web page gets a
+link, one that lives in an app gets a code the visitor scans; a platform can
+also be drawn as its icon alone. *Footer columns* are the footer's link columns
+and the section jump links at the bottom of every page: as many as you want,
+each with its own heading and its own ordered links.
 
 ### Access levels
 
@@ -650,6 +656,8 @@ a release.
 | --- | --- |
 | Wordmark, small and mobile logo, favicon | **Admin → Site settings → Branding** (`logo`, `logo_small`, `mobile_logo`, `favicon`) |
 | Front page blocks — add, remove, reorder, heading, width, count | **Ingenic → Site content → Home page** |
+| The cards under Popular sections, including one for the docs reader | **Ingenic → Site content → Home cards** |
+| Header buttons — name, icon or image, destination, icon-only | **Ingenic → Site content → Header buttons** |
 | Promotion picture, headline, button and destination | **Ingenic → Site content → Promotions** |
 | Partner platform icon or QR image, label, destination | **Ingenic → Site content → Partner platforms** |
 | Footer columns and the section jump links at the bottom of every page | **Ingenic → Site content → Footer columns** |
@@ -667,14 +675,16 @@ Two details worth knowing about the images:
   **stand-in drawn for testing**, not an Ingenic brand file. Replace it under
   Branding. `rake ingenic:setup` fills the logo only when it is empty, so it
   will not put the stand-in back over an upload of your own.
-- Pictures inside promotions, partner platforms and boards are **URLs**, not
-  uploads. Upload the image to the forum first (or host it on a CDN) and paste
-  its address. The logo and favicon are the two places that take an upload.
+- Pictures inside promotions, partner platforms, header buttons, home cards and
+  boards are **URLs**, not uploads. Upload the image to the forum first (or host
+  it on a CDN) and paste its address. The logo and favicon are the two places
+  that take an upload.
 
 **Fixed in the code — changing any of these is a code change and a redeploy:**
 
 - Colours, type, spacing and the sky-blue palette (theme SCSS).
-- The five shortcut buttons under the home page search, and where they point.
+- The three cards the home page draws before any have been created: technical
+  discussions, the documentation reader and announcements.
 - The nine block types and the three widths (full, main, side) the renderer
   understands. A type it does not know is refused rather than half-drawn.
 - Interface labels and their English and Chinese translations.
@@ -688,8 +698,8 @@ Two details worth knowing about the images:
 
 Open these and check each one:
 
-- [ ] `/` shows the forum's topic table — Topic / Replies / Views / Activity — as
-      meta.discourse.org does, not a page of cards
+- [ ] `/` shows the Ingenic home page — headline, search, the section cards and
+      the discussion feed — and `/latest` is the forum's own topic table
 - [ ] the corner of the page says **Ingenic**, and the foot has no
       "Powered by Discourse"
 - [ ] the header's language switcher reads **EN** and **中文**
@@ -720,10 +730,12 @@ Open these and check each one:
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
-- [ ] `/` is the forum's topic list, with the Topic / Replies / Views / Activity columns and the Latest / Hot / New tabs — the same front page meta.discourse.org has
-- [ ] `/ingenic/home` still shows the card page: banner, the five tool links and the section cards, with no topic list on it
-- [ ] the **All sections** link at the end of the card page's section block opens `/categories`
-- [ ] the promotions you configured in **Ingenic → Site content** appear on `/ingenic/home` if you added a `promotions` block
+- [ ] `/ingenic/home` opens the same page as `/`
+- [ ] the section block shows three cards out of the box — Technical Discussions, Online Documentation, Official Announcements — and **All sections** opens `/categories`
+- [ ] a card added in **Ingenic → Site content → Home cards** replaces the built-in three, and a card naming a category shows that category's colour and topic count
+- [ ] the middle of the header carries the buttons from **Ingenic → Site content → Header buttons**; an icon-only one still has its name as its accessible label, and both open their destination in a new tab when marked external
+- [ ] the right-hand rail reads Latest activity, then the bounty panel, then Hot topics, all on the first screen without scrolling
+- [ ] the promotions you configured in **Ingenic → Site content** appear in that rail if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
 - [ ] with `enable_powered_by_discourse` off, the page ends at that footer and the **Powered by Discourse** line is gone
 - [ ] a member of a listed `ingenic_official_groups` group wears its badge beside their username, and a member who picked a badge of their own keeps it

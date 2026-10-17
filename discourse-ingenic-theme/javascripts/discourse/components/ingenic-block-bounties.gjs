@@ -12,15 +12,15 @@ const ENDPOINT = "/ingenic/bounties";
 /**
  * Homepage block: the richest standing 高分悬赏, with a way through to the board.
  *
- * It draws nothing at all when nothing is on offer. That is what lets it be one
- * of the default blocks: a front page that says "no bounties yet" in a panel of
- * its own is worse than a front page that does not mention them until there are
- * some — and the day the first one is opened, the panel appears on its own.
+ * It draws its own panel even when nothing is on offer: on a forum that takes
+ * bounties, the feature is worth one short line saying there is nothing
+ * standing, and a card that appears only once somebody has opened a bounty
+ * reads as a broken block to everyone who looked before that. The panel is
+ * also the way to the board, which is where a member opens one.
  *
- * Because it draws nothing until it knows whether there is anything to draw, it
- * cannot wait for `didInsert` to be told to look: an element that is not
- * rendered never gets the chance. So it asks in the constructor, which is the
- * one hook that runs either way.
+ * The first paint needs to know how many rows will be drawn, so the list is
+ * asked for in the constructor rather than in `didInsert` — the panel exists
+ * either way, and an empty list should become rows in place.
  */
 export default class IngenicBlockBounties extends Component {
   @service site;
@@ -83,15 +83,15 @@ export default class IngenicBlockBounties extends Component {
   }
 
   <template>
-    {{#if this.rows.length}}
-      <section class="ingenic-section ingenic-bounties">
-        <header class="ingenic-section__header">
-          <h2><a href={{this.boardPath}}>{{this.title}}</a></h2>
-          <a class="ingenic-section__more" href={{this.boardPath}}>
-            {{i18n (themePrefix "ingenic.bounties.all")}}
-          </a>
-        </header>
+    <section class="ingenic-section ingenic-bounties">
+      <header class="ingenic-section__header">
+        <h2><a href={{this.boardPath}}>{{this.title}}</a></h2>
+        <a class="ingenic-section__more" href={{this.boardPath}}>
+          {{i18n (themePrefix "ingenic.bounties.all")}}
+        </a>
+      </header>
 
+      {{#if this.rows.length}}
         <ul class="ingenic-bounty-list">
           {{#each this.rows as |row|}}
             <li class="ingenic-bounty-list__item">
@@ -115,7 +115,11 @@ export default class IngenicBlockBounties extends Component {
             </li>
           {{/each}}
         </ul>
-      </section>
-    {{/if}}
+      {{else}}
+        <p class="ingenic-section__subtitle">
+          {{i18n (themePrefix "ingenic.bounties.empty")}}
+        </p>
+      {{/if}}
+    </section>
   </template>
 }

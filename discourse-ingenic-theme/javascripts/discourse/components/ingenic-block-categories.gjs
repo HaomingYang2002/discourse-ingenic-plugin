@@ -7,14 +7,17 @@ import { i18n } from "discourse-i18n";
 /**
  * The forum's sections, as the home page's way into the forum.
  *
- * A front page is a table of contents rather than a feed, so this draws a
- * handful of sections — the ones an editor named, or the busiest ones — and one
- * entry to all of them. A reader whose section is not on the front page needs to
- * see that there are more, or they will conclude the forum has nothing for them.
+ * Three sources, in this order: the cards an administrator wrote on Site
+ * content → Home cards; the category slugs an editor put on this block; and,
+ * with neither, three cards that fit this forum out of the box — technical
+ * discussions, the documentation reader, and announcements. The documentation
+ * card is why a card can carry its own destination: the reader is not a
+ * category, and inventing one for it would make the forum claim a section it
+ * does not have.
  *
- * The categories come from `site.categories`, which holds exactly what this
- * viewer is allowed to see and carries the counts the category page shows, so
- * nothing here can reveal a section to somebody who cannot open it.
+ * A card naming a category borrows that category's name, colour, icon,
+ * description and topic count from `site.categories`, so what the front page
+ * says about a section is what its page says.
  */
 export default class IngenicBlockCategories extends Component {
   @service site;
@@ -24,7 +27,7 @@ export default class IngenicBlockCategories extends Component {
   }
 
   get limit() {
-    return this.args.block?.limit || 8;
+    return this.args.block?.limit || 3;
   }
 
   get topLevel() {
@@ -33,19 +36,45 @@ export default class IngenicBlockCategories extends Component {
     );
   }
 
-  // A named list keeps the order it was written in, which is how an editor
-  // decides what the front page leads with. Without one, the busiest sections
-  // come first — the closest thing to "hot" that needs no maintenance.
-  get sections() {
+  get cards() {
+    const written = this.site.ingenic_section_cards ?? [];
+
+    if (written.length) {
+      return written.map((card) => this.cardFromConfig(card)).filter(Boolean);
+    }
+
     if (this.configured.length) {
       return this.configured
-        .map((slug) => this.topLevel.find((category) => category.slug === slug))
+        .map((slug) => this.cardFromCategory(this.topLevel.find((c) => c.slug === slug)))
         .filter(Boolean);
     }
 
-    return this.site.categoriesByCount
-      .filter((category) => !category.parent_category_id)
-      .slice(0, this.limit);
+    return this.defaultCards;
+  }
+
+  get defaultCards() {
+    const wanted = ["technical-discussions", "official-announcements"];
+    const found = wanted
+      .map((slug) => this.topLevel.find((category) => category.slug === slug))
+      .filter(Boolean);
+
+    const docs = {
+      key: "docs",
+      href: "/ingenic/docs",
+      label: i18n(themePrefix("ingenic.nav.docs")),
+      description: i18n(themePrefix("ingenic.home.sections.docs_hint")),
+      icon: "book",
+      count: null,
+      style: "--ingenic-category: var(--tertiary)",
+    };
+
+    // Documentation sits between the two forum sections, which is where a
+    // developer arriving with a chip question looks before asking it.
+    return [
+      found[0] && this.cardFromCategory(found[0]),
+      docs,
+      found[1] && this.cardFromCategory(found[1]),
+    ].filter(Boolean);
   }
 
   get title() {
@@ -56,6 +85,45 @@ export default class IngenicBlockCategories extends Component {
 
   get showAll() {
     return this.args.block?.show_all !== false;
+  }
+
+  cardFromConfig(card) {
+    if (card.category) {
+      return this.cardFromCategory(
+        this.site.categories.find((category) => category.slug === card.category),
+        card
+      );
+    }
+
+    return {
+      key: `card-${card.id}`,
+      href: card.href,
+      label: card.label,
+      description: card.description,
+      icon: card.icon,
+      image_url: card.image_url,
+      count: null,
+      style: card.color ? `--ingenic-category: #${card.color.replace(/^#/, "")}` : null,
+    };
+  }
+
+  cardFromCategory(category, overlay = {}) {
+    if (!category) {
+      return null;
+    }
+
+    const color = overlay.color || category.color;
+
+    return {
+      key: `category-${category.id}`,
+      href: category.url,
+      label: overlay.label || category.name,
+      description: overlay.description || category.description_text,
+      icon: overlay.icon || category.icon,
+      image_url: overlay.image_url,
+      count: category.topic_count,
+      style: color ? `--ingenic-category: #${color.replace(/^#/, "")}` : null,
+    };
   }
 
   <template>
@@ -70,33 +138,42 @@ export default class IngenicBlockCategories extends Component {
         {{/if}}
       </header>
 
-      {{#if this.sections.length}}
+      {{#if this.cards.length}}
         <div class="ingenic-sections">
-          {{#each this.sections as |section|}}
+          {{#each this.cards as |card|}}
             <a
               class="ingenic-sections__card"
-              href={{section.url}}
-              style="--ingenic-category: #{{section.color}}"
+              href={{card.href}}
+              style={{card.style}}
             >
               <span class="ingenic-sections__icon" aria-hidden="true">
-                {{#if section.icon}}
-                  {{dIcon section.icon}}
+                {{#if card.image_url}}
+                  <img
+                    class="ingenic-sections__image"
+                    src={{card.image_url}}
+                    alt=""
+                    loading="lazy"
+                  />
+                {{else if card.icon}}
+                  {{dIcon card.icon}}
                 {{/if}}
               </span>
 
               <span class="ingenic-sections__text">
-                <span class="ingenic-sections__name">{{section.name}}</span>
+                <span class="ingenic-sections__name">{{card.label}}</span>
 
-                {{#if section.description_text}}
-                  <span class="ingenic-sections__description">{{section.description_text}}</span>
+                {{#if card.description}}
+                  <span class="ingenic-sections__description">{{card.description}}</span>
                 {{/if}}
 
-                <span class="ingenic-sections__count">
-                  {{i18n
-                    (themePrefix "ingenic.home.sections.topic_count")
-                    count=section.topic_count
-                  }}
-                </span>
+                {{#if card.count}}
+                  <span class="ingenic-sections__count">
+                    {{i18n
+                      (themePrefix "ingenic.home.sections.topic_count")
+                      count=card.count
+                    }}
+                  </span>
+                {{/if}}
               </span>
             </a>
           {{/each}}

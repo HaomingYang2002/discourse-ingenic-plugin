@@ -5,7 +5,9 @@ import { on } from "@ember/modifier";
 import { fn } from "@ember/helper";
 import DPageSubheader from "discourse/ui-kit/d-page-subheader";
 import IngenicHomepageManager from "../../../../admin/components/ingenic-homepage-manager";
+import IngenicSectionCardManager from "../../../../admin/components/ingenic-section-card-manager";
 import IngenicPromotionManager from "../../../../admin/components/ingenic-promotion-manager";
+import IngenicHeaderLinkManager from "../../../../admin/components/ingenic-header-link-manager";
 import IngenicSocialLinkManager from "../../../../admin/components/ingenic-social-link-manager";
 import IngenicFooterManager from "../../../../admin/components/ingenic-footer-manager";
 import { i18n } from "discourse-i18n";
@@ -29,8 +31,16 @@ export default class AdminPluginsShowSite extends Component {
     return this.tab === "homepage";
   }
 
+  get isSectionCards() {
+    return this.tab === "section-cards";
+  }
+
   get isPromotions() {
     return this.tab === "promotions";
+  }
+
+  get isHeaderLinks() {
+    return this.tab === "header-links";
   }
 
   get isSocialLinks() {
@@ -63,11 +73,25 @@ export default class AdminPluginsShowSite extends Component {
           {{i18n "admin.ingenic.site.tab_homepage"}}
         </button>
         <button
+          class="btn {{if this.isSectionCards 'btn-primary'}}"
+          type="button"
+          {{on "click" (fn this.show "section-cards")}}
+        >
+          {{i18n "admin.ingenic.site.tab_section_cards"}}
+        </button>
+        <button
           class="btn {{if this.isPromotions 'btn-primary'}}"
           type="button"
           {{on "click" (fn this.show "promotions")}}
         >
           {{i18n "admin.ingenic.site.tab_promotions"}}
+        </button>
+        <button
+          class="btn {{if this.isHeaderLinks 'btn-primary'}}"
+          type="button"
+          {{on "click" (fn this.show "header-links")}}
+        >
+          {{i18n "admin.ingenic.site.tab_header_links"}}
         </button>
         <button
           class="btn {{if this.isSocialLinks 'btn-primary'}}"
@@ -87,6 +111,10 @@ export default class AdminPluginsShowSite extends Component {
 
       {{#if this.isHomepage}}
         <IngenicHomepageManager @homepageBlocks={{@model.homepage_blocks}} />
+      {{else if this.isSectionCards}}
+        <IngenicSectionCardManager @sectionCards={{@model.section_cards}} />
+      {{else if this.isHeaderLinks}}
+        <IngenicHeaderLinkManager @headerLinks={{@model.header_links}} />
       {{else if this.isSocialLinks}}
         <IngenicSocialLinkManager @socialLinks={{@model.social_links}} />
       {{else if this.isFooter}}

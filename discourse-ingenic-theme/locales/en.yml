@@ -39,9 +39,12 @@ en:
         title: "Popular sections"
         all: "All categories"
         empty: "No sections are visible to you yet."
+        docs_hint: "Chip manuals, SDK guides and release notes."
         topic_count:
           one: "%{count} topic"
           other: "%{count} topics"
+    header_links:
+      label: "Ingenic links"
     promotions:
       title: "Latest activity"
     locale:

@@ -111,6 +111,56 @@ html.ingenic-nav-first .sidebar-sections {
   }
 }
 
+// The header buttons live in the outlet between the logo and the right-hand
+// cluster, which is the empty middle of the bar. That outlet is a plain flex
+// child, so it is given the middle of the row here and centres what the
+// Ingenic team put in it. Narrow screens hide the row rather than squeezing
+// the logo and the user menu: the same destinations are in the sidebar.
+.before-header-panel-outlet:has(.ingenic-header-links) {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+
+.ingenic-header-links {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0.75rem;
+
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    color: var(--primary-high);
+    font-size: var(--font-down-1);
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover,
+    &:focus {
+      background: var(--tertiary-very-low);
+      color: var(--ingenic-link);
+      text-decoration: none;
+    }
+  }
+
+  &__image {
+    width: 1.15rem;
+    height: 1.15rem;
+    object-fit: contain;
+  }
+}
+
+@media (max-width: 1000px) {
+  .ingenic-header-links {
+    display: none;
+  }
+}
+
 .ingenic-homepage {
   max-width: 1280px;
   margin: 0 auto 2rem;
@@ -120,9 +170,13 @@ html.ingenic-nav-first .sidebar-sections {
   // reader arrives expecting: the search is the first action, the sections
   // below are the answer. The pale sky wash is the page's own surface, not a
   // saturated lid on it.
+  // Short enough that the sections below it and the first rows of the feed
+  // are on the first screen. The greeting is still the first thing read, but
+  // it is a heading rather than a banner: meta's front page does not make a
+  // reader scroll past its own introduction to reach the forum.
   &__hero {
-    margin-bottom: 1rem;
-    padding: clamp(2rem, 5vw, 3.5rem) 1rem 1.75rem;
+    margin-bottom: 0.85rem;
+    padding: clamp(1rem, 2.2vw, 1.6rem) 1rem 1.15rem;
     border-radius: var(--ingenic-radius);
     background:
       radial-gradient(circle at 18% 0%, var(--ingenic-sky-200), transparent 42%),
@@ -132,16 +186,17 @@ html.ingenic-nav-first .sidebar-sections {
     text-align: center;
 
     h1 {
-      margin: 0.35rem 0 0.6rem;
+      margin: 0.2rem 0 0.3rem;
       color: inherit;
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-size: clamp(1.45rem, 2.6vw, 2rem);
+      line-height: 1.15;
     }
 
     > p {
       max-width: 42rem;
       margin: 0 auto;
       color: var(--primary-high);
-      font-size: var(--font-up-1);
+      font-size: var(--font-0);
     }
   }
 
@@ -157,14 +212,14 @@ html.ingenic-nav-first .sidebar-sections {
   &__search {
     display: flex;
     gap: 0.5rem;
-    max-width: 40rem;
-    margin: 1.35rem auto 0;
+    max-width: 38rem;
+    margin: 0.8rem auto 0;
 
     &-input {
       flex: 1;
       min-width: 0;
-      min-height: 2.75rem;
-      padding: 0.5rem 1.1rem;
+      min-height: 2.35rem;
+      padding: 0.35rem 1rem;
       border: 1px solid var(--ingenic-surface-border);
       border-radius: 999px;
       background: var(--secondary);
@@ -173,41 +228,13 @@ html.ingenic-nav-first .sidebar-sections {
     .btn {
       flex: 0 0 auto;
       border-radius: 999px;
-      padding-inline: 1.25rem;
+      padding-inline: 1.1rem;
     }
   }
 
-  // The tool pages used to be a full-width grid of cells above the blocks.
-  // They are pills under the search now: present for a reader who came for a
-  // download or a manual, quiet enough not to compete with the sections below.
-  &__quick-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.4rem 0.5rem;
-    margin: 0 auto 1.5rem;
-
-    a {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem 0.7rem;
-      border: 1px solid var(--ingenic-panel-border);
-      border-radius: 999px;
-      background: var(--secondary);
-      color: var(--primary-high);
-      font-size: var(--font-down-1);
-      transition: background 0.15s ease, color 0.15s ease;
-
-      &:hover,
-      &:focus {
-        background: var(--tertiary-very-low);
-        color: var(--ingenic-link);
-        text-decoration: none;
-      }
-    }
-  }
-
+  // The tool pages are in the sidebar and in the header buttons. They used to
+  // be a second row of pills here, which repeated the sidebar directly above
+  // the sections and pushed the feed off the first screen.
   &__blocks {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -242,14 +269,17 @@ html.ingenic-nav-first .sidebar-sections {
     }
   }
 
+  // The feed is as tall as the rail beside it, however many cards the editor
+  // put there. A fixed span left a hole under the feed as soon as the rail had
+  // a third card.
   &__blocks--with-rail &__block--main {
-    grid-row: span 2;
+    grid-row: span var(--ingenic-rail-cards, 2);
   }
 }
 
 .ingenic-section {
   margin-bottom: 1rem;
-  padding: 1.25rem;
+  padding: 1rem 1.1rem;
   border: 1px solid var(--ingenic-panel-border);
   border-radius: var(--ingenic-radius);
   background: var(--secondary);
@@ -259,11 +289,11 @@ html.ingenic-nav-first .sidebar-sections {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
     border-bottom: 1px solid var(--primary-very-low);
 
     h2 {
-      margin: 0 0 0.75rem;
+      margin: 0 0 0.6rem;
       font-size: var(--font-up-1);
     }
   }
@@ -292,8 +322,8 @@ html.ingenic-nav-first .sidebar-sections {
 // only recognising a name.
 .ingenic-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
 
   &__card {
     --ingenic-category: var(--tertiary);
@@ -301,8 +331,8 @@ html.ingenic-nav-first .sidebar-sections {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.9rem 1rem;
+    gap: 0.6rem;
+    padding: 0.65rem 0.8rem;
     border: 1px solid var(--ingenic-panel-border);
     border-radius: var(--ingenic-radius);
     background: var(--secondary);
@@ -321,11 +351,18 @@ html.ingenic-nav-first .sidebar-sections {
     display: grid;
     flex: 0 0 auto;
     place-items: center;
-    width: 2.35rem;
-    height: 2.35rem;
-    border-radius: 0.6rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
     background: color-mix(in srgb, var(--ingenic-category) 14%, var(--secondary));
     color: var(--ingenic-category);
+    overflow: hidden;
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   &__text {
@@ -339,7 +376,7 @@ html.ingenic-nav-first .sidebar-sections {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: var(--font-up-1);
+    font-size: var(--font-0);
     font-weight: 700;
   }
 

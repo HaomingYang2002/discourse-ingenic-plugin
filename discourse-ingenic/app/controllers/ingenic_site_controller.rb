@@ -59,6 +59,7 @@ class IngenicSiteController < ::ApplicationController
         "image_url" => link.image_url,
         "qr_image_url" => link.qr_image_url,
         "qr_caption" => link.qr_caption,
+        "icon_only" => link.icon_only,
       }
     end
   end

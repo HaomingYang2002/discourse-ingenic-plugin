@@ -121,6 +121,7 @@ export default class IngenicFooter extends Component {
                         href={{link.href}}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={{if (and link.icon_only link.image_url) link.label}}
                       >
                         {{#if link.image_url}}
                           <img
@@ -130,7 +131,9 @@ export default class IngenicFooter extends Component {
                             loading="lazy"
                           />
                         {{/if}}
-                        <span>{{link.label}}</span>
+                        {{#unless (and link.icon_only link.image_url)}}
+                          <span>{{link.label}}</span>
+                        {{/unless}}
                       </a>
                     {{/if}}
                   </li>

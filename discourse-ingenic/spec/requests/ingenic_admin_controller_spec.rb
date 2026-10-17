@@ -142,13 +142,15 @@ describe Admin::IngenicController do
     end
   end
 
-  # The four admin-editable lists. Each one is a table the screens read and
-  # write, so an edit that renders "Saved." over an unchanged row is the failure
-  # these cover.
+  # The admin-editable lists. Each one is a table the screens read and write, so
+  # an edit that renders "Saved." over an unchanged row is the failure these
+  # cover.
   describe "GET /admin/plugins/discourse-ingenic/site" do
-    it "returns the three lists the site screen draws" do
+    it "returns every list the site screen draws" do
       IngenicPromotion.create!(title: "Spring campaign", locale: "en")
       IngenicSocialLink.create!(label: "GitHub", kind: IngenicSocialLink::LINK, href: "https://github.com")
+      IngenicHeaderLink.create!(label: "Ingenic", href: "https://www.ingenic.com")
+      IngenicSectionCard.create!(label: "Docs", href: "/ingenic/docs")
       column = IngenicFooterColumn.create!(title: "Developers")
       IngenicFooterLink.create!(column: column, label: "Downloads", href: "/ingenic/downloads")
 
@@ -157,6 +159,8 @@ describe Admin::IngenicController do
       expect(response.status).to eq(200)
       expect(response.parsed_body["promotions"].first["title"]).to eq("Spring campaign")
       expect(response.parsed_body["social_links"].first["label"]).to eq("GitHub")
+      expect(response.parsed_body["header_links"].first["label"]).to eq("Ingenic")
+      expect(response.parsed_body["section_cards"].first["label"]).to eq("Docs")
       column_json = response.parsed_body["footer_columns"].first
       expect(column_json["title"]).to eq("Developers")
       expect(column_json["links"].first["label"]).to eq("Downloads")
@@ -251,6 +255,58 @@ describe Admin::IngenicController do
       expect(response.status).to eq(200)
       expect(record.reload.kind).to eq(IngenicSocialLink::LINK)
       expect(record.href).to eq("https://wechat.example.com")
+    end
+  end
+
+  describe "POST /admin/plugins/discourse-ingenic/header-links" do
+    it "creates a header button and reports it back" do
+      expect {
+        post "/admin/plugins/discourse-ingenic/header-links.json",
+             params: { label: "GitHub", href: "https://github.com", icon: "fab-github" }
+      }.to change(IngenicHeaderLink, :count).by(1)
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["header_link"]["label"]).to eq("GitHub")
+    end
+
+    it "refuses an icon-only button with nothing to draw" do
+      post "/admin/plugins/discourse-ingenic/header-links.json",
+           params: { label: "GitHub", href: "https://github.com", show_label: "false" }
+
+      expect(response.status).to eq(422)
+      expect(IngenicHeaderLink.count).to eq(0)
+    end
+  end
+
+  describe "DELETE /admin/plugins/discourse-ingenic/header-links/:id" do
+    it "removes the button" do
+      record = IngenicHeaderLink.create!(label: "GitHub", href: "https://github.com")
+
+      expect {
+        delete "/admin/plugins/discourse-ingenic/header-links/#{record.id}.json"
+      }.to change(IngenicHeaderLink, :count).by(-1)
+
+      expect(response.status).to eq(204)
+    end
+  end
+
+  describe "POST /admin/plugins/discourse-ingenic/section-cards" do
+    it "creates a card that points somewhere other than a category" do
+      expect {
+        post "/admin/plugins/discourse-ingenic/section-cards.json",
+             params: { label: "Docs", href: "/ingenic/docs", icon: "book" }
+      }.to change(IngenicSectionCard, :count).by(1)
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["section_card"]["href"]).to eq("/ingenic/docs")
+    end
+
+    it "refuses a card with nowhere to go" do
+      post "/admin/plugins/discourse-ingenic/section-cards.json",
+           params: { label: "Docs" }
+
+      expect(response.status).to eq(422)
+      expect(IngenicSectionCard.count).to eq(0)
     end
   end
 

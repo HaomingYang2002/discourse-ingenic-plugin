@@ -66,6 +66,20 @@ describe IngenicSiteController do
       expect(wechat["qr_caption"]).to eq("Scan to follow")
     end
 
+    it "says whether a partner platform is drawn as its icon alone" do
+      IngenicSocialLink.create!(
+        label: "GitHub",
+        kind: IngenicSocialLink::LINK,
+        href: "https://github.com/ingenic",
+        icon_only: true,
+      )
+
+      get "/ingenic/site.json"
+
+      expect(response.parsed_body["social_links"].first["icon_only"]).to eq(true)
+    end
+
+
     it "carries a column's published links and not the hidden ones" do
       shown = IngenicFooterLink.create!(column: column, label: "Downloads", href: "/ingenic/downloads")
       IngenicFooterLink.create!(

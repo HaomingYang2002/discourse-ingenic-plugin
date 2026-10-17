@@ -37,11 +37,14 @@ zh_CN:
         title: "热门分区"
         all: "所有分区"
         empty: "暂无可查看的版块。"
+        docs_hint: "芯片手册、SDK 指南与版本说明。"
         topic_count:
           # Chinese has one plural form, so both keys read the same here. Kept
           # in pairs so the two locale files have the same shape.
           one: "%{count} 个主题"
           other: "%{count} 个主题"
+    header_links:
+      label: "君正链接"
     promotions:
       title: "最新活动"
     locale:

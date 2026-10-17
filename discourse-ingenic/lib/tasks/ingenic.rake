@@ -78,7 +78,7 @@ namespace :ingenic do
     end
   end
 
-  desc "Name the site Ingenic, fill an empty logo with a stand-in, choose the Ingenic home page, seed the footer links, and drop Discourse's badge"
+  desc "Name the site Ingenic, fill an empty logo with a stand-in, choose the Ingenic home page, seed the header buttons and footer links, and drop Discourse's badge"
   task setup: :environment do
     # Three settings that decide what a visitor sees before they read anything:
     # who the forum says it belongs to, whether the front page is the forum's
@@ -213,6 +213,34 @@ namespace :ingenic do
         published: true,
       )
       changes << "promotion: a welcome slot pointing at /ingenic/docs"
+    end
+
+    # Two header buttons, because the empty middle of the header is otherwise
+    # the first thing an editor has to go and find out how to fill. They are
+    # stand-ins: the official site and a code host, one with its name shown and
+    # one as its icon alone, so both shapes of the button are visible. Seeded
+    # only when there are none, and every field is edited — or the row removed —
+    # in Admin → Plugins → Ingenic → Site content → Header buttons.
+    if IngenicHeaderLink.count.zero?
+      [
+        {
+          label: "Ingenic",
+          href: "https://www.ingenic.com",
+          icon: "globe",
+          show_label: true,
+          external: true,
+        },
+        {
+          label: "GitHub",
+          href: "https://github.com",
+          icon: "fab-github",
+          show_label: false,
+          external: true,
+        },
+      ].each_with_index do |attrs, index|
+        IngenicHeaderLink.create!(position: index, published: true, **attrs)
+        changes << "header button: #{attrs[:label]} → #{attrs[:href]}"
+      end
     end
 
     if changes.empty?

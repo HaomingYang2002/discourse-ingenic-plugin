@@ -1,6 +1,7 @@
 import { apiInitializer } from "discourse/lib/api";
 import IngenicBounty from "../components/ingenic-bounty";
 import IngenicFooter from "../components/ingenic-footer";
+import IngenicHeaderLinks from "../components/ingenic-header-links";
 import IngenicLocaleSwitcher from "../components/ingenic-locale-switcher";
 import { applyIngenicLayout } from "../ingenic/layout";
 import { registerIngenicSidebarSections } from "../ingenic/sidebar-section";
@@ -38,6 +39,12 @@ export default apiInitializer((api) => {
   api.headerIcons.add("ingenic-locale", IngenicLocaleSwitcher, {
     before: "user-menu",
   });
+
+  // The header's own buttons go in the space between the logo and the right
+  // cluster, which is where the empty middle of the header is. The wrapper
+  // around this outlet is a plain flex child; the stylesheet gives it the room
+  // and centres what is drawn in it.
+  api.renderInOutlet("before-header-panel", IngenicHeaderLinks);
 
   api.renderInOutlet("topic-above-posts", IngenicBounty);
   api.renderInOutlet("above-footer", IngenicFooter);

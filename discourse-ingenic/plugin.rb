@@ -54,6 +54,8 @@ require_relative "app/models/ingenic_board"
 require_relative "app/models/ingenic_permission"
 require_relative "app/models/ingenic_promotion"
 require_relative "app/models/ingenic_social_link"
+require_relative "app/models/ingenic_header_link"
+require_relative "app/models/ingenic_section_card"
 require_relative "app/models/ingenic_footer_column"
 require_relative "app/models/ingenic_footer_link"
 require_relative "app/models/ingenic_point_rule"
@@ -206,6 +208,40 @@ after_initialize do
     DiscourseIngenic::ConfigParser.homepage_blocks
   end
 
+  # The header buttons and the section cards are content, and both are drawn
+  # before anything can be fetched: the header is the first thing on every page
+  # and the cards sit above the fold. They come in the site payload so the
+  # first paint already has them, rather than showing an empty header and
+  # filling it in a moment later.
+  add_to_serializer(:site, :ingenic_header_links, include_condition: -> { SiteSetting.ingenic_enabled }) do
+    IngenicHeaderLink.published.ordered.map do |link|
+      {
+        "id" => link.id,
+        "label" => link.label,
+        "href" => link.href,
+        "icon" => link.icon,
+        "image_url" => link.image_url,
+        "show_label" => link.show_label,
+        "external" => link.external?,
+      }
+    end
+  end
+
+  add_to_serializer(:site, :ingenic_section_cards, include_condition: -> { SiteSetting.ingenic_enabled }) do
+    IngenicSectionCard.published.ordered.map do |card|
+      {
+        "id" => card.id,
+        "label" => card.label,
+        "category" => card.category,
+        "href" => card.href,
+        "description" => card.description,
+        "icon" => card.icon,
+        "image_url" => card.image_url,
+        "color" => card.color,
+      }
+    end
+  end
+
   add_to_serializer(:current_user, :can_manage_ingenic_content) do
     scope.can_manage_ingenic_content?
   end
@@ -346,6 +382,14 @@ after_initialize do
       post "/promotions" => "admin/ingenic#create_promotion"
       put "/promotions/:id" => "admin/ingenic#update_promotion"
       delete "/promotions/:id" => "admin/ingenic#destroy_promotion"
+
+      post "/header-links" => "admin/ingenic#create_header_link"
+      put "/header-links/:id" => "admin/ingenic#update_header_link"
+      delete "/header-links/:id" => "admin/ingenic#destroy_header_link"
+
+      post "/section-cards" => "admin/ingenic#create_section_card"
+      put "/section-cards/:id" => "admin/ingenic#update_section_card"
+      delete "/section-cards/:id" => "admin/ingenic#destroy_section_card"
 
       post "/social-links" => "admin/ingenic#create_social_link"
       put "/social-links/:id" => "admin/ingenic#update_social_link"

@@ -1,7 +1,6 @@
 import { themePrefix } from "virtual:theme";
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
-import dIcon from "discourse/ui-kit/helpers/d-icon";
 import getURL from "discourse/lib/get-url";
 import IngenicBlockCategories from "./ingenic-block-categories";
 import IngenicBlockTopics from "./ingenic-block-topics";
@@ -31,7 +30,7 @@ const BLOCK_COMPONENTS = {
 // from the admin screen.
 const BLOCK_LAYOUTS = {
   categories: "full",
-  bounties: "full",
+  bounties: "side",
   downloads: "full",
   boards: "main",
   announcements: "main",
@@ -42,16 +41,16 @@ const BLOCK_LAYOUTS = {
 };
 
 // What the page shows before anyone has configured it. The order is meta's:
-// sections first, then what was said last, with what is on and what is hot
-// beside it, and the bounty board across the bottom. A block with no content
-// (promotions before a campaign, a category nobody has written in) draws
-// nothing, so an unconfigured forum still gets a page rather than placeholders.
+// sections first, then the discussion feed down the left, with the activity
+// slots, the bounty board and the hot list stacked down the right. All three
+// rail cards are above the fold together — that is why the bounty panel no
+// longer spans the page under everything else.
 const DEFAULT_BLOCKS = [
   { type: "categories", position: 0, limit: 3 },
   { type: "latest", position: 1, limit: 8 },
   { type: "promotions", position: 2, limit: 3 },
-  { type: "hot", position: 3, limit: 5 },
-  { type: "bounties", position: 4 },
+  { type: "bounties", position: 3, limit: 4 },
+  { type: "hot", position: 4, limit: 5 },
 ];
 
 /**
@@ -81,6 +80,12 @@ export default class IngenicHomepage extends Component {
 
   get hasRail() {
     return this.blocks.some((entry) => entry.layout === "side");
+  }
+
+  // How many cards the rail holds, so the main column can span the same number
+  // of rows instead of leaving a gap once a third card is added.
+  get railCards() {
+    return Math.max(this.blocks.filter((entry) => entry.layout === "side").length, 1);
   }
 
   get heroTitle() {
@@ -122,19 +127,9 @@ export default class IngenicHomepage extends Component {
         </form>
       </section>
 
-      <nav
-        class="ingenic-homepage__quick-links"
-        aria-label={{i18n (themePrefix "ingenic.home.quick_links")}}
-      >
-        <a href="/ingenic/docs">{{dIcon "book"}}{{i18n (themePrefix "ingenic.nav.docs")}}</a>
-        <a href="/ingenic/downloads">{{dIcon "download"}}{{i18n (themePrefix "ingenic.nav.downloads")}}</a>
-        <a href="/ingenic/boards">{{dIcon "microchip"}}{{i18n (themePrefix "ingenic.nav.boards")}}</a>
-        <a href="/ingenic/bounties">{{dIcon "gift"}}{{i18n (themePrefix "ingenic.nav.bounties")}}</a>
-        <a href="/ingenic/points">{{dIcon "star"}}{{i18n (themePrefix "ingenic.nav.points")}}</a>
-      </nav>
-
       <div
         class="ingenic-homepage__blocks {{if this.hasRail 'ingenic-homepage__blocks--with-rail'}}"
+        style="--ingenic-rail-cards: {{this.railCards}}"
       >
         {{#each this.blocks as |entry|}}
           <div class="ingenic-homepage__block ingenic-homepage__block--{{entry.layout}}">

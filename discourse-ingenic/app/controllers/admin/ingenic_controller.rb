@@ -438,14 +438,16 @@ module Admin
 
     # Site content ----------------------------------------------------------
 
-    # One request for the whole page. All three lists are short and all three are
-    # drawn together, so fetching them separately would only add three round
-    # trips to a screen whose entire content is what comes back.
+    # One request for the whole page. Every list is short and they are drawn
+    # together, so fetching them separately would only add round trips to a
+    # screen whose entire content is what comes back.
     def site
       authorize_admin_only!
 
       render_json_dump(
         homepage_blocks: DiscourseIngenic::ConfigParser.homepage_blocks,
+        header_links: IngenicHeaderLink.ordered.map { |record| header_link_json(record) },
+        section_cards: IngenicSectionCard.ordered.map { |record| section_card_json(record) },
         promotions: IngenicPromotion.ordered.map { |record| promotion_json(record) },
         social_links: IngenicSocialLink.ordered.map { |record| social_link_json(record) },
         footer_columns:
@@ -524,6 +526,48 @@ module Admin
     def destroy_promotion
       authorize_admin_only!
       IngenicPromotion.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # Header buttons --------------------------------------------------------
+
+    def create_header_link
+      authorize_admin_only!
+      record = IngenicHeaderLink.new(header_link_params)
+      save_or_error(record) { render_json_dump(header_link: header_link_json(record)) }
+    end
+
+    def update_header_link
+      authorize_admin_only!
+      record = IngenicHeaderLink.find(params[:id])
+      record.assign_attributes(header_link_params)
+      save_or_error(record) { render_json_dump(header_link: header_link_json(record)) }
+    end
+
+    def destroy_header_link
+      authorize_admin_only!
+      IngenicHeaderLink.find(params[:id]).destroy!
+      head :no_content
+    end
+
+    # Section cards ---------------------------------------------------------
+
+    def create_section_card
+      authorize_admin_only!
+      record = IngenicSectionCard.new(section_card_params)
+      save_or_error(record) { render_json_dump(section_card: section_card_json(record)) }
+    end
+
+    def update_section_card
+      authorize_admin_only!
+      record = IngenicSectionCard.find(params[:id])
+      record.assign_attributes(section_card_params)
+      save_or_error(record) { render_json_dump(section_card: section_card_json(record)) }
+    end
+
+    def destroy_section_card
+      authorize_admin_only!
+      IngenicSectionCard.find(params[:id]).destroy!
       head :no_content
     end
 
@@ -778,6 +822,33 @@ module Admin
       permitted
     end
 
+    def header_link_params
+      params.permit(
+        :label,
+        :href,
+        :icon,
+        :image_url,
+        :show_label,
+        :external,
+        :position,
+        :published,
+      )
+    end
+
+    def section_card_params
+      params.permit(
+        :label,
+        :category,
+        :href,
+        :description,
+        :icon,
+        :image_url,
+        :color,
+        :position,
+        :published,
+      )
+    end
+
     def social_link_params
       params.permit(
         :label,
@@ -786,6 +857,7 @@ module Admin
         :image_url,
         :qr_image_url,
         :qr_caption,
+        :icon_only,
         :position,
         :published,
       )
@@ -948,6 +1020,35 @@ module Admin
         )
     end
 
+    def header_link_json(link)
+      link.attributes.slice(
+        "id",
+        "label",
+        "href",
+        "icon",
+        "image_url",
+        "show_label",
+        "external",
+        "position",
+        "published",
+      )
+    end
+
+    def section_card_json(card)
+      card.attributes.slice(
+        "id",
+        "label",
+        "category",
+        "href",
+        "description",
+        "icon",
+        "image_url",
+        "color",
+        "position",
+        "published",
+      )
+    end
+
     def social_link_json(link)
       link.attributes.slice(
         "id",
@@ -957,6 +1058,7 @@ module Admin
         "image_url",
         "qr_image_url",
         "qr_caption",
+        "icon_only",
         "position",
         "published",
       )
