@@ -28,6 +28,15 @@ and adds a developer area below them:
 It intentionally does **not** touch authentication. Google, GitHub and email
 login stay exactly as configured in Discourse core.
 
+## Documentation
+
+- [`docs/usage.md`](docs/usage.md) — what the forum does and how to use it, for
+  members and administrators; [中文](docs/usage.zh-CN.md).
+- [`DEPLOY.md`](DEPLOY.md) — installation, settings and rollback;
+  [中文](DEPLOY.zh-CN.md).
+- [`docs/seeding.md`](docs/seeding.md) — bulk content import from the console;
+  [中文](docs/seeding.zh-CN.md).
+
 ## Access tiers
 
 Each download record carries one of three levels:
