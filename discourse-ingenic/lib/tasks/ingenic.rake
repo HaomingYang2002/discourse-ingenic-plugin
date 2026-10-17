@@ -76,6 +76,47 @@ namespace :ingenic do
     end
   end
 
+  desc "Name the site Ingenic, use the native latest home page, and drop Discourse's badge"
+  task setup: :environment do
+    # Three settings that decide what a visitor sees before they read anything:
+    # who the forum says it belongs to, whether the front page is the forum's
+    # own topic list, and whether the page ends in an advert for the software.
+    # All three default to Discourse's answers, none of them produces an error,
+    # and all three are the same on every Ingenic install — so they are applied
+    # here rather than typed in by hand. Every change is printed, and running
+    # the task again changes nothing.
+    changes = []
+
+    if SiteSetting.title != "Ingenic"
+      changes << "title: #{SiteSetting.title.inspect} → \"Ingenic\""
+      SiteSetting.title = "Ingenic"
+    end
+
+    if SiteSetting.enable_powered_by_discourse
+      changes << "enable_powered_by_discourse: true → false"
+      SiteSetting.enable_powered_by_discourse = false
+    end
+
+    # Meta's front page is Discourse's own latest list, and this forum is meant
+    # to read like it: the topic table with its category, replies, views and
+    # activity columns, not a page of cards. `ingenic-home` stays available as
+    # a choice for a deployment that wants the announcement blocks, but it is
+    # not what a fresh install lands on.
+    if SiteSetting.default_homepage != "latest"
+      changes << "default_homepage: #{SiteSetting.default_homepage.inspect} → \"latest\""
+      SiteSetting.default_homepage = "latest"
+    end
+
+    if changes.empty?
+      puts "Nothing to change: the site already introduces itself as Ingenic."
+    else
+      changes.each { |change| puts "  #{change}" }
+      puts
+      puts "#{changes.size} changed. Reload a page to see them; the server picks up site"
+      puts "settings without a restart."
+    end
+  end
+
   desc "Check the settings this plugin and its theme need, and say what is missing"
   task doctor: :environment do
     # Whether a signed-out reader's choice of language survives the round trip.
@@ -114,6 +155,21 @@ namespace :ingenic do
         SiteSetting.default_locale == "en",
         "a first-time visitor lands in #{SiteSetting.default_locale.inspect} rather than English",
       ],
+      [
+        "title",
+        SiteSetting.title == "Ingenic",
+        "the header introduces the forum as #{SiteSetting.title.inspect} — rake ingenic:setup names it Ingenic",
+      ],
+      [
+        "enable_powered_by_discourse",
+        !SiteSetting.enable_powered_by_discourse,
+        "the page ends in Discourse's own badge — rake ingenic:setup switches it off",
+      ],
+      [
+        "default_homepage",
+        SiteSetting.default_homepage == "latest",
+        "the front page is #{SiteSetting.default_homepage.inspect} rather than the topic list meta.discourse.org shows — rake ingenic:setup switches it",
+      ],
     ]
 
     # A category the navigation points at and the forum does not have is a link
@@ -149,6 +205,7 @@ namespace :ingenic do
     else
       puts "#{problems.size} to fix. Site settings live under Admin → Settings; the language"
       puts "switcher's own language list is a theme setting on the theme's settings page."
+      puts "Either way, rake ingenic:setup applies the three site defaults this task names."
     end
   end
 

@@ -58,6 +58,7 @@ zh_CN:
       next: "下一篇"
       discuss: "在论坛中讨论"
       pick_page: "请从目录中选择页面开始阅读。"
+      no_versions: "该型号的文档尚未编写。"
       not_found: "该文档页面不可用。"
     downloads:
       title: "下载中心"

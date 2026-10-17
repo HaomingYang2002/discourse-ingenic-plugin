@@ -72,6 +72,24 @@ SiteSetting.ingenic_enabled          # 应为 true
 IngenicDocProduct.count              # 尚未录入内容时应为 0
 ```
 
+接着应用本论坛固定的三项站点默认值：
+
+```bash
+rake ingenic:setup
+```
+
+任务会逐条打印改了什么，第二次运行不会做任何改动：
+
+- `title` 改为 **Ingenic**：页面左上角和浏览器标题都显示 Ingenic，而不是默认的
+  “Discourse”。
+- `enable_powered_by_discourse` 关闭：页面底部不再出现 “Powered by Discourse”。
+  主题样式也会隐藏该元素，即使某次部署漏配了设置也不会露出来。
+- `default_homepage` 改为 **latest**：首页就是论坛自己的主题列表，列为
+  Topic / Replies / Views / Activity，与 meta.discourse.org 的首页相同。主题自带的
+  卡片式首页（`ingenic-home`，地址 `/ingenic/home`）仍可选用，但不再是默认首页。
+
+之后 `rake ingenic:doctor` 会连同语言、版块和存储设置一起检查这三项。
+
 ---
 
 ## 2. 安装主题
@@ -296,31 +314,32 @@ rake ingenic:seed_categories[permissions]
 
 ### 首页
 
-插件把首页作为一个**首页选项**提交给 Discourse，所以这里设置的是 Discourse 自己的
-一项核心设置，而不是插件设置：
+首页使用 Discourse 自己的 **latest** 主题列表，也就是 meta.discourse.org 打开时
+显示的那一页：主题表格，列为分类、回复数、浏览数和最新活动。这是核心设置，不是
+插件设置：
 
 | 设置 | 取值 | 作用 |
 |---|---|---|
-| `default_homepage` | Ingenic 首页（实际存储值为 `ingenic-home`） | 让 `/` 成为首页 |
+| `default_homepage` | `latest`（实际存储值为 `latest`） | 让 `/` 成为论坛的主题列表 |
 
 在 **管理后台 → 设置 → 界面** 中设置，或用命令行：
 
 ```bash
 ./launcher enter app
 rails c
-SiteSetting.default_homepage = "ingenic-home"
+SiteSetting.default_homepage = "latest"
 ```
 
-只有 `ingenic_enabled` 开启时这个选项才会出现在列表里。如果站点已经选中它、之后又
-关掉了插件，站点会回落到普通首页，而不是报错。
+`rake ingenic:setup` 会连同站点名称和 powered-by 开关一起设置。
 
-首页的内容是：一个横幅、五个工具页面入口（在线文档、下载中心、开发板商店、高分
-悬赏、积分），然后是首页模块。它**不是**主题列表，也没有自己的最新/热门/新帖标签
-页——那些标签属于主题列表，而主题列表现在在别的地方。在导航里选择 **最新** 会进入
-最新主题列表，首页仍然在原处；在此之前，首页是画在主题列表上方的，一切换标签就跟着
-消失了。
+主题另外带一个卡片式首页——横幅、五个工具入口、版块网格、活动推广位和悬赏版块——
+以 **ingenic-home** 作为首页选项注册。它的地址是 `/ingenic/home`，仍然可以选用；
+管理员可以在 `default_homepage` 中选择 `ingenic-home` 把它设为首页。只有
+`ingenic_enabled` 开启时这个选项才会出现在列表里；如果站点选中过它、之后又关掉了
+插件，站点会回落到普通首页，而不是报错。
 
-首页自己的地址是 `/ingenic/home`，因此可以直接写进链接，刷新也仍然是同一个页面。
+下面的 `ingenic_homepage_blocks` 只配置这个卡片式首页；在 `latest` 作为首页时，
+它不会出现在 `/` 上。
 
 一个可直接修改的 `ingenic_homepage_blocks` 示例——版块网格加悬赏版块，这也是留空
 时的默认效果：
@@ -405,6 +424,12 @@ Discourse 还会画一行自己的内容：**由 Discourse 提供技术支持**�
 在线文档、下载资源、开发板、积分、范围权限和站点首页内容都可以直接在 Discourse 管理后台维护，不必每次进入 Rails 控制台。进入 **管理后台 → 插件 → Ingenic**，这里有六个标签页。管理员可以看到全部六个标签页；版主，以及只被授予某个产品或某块开发板范围权限的账号，只会看到该权限覆盖的两个页面（Documentation 和 Development boards），其余四个页面在服务端就限定为管理员，不给入口好过给一个点进去会被拒绝的链接。另外，Discourse 自己的“插件”页面仅限站务人员访问，因此打开这些页面的实际操作者是管理员或版主。
 
 **Documentation（在线文档）**：管理产品树（系列 → 型号）、每个产品的版本，以及某个版本下的页面树。在某个版本中编辑过的页面，可以在之后的版本中选择覆盖；没有覆盖的页面会从上一个版本继承，因此新建版本相当于自动沿用上一版的内容，不需要手工复制。编辑器会标明当前页面来自哪个版本，并提供 **Override in this version**（在本版本中覆盖）和 **Restore inheritance**（恢复继承）。
+
+读者端的版本下拉框列出该型号的全部版本，按 `position` 排序，并标出被标记为 `latest`
+的那一个。切换版本会改写地址 `/ingenic/docs/<系列>/<型号>/<版本>/<页面>`；目标版本
+有该页面（自己的记录或继承来的）时停留在原页面。尚未建版本的型号会明确显示"该型号
+的文档尚未编写"，而不是一个空阅读器；不带路径的 `/ingenic/docs` 会落在第一个真正
+有文档的型号上。
 
 后台界面目前只有英文语言包，中文界面下会回退显示英文，上面的按钮名称即为实际显示的文字。
 
@@ -519,10 +544,13 @@ rails c
 
 请逐项打开并检查：
 
-- [ ] `/ingenic/docs` 能打开第一个已发布产品，并将地址替换为该产品的规范地址
+- [ ] `/` 显示论坛的主题列表（Topic / Replies / Views / Activity 四列），与 meta.discourse.org 的首页一致，而不是卡片页
+- [ ] 页面左上角显示 **Ingenic**，页面底部没有 “Powered by Discourse”
+- [ ] 顶部语言切换器显示 **EN** 和 **中文**，每种语言用其自身的语言命名
+- [ ] `/ingenic/docs` 打开第一个真正有文档的型号，并将地址替换为该型号的规范地址
 - [ ] 系列 → 型号两级选择器正常联动，选中系列后型号列表随之收窄
 - [ ] 文档目录树正常显示，上一页 / 下一页按顺序切换
-- [ ] 版本选择器可以切换版本；如果目标版本有同名页面，应继续停留在该页面
+- [ ] 版本选择器列出该型号的全部版本，并标出 latest；切换版本后，目标版本有同名页面（自己的或继承来的）时停留在该页面
 - [ ] 在新版本中未编辑的页面显示的是上一版本的内容，编辑器标明该页面来自哪个版本
 - [ ] `/ingenic/downloads` 可以按系列、型号、分类、版本、平台筛选
 - [ ] `public_login` 资源登录后即可下载；`login_form_request` 资源会先要求提交申请

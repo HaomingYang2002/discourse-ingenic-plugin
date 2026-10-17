@@ -91,6 +91,53 @@ describe IngenicDocsController do
       )
     end
 
+    # A series created before anyone writes its first page used to be the place
+    # the bare URL landed, because it came first in display order. The reader
+    # then saw an empty page with no version dropdown and concluded the
+    # documentation was broken. Landing on the first series that has something
+    # to read is the difference between "not written yet" and "does not work".
+    it "lands on the first series that has documentation, not the first one listed" do
+      empty_series =
+        IngenicDocProduct.create!(
+          slug: "a-series",
+          name: "A Series",
+          locale: "en",
+          position: -1,
+        )
+      IngenicDocProduct.create!(
+        slug: "a1",
+        name: "A1",
+        kind: IngenicDocProduct::CHIP,
+        parent: empty_series,
+        locale: "en",
+      )
+
+      get "/ingenic/docs.json"
+
+      json = response.parsed_body
+      expect(json["series_slug"]).to eq("t-series")
+      expect(json["chip_slug"]).to eq("t32pro")
+      expect(json["versions"].map { |version| version["slug"] }).to contain_exactly(
+        "2.0.0",
+        "2.1.0",
+      )
+    end
+
+    it "lands on a chip that has versions when the series has one that does not" do
+      IngenicDocProduct.create!(
+        slug: "t31",
+        name: "T31",
+        kind: IngenicDocProduct::CHIP,
+        parent: series,
+        locale: "en",
+        position: -1,
+      )
+
+      get "/ingenic/docs.json"
+
+      expect(response.parsed_body["chip_slug"]).to eq("t32pro")
+    end
+
     it "does not serve a chip that has been unpublished" do
       product.update!(published: false)
 

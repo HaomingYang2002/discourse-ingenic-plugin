@@ -58,6 +58,7 @@ en:
       next: "Next"
       discuss: "Discuss in forum"
       pick_page: "Choose a page from the contents to start reading."
+      no_versions: "This chip's documentation has not been written yet."
       not_found: "This documentation page is not available."
     downloads:
       title: "Downloads"

@@ -70,6 +70,16 @@
   color: var(--ingenic-link);
 }
 
+// The forum is Ingenic's, and its footer is the one this theme draws. Core's
+// "Powered by Discourse" strip is switched off with
+// `enable_powered_by_discourse`, and this is the second line of defence: a
+// setting that a deployment forgets to carry leaves the default on, and the
+// strip would then appear under Ingenic's own footer. Hiding the element also
+// stops it reserving the `--powered-by-height` space it measures.
+.powered-by-discourse {
+  display: none !important;
+}
+
 @include viewport.from(md) {
   html.ingenic-sidebar-right body.has-sidebar-page #main-outlet-wrapper {
     grid-template-areas:

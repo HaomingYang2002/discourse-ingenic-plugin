@@ -200,18 +200,38 @@ class IngenicDocsController < ::ApplicationController
   # Resolves the series named in the path, or the first one when the visitor has
   # not chosen yet. That is what lets the navigation point every "Documentation"
   # entry at one stable URL.
+  #
+  # The fallback prefers a series whose documentation has actually been written.
+  # A series can be created before the first page is, and landing the bare
+  # /ingenic/docs on it showed an empty page with no version dropdown — the
+  # reader then concluded the documentation was broken rather than unwritten.
   def find_series
     scope = IngenicDocProduct.series.published.ordered
-    scope = scope.where(slug: series_slug) if series_slug.present?
 
-    in_reading_locale(scope).first
+    if series_slug.present?
+      return in_reading_locale(scope.where(slug: series_slug)).first
+    end
+
+    candidates = in_reading_locale(scope)
+    candidates.find { |series| series_documented?(series) } || candidates.first
   end
 
   def find_chip(series)
     scope = series.children.published.ordered
-    scope = scope.where(slug: chip_slug) if chip_slug.present?
 
-    in_reading_locale(scope).first
+    if chip_slug.present?
+      return in_reading_locale(scope.where(slug: chip_slug)).first
+    end
+
+    chips = in_reading_locale(scope)
+    chips.find { |chip| chip.versions.exists? } || chips.first
+  end
+
+  # A chip with no versions is a chip nobody has written about yet.
+  def series_documented?(series)
+    in_reading_locale(series.children.published.ordered).any? do |chip|
+      chip.versions.exists?
+    end
   end
 
   # Versions hang off a chip row and a chip row belongs to a single locale, so

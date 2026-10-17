@@ -27,6 +27,19 @@ import { themePrefix } from "virtual:theme";
 const LOCALE_COOKIE = "locale";
 const LOCALE_COOKIE_EXPIRY = 365;
 
+// How a language names itself in the switcher. English is "EN" rather than
+// "English" and Chinese is "中文" rather than "Chinese": the menu is read by
+// someone who already reads the language they are looking for, so the shortest
+// name that language uses for itself is the one they will recognise. A locale
+// not listed here falls back to Discourse's own native name, which is the same
+// idea — a name written in the language it names.
+//
+// Keyed by the primary subtag, so `zh_CN`, `zh-TW` and `zh` all reach "中文".
+const SELF_NAMES = {
+  en: "EN",
+  zh: "中文",
+};
+
 export default class IngenicLocaleSwitcher extends Component {
   @service siteSettings;
   @service currentUser;
@@ -48,8 +61,15 @@ export default class IngenicLocaleSwitcher extends Component {
       .filter(Boolean)
       .map((value) => ({
         value,
-        label: available.find((entry) => entry.value === value)?.native_name || value,
+        label: this.selfName(value, available),
       }));
+  }
+
+  selfName(value, available) {
+    const primary = value.split(/[-_]/)[0].toLowerCase();
+    const native = available.find((entry) => entry.value === value)?.native_name;
+
+    return SELF_NAMES[primary] || native || value;
   }
 
   get configured() {

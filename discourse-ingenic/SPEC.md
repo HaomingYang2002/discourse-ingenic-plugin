@@ -101,12 +101,27 @@ site setting is.
 
 ### Homepage
 
-The homepage is assembled from blocks listed in `ingenic_homepage_blocks`.
-Supported types: `announcements`, `discussions`, `downloads`,
-`boards`, `docs`, `html`. Order and visibility are admin-controlled; unknown
-types are ignored rather than rendered broken. The blocks render above the topic
-list through the `before-topic-list` outlet, so the forum's own list is not
-replaced.
+The front page at `/` is Discourse's own **latest** topic list — the table with
+Topic / Replies / Views / Activity columns and the Latest / Hot / New tabs — the
+same page meta.discourse.org opens on. `rake ingenic:setup` selects it as
+`default_homepage`.
+
+The theme also ships a card-style home page, registered with Discourse as the
+homepage **ingenic-home** and served at `/ingenic/home`. It carries a banner,
+five tool links and blocks listed in `ingenic_homepage_blocks`. Supported types:
+`categories`, `bounties`, `promotions`, `announcements`, `discussions`,
+`downloads`, `boards`. Order and visibility are admin-controlled; unknown types
+are ignored rather than rendered broken. It is available as a homepage choice
+but is not what a visitor lands on by default.
+
+The same rake task names the site **Ingenic** (`title`) and switches
+`enable_powered_by_discourse` off. The theme's stylesheet also hides
+`.powered-by-discourse`, so a deployment that misses the setting does not show
+the badge.
+
+The header's language switcher names each language in its own language: **EN**
+for English and **中文** for Chinese, with Discourse's native name as the
+fallback for any other locale.
 
 ### Documentation
 
@@ -119,7 +134,7 @@ reading order.
 URLs:
 
 ```
-/ingenic/docs                                     first published series → its first chip → latest version
+/ingenic/docs                                     first series with documentation → its first documented chip → latest version
 /ingenic/docs/<series>                            first chip of that series
 /ingenic/docs/<series>/<chip>                     that chip's latest version
 /ingenic/docs/<series>/<chip>/<version>           a specific version
@@ -127,9 +142,11 @@ URLs:
 ```
 
 Each level is filled in from the one before when omitted, so a link shared at
-any depth still lands somewhere real. The bare URL answers with the first
-published series; the client then replaces the address with the canonical path,
-so what a visitor copies is the canonical URL rather than the redirect stub.
+any depth still lands somewhere real. The bare URL answers with the first series
+whose chips have versions, and the first chip that has them, so a series or chip
+created before its documentation is written is skipped rather than shown as an
+empty reader. The client then replaces the address with the canonical path, so
+what a visitor copies is the canonical URL rather than the redirect stub.
 
 Every URL answers as JSON to a fetch and as the application shell to a browser
 navigation, which is what makes a documentation link shareable and refreshable
@@ -150,6 +167,13 @@ diverge.
 
 The chain order comes from `ingenic_doc_versions.position`, which already
 existed — no extra dependency.
+
+The reader's version dropdown lists every version of the chip in that order and
+marks the one flagged `latest`. Choosing one rewrites the URL to
+`/ingenic/docs/<series>/<chip>/<version>/<page>`; the page stays put when the
+chosen version has it, its own copy or an inherited one. A chip with no versions
+shows "this chip's documentation has not been written yet" rather than an empty
+reader.
 
 ### Downloads
 
@@ -380,12 +404,20 @@ are what still has to be run on a real instance.
       on nested documentation pages
 - [x] the Open Source row opens the section's own page, at the address carrying
       the id, and every category row's link answers 200
-- [ ] homepage blocks render in the configured order
+- [x] `/` is the native latest topic list, with the Topic / Replies / Views /
+      Activity columns
+- [x] the page title is **Ingenic**, and no `powered-by-discourse` element is
+      drawn
+- [x] the language switcher labels the two languages **EN** and **中文**
+- [x] `/ingenic/home` draws the card page, and its blocks render in the
+      configured order
 - [ ] disabling a block removes it without leaving a gap
 - [ ] the docs picker opens on hover for the series flyout and by keyboard
 - [ ] switching version keeps the reader on the equivalent page when it exists
 - [ ] a page inherited from an earlier version says which version it came from
-- [ ] opening `/ingenic/docs` lands on the first series with the canonical URL
+- [x] opening `/ingenic/docs` lands on the first series with documentation and
+      rewrites the address to the canonical URL
+- [x] a chip with no versions says so instead of showing an empty reader
 - [ ] download centre filters combine correctly
 - [ ] each access tier shows the right prompt and the right button
 - [ ] a priced resource shows **Unlock for N points** when affordable and
@@ -418,12 +450,12 @@ are what still has to be run on a real instance.
 
 ## Known risks
 
-- **Nothing here has been seen in a browser.** The migrations, the specs (423
+- **Visual judgement is the site owner's.** The migrations, the specs (425
   examples) and the HTTP paths have all been run against a Discourse development
-  container, but no page has been opened, so the layout, the palette and the
-  proportions are as designed rather than as confirmed. Nor has a message been
-  sent — the container has no mail server — so the request-to-download flow is
-  covered by specs up to the point a message would leave.
+  container, and every screen and write is exercised over HTTP by the audit. No
+  message has been sent — the development container has no mail server — so the
+  request-to-download flow is covered by specs up to the point a message would
+  leave.
 - **The Chinese forum's signup form could not be read.** `forum.ingenic.com` is
   behind a login, so the field list behind "sign in and fill in your details"
   is a generic developer set rather than a copy of theirs. It is configurable
@@ -433,6 +465,6 @@ are what still has to be run on a real instance.
   (`forum.ingeinc.com`) is a typo for a domain that does not exist, so the
   board card's fields were designed from the Chinese forum's board module
   instead of from that page.
-- **The homepage renders through the `before-topic-list` outlet** and hides
-  itself on every route except `/`. Giving it a dedicated route is the natural
-  next step once this is running.
+- **The card home page is a choice, not the default.** A deployment that wants
+  it as the front page selects `ingenic-home` under `default_homepage`; the
+  shipped default is the native latest list.

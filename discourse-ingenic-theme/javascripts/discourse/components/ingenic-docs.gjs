@@ -568,9 +568,21 @@ export default class IngenicDocs extends Component {
                 </p>
               {{/if}}
             {{else}}
-              <p class="ingenic-docs__notice">
-                {{i18n (themePrefix "ingenic.docs.pick_page")}}
-              </p>
+              {{#if this.chip}}
+                {{#if this.versions.length}}
+                  <p class="ingenic-docs__notice">
+                    {{i18n (themePrefix "ingenic.docs.pick_page")}}
+                  </p>
+                {{else}}
+                  <p class="ingenic-docs__notice">
+                    {{i18n (themePrefix "ingenic.docs.no_versions")}}
+                  </p>
+                {{/if}}
+              {{else}}
+                <p class="ingenic-docs__notice">
+                  {{i18n (themePrefix "ingenic.docs.pick_page")}}
+                </p>
+              {{/if}}
             {{/if}}
           </article>
         </div>

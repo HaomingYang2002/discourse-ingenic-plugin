@@ -66,6 +66,28 @@ SiteSetting.ingenic_enabled          # => true
 IngenicDocProduct.count              # => 0, no content yet
 ```
 
+Then apply the three site defaults this forum always wants:
+
+```bash
+rake ingenic:setup
+```
+
+It prints every change it makes and changes nothing on a second run:
+
+- `title` becomes **Ingenic** — the word in the top-left corner, and the page
+  title. Without this a fresh site still says "Discourse".
+- `enable_powered_by_discourse` is switched **off** — the "Powered by Discourse"
+  strip at the foot of every page. The theme also hides that element, so a
+  setting left behind by a deployment does not bring it back.
+- `default_homepage` becomes **latest** — the forum's own topic table, with the
+  Topic / Replies / Views / Activity columns, which is the same front page
+  meta.discourse.org shows. The theme's card-style homepage
+  (`ingenic-home`, at `/ingenic/home`) remains available as a choice but is
+  not what a visitor lands on.
+
+`rake ingenic:doctor` checks all three afterwards, along with the language,
+category and storage settings.
+
 ---
 
 ## 2. Theme
@@ -287,6 +309,11 @@ rake ingenic:seed_categories[permissions]
 `rake ingenic:doctor` reports the same slugs when they are missing, along with
 the settings the plugin and the theme need.
 
+`ingenic_homepage_blocks` configures the card homepage at `/ingenic/home`. It is
+not drawn at `/`, which is the native topic list; an administrator who prefers
+the card page can select **ingenic-home** as the site's default homepage under
+**Admin → Settings → default_homepage**.
+
 A starting `ingenic_homepage_blocks`:
 
 ```json
@@ -310,67 +337,35 @@ appears.
 
 ### The front page
 
-The plugin offers its home page to Discourse as a **homepage**, so this is one
-core setting rather than a plugin one:
+The front page is Discourse's own **latest** topic list, the same page
+meta.discourse.org opens on: a table of topics with category, replies, views and
+activity columns. That is a core setting, not a plugin one:
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| `default_homepage` | the Ingenic home page (stored value `ingenic-home`) | Makes `/` the front page |
+| `default_homepage` | `latest` (stored value `latest`) | Makes `/` the forum's topic list |
 
 Admin → Settings → Interface, or by console:
 
 ```bash
 ./launcher enter app
 rails c
-SiteSetting.default_homepage = "ingenic-home"
+SiteSetting.default_homepage = "latest"
 ```
 
-The option is listed only while `ingenic_enabled` is on. A site that has it
-selected and then switches the plugin off falls back to the ordinary homepage
-instead of showing an error.
+`rake ingenic:setup` sets it, together with the site's name and the powered-by
+switch.
 
-What the front page is: a banner, a strip of the five tool pages
-(Documentation, Downloads, Development Boards, Bounties, Points), and then the
-homepage blocks. It is **not** a topic list and it has no latest/hot/new tabs of
-its own — those belong to the topic lists, which are now somewhere else. Choosing
-*Latest* in the navigation goes to the latest topics and leaves the front page
-where it is; before, the front page was drawn above whatever list you were on
-and disappeared the moment you switched to one.
+The theme also ships a card-style home page — banner, the five tool links, the
+section grid, promotions and bounties — registered as the homepage
+**ingenic-home**. It is at `/ingenic/home` and stays available as a choice; an
+administrator who wants it as the front page selects `ingenic-home` under
+`default_homepage`. The plugin lists that option only while `ingenic_enabled` is
+on, and a site that had it selected and then switches the plugin off falls back
+to the ordinary homepage instead of showing an error.
 
-Its own address is `/ingenic/home`, so a link to it can be written down and a
-refresh serves the same page.
-
-A starting `ingenic_homepage_blocks` for a front page — the section grid plus the
-bounty panel, which is also what an empty setting gives you:
-
-```json
-[
-  { "type": "categories", "enabled": true, "position": 0, "limit": 8 },
-  { "type": "bounties",   "enabled": true, "position": 1, "limit": 4 }
-]
-```
-
-`categories` lists the forum's sections as cards, each one linking into its
-category. Add `"categories": ["official-announcements", "technical-discussions"]`
-to name the sections and their order; leave it out and it takes the busiest
-top-level ones up to `limit`. `"show_all": false` drops the **All sections**
-link at the end of the block's heading.
-
-`bounties` lists the richest standing offers and draws nothing at all — no
-heading, no empty row — while there are none, which is what makes it safe to
-leave on before the forum has taken to bounties. It is the one block that is in
-the default set for that reason.
-
-To keep the announcements and discussions blocks as well, put them after it:
-
-```json
-[
-  { "type": "categories",    "enabled": true, "position": 0, "limit": 8 },
-  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
-  { "type": "announcements", "enabled": true, "position": 2, "limit": 5, "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 3, "limit": 6, "category": "technical-discussions" }
-]
-```
+The blocks below configure that card page. They have no effect on `/` while
+`latest` is the homepage.
 
 ### Language
 
@@ -442,6 +437,13 @@ overridden in a later one; a page that is not overridden is inherited from the
 version before it, so a new version starts as the last one without anybody
 copying anything. The editor says which version a page currently comes from and
 offers **Override in this version** and **Restore inheritance**.
+
+The reader's version dropdown lists every version of the chip, in `position`
+order, and marks the one flagged `latest`. Choosing one rewrites the address —
+`/ingenic/docs/<series>/<chip>/<version>/<page>` — and the page stays put when
+the chosen version has it (its own copy or an inherited one). A chip with no
+versions yet says so instead of showing an empty reader, and the bare
+`/ingenic/docs` lands on the first chip that actually has documentation.
 
 **Downloads** — five tabs. *Resources* is the catalogue: name, product, version,
 platform, classification, the file (uploaded, or a URL held elsewhere), release
@@ -633,7 +635,13 @@ state — that is expected, not a bug.
 
 Open these and check each one:
 
-- [ ] `/ingenic/docs` lands on the first product and rewrites the address to it
+- [ ] `/` shows the forum's topic table — Topic / Replies / Views / Activity — as
+      meta.discourse.org does, not a page of cards
+- [ ] the corner of the page says **Ingenic**, and the foot has no
+      "Powered by Discourse"
+- [ ] the header's language switcher reads **EN** and **中文**
+- [ ] `/ingenic/docs` lands on the first chip that has documentation and rewrites
+      the address to it
 - [ ] the series → chip picker narrows the chips under the series you point at
 - [ ] the page tree expands, and previous/next move through the pages in order
 - [ ] the version picker switches versions and stays on the same page where it exists
@@ -655,15 +663,14 @@ Open these and check each one:
 - [ ] accepting an answer on that topic pays the answerer in full, closes the offer, and the topic then says what was paid and to whom
 - [ ] withdrawing a standing offer hands the points back, and one nobody answers comes back on its own within the hour after `ingenic_bounty_expiry_days`
 - [ ] `/ingenic/boards` shows boards, and a board with a purchase link shows a **Buy now** button
-- [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; picking **中文** reloads the page in Chinese, and picking **English** brings it back
+- [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; its labels are **EN** and **中文**, each language named in its own language; picking 中文 reloads the page in Chinese, and picking EN brings it back
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
-- [ ] `/` is the front page: banner, the five tool links, and the section cards — with **no** topic list and no latest/hot tabs on it
-- [ ] choosing **Latest** in the navigation goes to the topic list and the front page is still there when you come back to it
-- [ ] the **All sections** link at the end of the section block opens `/categories`
-- [ ] a section card links into its own category
-- [ ] the promotions you configured in **Ingenic → Site** appear on the front page if you added a `promotions` block
+- [ ] `/` is the forum's topic list, with the Topic / Replies / Views / Activity columns and the Latest / Hot / New tabs — the same front page meta.discourse.org has
+- [ ] `/ingenic/home` still shows the card page: banner, the five tool links and the section cards, with no topic list on it
+- [ ] the **All sections** link at the end of the card page's section block opens `/categories`
+- [ ] the promotions you configured in **Ingenic → Site** appear on `/ingenic/home` if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
 - [ ] with `enable_powered_by_discourse` off, the page ends at that footer and the **Powered by Discourse** line is gone
 - [ ] a member of a listed `ingenic_official_groups` group wears its badge beside their username, and a member who picked a badge of their own keeps it
