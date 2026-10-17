@@ -968,11 +968,59 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 .ingenic-downloads {
+  // The type filter is a row of buttons above the selects. It carries the
+  // shortest list on the page — SDK, firmware, manuals, tools — so it can be
+  // shown whole and picked in one click instead of opened from a menu.
+  &__types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  &__type {
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--ingenic-surface-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--primary-high);
+    font-size: var(--font-down-1);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      border-color: var(--tertiary);
+      color: var(--ingenic-link);
+    }
+
+    &.is-current {
+      border-color: var(--tertiary);
+      background: var(--tertiary-very-low);
+      color: var(--ingenic-link);
+      font-weight: 600;
+    }
+  }
+
+  // Four selects, four equal columns: the gaps and the widths are the same on
+  // every row, rather than a last item stretching into whatever space was
+  // left over. They fall to two columns and then one as the container narrows.
   &__filters {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
     margin-bottom: 1rem;
+  }
+
+  @media (max-width: 900px) {
+    &__filters {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 600px) {
+    &__filters {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   // Shown once per visitor rather than per resource: the developer information

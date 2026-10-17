@@ -174,9 +174,17 @@ export default class IngenicDownloads extends Component {
     await this.#applyFilter("product", value ?? "");
   }
 
+  // The type filter is drawn as a row of buttons rather than a select: there
+  // are only a handful of types, they are the first thing a visitor narrows by,
+  // and a select hid all of them behind one click. The id arrives as a number
+  // from the row and as a string from the URL, so both are normalised here.
   @action
-  async selectCategory(event) {
-    await this.#applyFilter("category", event.target.value);
+  async pickCategory(id) {
+    await this.#applyFilter("category", id == null ? "" : String(id));
+  }
+
+  isCategorySelected(id) {
+    return String(this.selected.category ?? "") === String(id ?? "");
   }
 
   @action
@@ -345,6 +353,33 @@ export default class IngenicDownloads extends Component {
         <p class="ingenic-notice ingenic-notice--error">{{this.error}}</p>
       {{/if}}
 
+      <div
+        class="ingenic-downloads__types"
+        role="group"
+        aria-label={{i18n (themePrefix "ingenic.downloads.all_types")}}
+      >
+        <button
+          type="button"
+          class="ingenic-downloads__type
+            {{if (this.isCategorySelected null) "is-current"}}"
+          aria-pressed={{this.isCategorySelected null}}
+          {{on "click" (fn this.pickCategory null)}}
+        >
+          {{i18n (themePrefix "ingenic.downloads.all_types")}}
+        </button>
+        {{#each this.filters.categories as |category|}}
+          <button
+            type="button"
+            class="ingenic-downloads__type
+              {{if (this.isCategorySelected category.id) "is-current"}}"
+            aria-pressed={{this.isCategorySelected category.id}}
+            {{on "click" (fn this.pickCategory category.id)}}
+          >
+            {{category.name}}
+          </button>
+        {{/each}}
+      </div>
+
       <div class="ingenic-downloads__filters">
         <label class="ingenic-docs__field">
           <span>{{i18n (themePrefix "ingenic.downloads.all_series")}}</span>
@@ -372,16 +407,6 @@ export default class IngenicDownloads extends Component {
               <select.Option @value={{chip.slug}}>{{chip.name}}</select.Option>
             {{/each}}
           </DNativeSelect>
-        </label>
-
-        <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_types")}}</span>
-          <select {{on "change" this.selectCategory}}>
-            <option value="">{{i18n (themePrefix "ingenic.downloads.all_types")}}</option>
-            {{#each this.filters.categories as |category|}}
-              <option value={{category.id}}>{{category.name}}</option>
-            {{/each}}
-          </select>
         </label>
 
         <label class="ingenic-docs__field">
