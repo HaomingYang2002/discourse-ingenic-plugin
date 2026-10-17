@@ -183,8 +183,24 @@ export default class IngenicDownloads extends Component {
     await this.#applyFilter("category", id == null ? "" : String(id));
   }
 
-  isCategorySelected(id) {
-    return String(this.selected.category ?? "") === String(id ?? "");
+  // Built here rather than compared in the template: a template call with an
+  // argument is what broke the first version of this row, and a list of plain
+  // values cannot fail to resolve while the page is drawing.
+  get categoryButtons() {
+    const selected = String(this.selected.category ?? "");
+
+    return [
+      {
+        id: null,
+        label: i18n(themePrefix("ingenic.downloads.all_types")),
+        current: selected === "",
+      },
+      ...this.filters.categories.map((category) => ({
+        id: category.id,
+        label: category.name,
+        current: selected === String(category.id),
+      })),
+    ];
   }
 
   @action
@@ -358,24 +374,14 @@ export default class IngenicDownloads extends Component {
         role="group"
         aria-label={{i18n (themePrefix "ingenic.downloads.all_types")}}
       >
-        <button
-          type="button"
-          class="ingenic-downloads__type
-            {{if (this.isCategorySelected null) "is-current"}}"
-          aria-pressed={{this.isCategorySelected null}}
-          {{on "click" (fn this.pickCategory null)}}
-        >
-          {{i18n (themePrefix "ingenic.downloads.all_types")}}
-        </button>
-        {{#each this.filters.categories as |category|}}
+        {{#each this.categoryButtons as |item|}}
           <button
             type="button"
-            class="ingenic-downloads__type
-              {{if (this.isCategorySelected category.id) "is-current"}}"
-            aria-pressed={{this.isCategorySelected category.id}}
-            {{on "click" (fn this.pickCategory category.id)}}
+            class="ingenic-downloads__type {{if item.current 'is-current'}}"
+            aria-pressed={{item.current}}
+            {{on "click" (fn this.pickCategory item.id)}}
           >
-            {{category.name}}
+            {{item.label}}
           </button>
         {{/each}}
       </div>

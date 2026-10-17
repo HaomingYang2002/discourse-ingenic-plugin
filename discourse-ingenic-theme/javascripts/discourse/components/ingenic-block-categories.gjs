@@ -77,12 +77,6 @@ export default class IngenicBlockCategories extends Component {
     ].filter(Boolean);
   }
 
-  get title() {
-    return (
-      this.args.block?.title || i18n(themePrefix("ingenic.home.sections.title"))
-    );
-  }
-
   get showAll() {
     return this.args.block?.show_all !== false;
   }
@@ -127,17 +121,7 @@ export default class IngenicBlockCategories extends Component {
   }
 
   <template>
-    <section class="ingenic-section">
-      <header class="ingenic-section__header">
-        <h2>{{this.title}}</h2>
-
-        {{#if this.showAll}}
-          <a class="ingenic-section__more" href="/categories">
-            {{i18n (themePrefix "ingenic.home.sections.all")}}
-          </a>
-        {{/if}}
-      </header>
-
+    <section class="ingenic-section ingenic-section--sections">
       {{#if this.cards.length}}
         <div class="ingenic-sections">
           {{#each this.cards as |card|}}
@@ -182,6 +166,12 @@ export default class IngenicBlockCategories extends Component {
         <p class="ingenic-section__subtitle">
           {{i18n (themePrefix "ingenic.home.sections.empty")}}
         </p>
+      {{/if}}
+
+      {{#if this.showAll}}
+        <a class="ingenic-sections__all" href="/categories">
+          {{i18n (themePrefix "ingenic.home.sections.all")}}
+        </a>
       {{/if}}
     </section>
   </template>

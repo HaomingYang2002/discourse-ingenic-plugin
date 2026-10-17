@@ -26,7 +26,12 @@ export default class IngenicBlockBounties extends Component {
   @service site;
 
   @tracked bounties = [];
-  @tracked loaded = false;
+
+  // A plain field rather than a tracked one: `load` is called from the
+  // constructor, which runs inside the render computation, and writing tracked
+  // state there is refused by Ember — the refusal was thrown before the fetch
+  // line, so this panel never asked for its list at all.
+  requested = false;
 
   constructor() {
     super(...arguments);
@@ -62,11 +67,11 @@ export default class IngenicBlockBounties extends Component {
 
   @action
   async load() {
-    if (this.loaded) {
+    if (this.requested) {
       return;
     }
 
-    this.loaded = true;
+    this.requested = true;
 
     try {
       const response = await fetch(`${getURL(ENDPOINT)}?limit=${this.limit}`, {

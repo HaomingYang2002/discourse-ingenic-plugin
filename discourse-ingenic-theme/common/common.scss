@@ -320,10 +320,32 @@ html.ingenic-nav-first .sidebar-sections {
 // here, with the description and the topic count kept as the second and third
 // lines because an Ingenic visitor is choosing a place to ask a question, not
 // only recognising a name.
+// The cards are the section: no panel around them and no heading above them,
+// only the three choices and a way through to the full list. A titled panel
+// here repeated what the cards already said and pushed the discussion lists
+// below the fold.
+.ingenic-section--sections {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
 .ingenic-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.65rem;
+
+  &__all {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+
+    &:hover,
+    &:focus {
+      color: var(--ingenic-link);
+    }
+  }
 
   &__card {
     --ingenic-category: var(--tertiary);
@@ -964,6 +986,12 @@ html.ingenic-nav-first .sidebar-sections {
     .btn {
       justify-self: start;
     }
+
+    // Same reason as the download filters: a native select sizes itself to its
+    // options, so equal columns alone leave boxes of different widths.
+    select {
+      width: 100%;
+    }
   }
 }
 
@@ -1009,6 +1037,13 @@ html.ingenic-nav-first .sidebar-sections {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
     margin-bottom: 1rem;
+
+    // Equal columns are not enough on their own: a native select is only as
+    // wide as its longest option, so the four boxes ended at four different
+    // places. Filling the column is what makes the row look ruled.
+    select {
+      width: 100%;
+    }
   }
 
   @media (max-width: 900px) {

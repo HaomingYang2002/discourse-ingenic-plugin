@@ -22,7 +22,10 @@ import { i18n } from "discourse-i18n";
  */
 const FEEDS = {
   latest: "latest",
-  hot: "top/weekly",
+  // Discourse's own "hot" feed. `top/weekly` is a 301 a fetch does not follow,
+  // and a weekly window is empty on a forum whose topics have no views yet —
+  // which is every new install on the day it opens.
+  hot: "hot",
 };
 
 export default class IngenicBlockFeed extends Component {
@@ -55,10 +58,13 @@ export default class IngenicBlockFeed extends Component {
     );
   }
 
+  // Topic keeps the payload's own names — `category_id`, `posts_count`,
+  // `last_posted_at` — rather than camel-casing them. Reading the camelCase
+  // spelling here is what left the reply count undefined and the date blank.
   get categoryFor() {
     return (topic) =>
       this.site.categories?.find(
-        (category) => category.id === topic.categoryId,
+        (category) => category.id === topic.category_id,
       );
   }
 
@@ -70,9 +76,9 @@ export default class IngenicBlockFeed extends Component {
       rank: index + 1,
       title: topic.title,
       url: topic.url,
-      postsCount: topic.postsCount,
+      postsCount: topic.posts_count,
       views: topic.views,
-      lastPostedAt: topic.lastPostedAt,
+      lastPostedAt: topic.last_posted_at,
       category: categoryFor(topic),
     }));
   }
