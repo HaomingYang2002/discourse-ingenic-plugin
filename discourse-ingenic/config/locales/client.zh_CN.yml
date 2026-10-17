@@ -74,6 +74,7 @@ zh_CN:
           edit_title: "编辑资源"
           fields:
             name: "名称"
+            family: "所属目录"
             product_slug: "产品标识"
             kind: "分类"
             no_category: "无分类"
@@ -97,6 +98,9 @@ zh_CN:
             position: "排序"
             description: "描述"
             published: "已发布"
+          families:
+            chip: "芯片资料"
+            algorithm: "算法"
           access:
             public_login: "任何已登录用户"
             public_login_hint: "任何已登录账号均可下载该文件。"

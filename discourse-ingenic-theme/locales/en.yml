@@ -82,6 +82,11 @@ en:
       all_types: "All types"
       all_versions: "All versions"
       all_platforms: "All platforms"
+      family:
+        label: "Download catalogue"
+        all: "All downloads"
+        chip: "Chip resources"
+        algorithm: "Algorithms"
       download: "Download"
       checksum: "SHA-256"
       size: "Size"

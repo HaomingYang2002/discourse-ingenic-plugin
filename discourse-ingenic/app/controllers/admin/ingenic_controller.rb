@@ -759,6 +759,7 @@ module Admin
     def download_params
       permitted =
         params.permit(
+          :family,
           :product_slug,
           :category_id,
           :version,
@@ -921,6 +922,7 @@ module Admin
         .attributes
         .slice(
           "id",
+          "family",
           "product_slug",
           "category_id",
           "version",

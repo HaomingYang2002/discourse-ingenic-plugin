@@ -82,6 +82,11 @@ zh_CN:
       all_types: "全部类型"
       all_versions: "全部版本"
       all_platforms: "全部平台"
+      family:
+        label: "下载目录"
+        all: "全部资源"
+        chip: "芯片资料"
+        algorithm: "算法"
       download: "下载"
       checksum: "SHA-256"
       size: "大小"

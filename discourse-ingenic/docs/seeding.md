@@ -200,6 +200,28 @@ IngenicDownload.create!(
 `product_slug` is the chip's slug from the tree, so a resource filed against a
 series-wide product should use the series' slug instead.
 
+`family` is the catalogue's top-level line: `chip` (the default) or
+`algorithm`. An algorithm is offered across chips and is not filed under one,
+so it leaves `product_slug` empty:
+
+```ruby
+algorithms = IngenicDownloadCategory.find_or_create_by!(name: "algorithm", locale: "en")
+
+IngenicDownload.create!(
+  family: "algorithm",
+  category: algorithms,
+  version: "2.1",
+  locale: "en",
+  name: "Smart H.264 encoder library",
+  platform: "Linux",
+  access_level: "public_login",
+  file_url: "https://download.ingenic.com/algorithms/h264-2.1.tar.gz",
+)
+```
+
+The download page shows the family tabs once more than one family has a
+published resource; until then it stays the chip catalogue alone.
+
 `access_level` is one of `public_login` (sign in), `login_form` (sign in and
 have developer information on file) or `login_form_request` (sign in, have
 information on file, and have an application approved). The default is

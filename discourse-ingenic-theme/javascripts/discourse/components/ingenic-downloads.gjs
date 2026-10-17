@@ -54,7 +54,14 @@ const ACTION_FOR = {
 export default class IngenicDownloads extends Component {
   @tracked downloads = [];
   @tracked filters = { series: [], chips: [], categories: [], versions: [], platforms: [] };
-  @tracked selected = { series: "", product: "", category: "", version: "", platform: "" };
+  @tracked selected = {
+    family: "",
+    series: "",
+    product: "",
+    category: "",
+    version: "",
+    platform: "",
+  };
   @tracked form = { fields: [], values: {}, completed: false };
   @tracked signedIn = false;
   @tracked points = 0;
@@ -165,13 +172,64 @@ export default class IngenicDownloads extends Component {
   // visitor cannot see the reason for reads as an empty catalogue.
   @action
   async selectSeries(value) {
-    this.selected = { ...this.selected, series: value ?? "", product: "" };
+    // A series owns its chips, and a chip owns its types: keeping either one
+    // after the parent changes leaves a filter that cannot match anything.
+    this.selected = {
+      ...this.selected,
+      series: value ?? "",
+      product: "",
+      category: "",
+    };
     await this.#fetch();
   }
 
   @action
   async selectProduct(value) {
-    await this.#applyFilter("product", value ?? "");
+    this.selected = { ...this.selected, product: value ?? "", category: "" };
+    await this.#fetch();
+  }
+
+  // The catalogue has two top-level lines. A chip resource is filed under a
+  // part number; an algorithm is offered across parts and has none. Switching
+  // the line clears the chip-side filters, which do not apply to algorithms.
+  @action
+  async pickFamily(value) {
+    this.selected = {
+      family: value ?? "",
+      series: "",
+      product: "",
+      category: "",
+      version: "",
+      platform: "",
+    };
+    await this.#fetch();
+  }
+
+  get isAlgorithmFamily() {
+    return this.selected.family === "algorithm";
+  }
+
+  // Drawn as tabs rather than in the type row: this is the catalogue's first
+  // question, and answering it changes which other controls are meaningful.
+  // The row only exists once algorithms do; until then a single tab would be
+  // decoration.
+  get showsFamilies() {
+    return (this.filters.families?.length ?? 0) > 1;
+  }
+
+  get familyButtons() {
+    return [
+      {
+        id: null,
+        label: i18n(themePrefix("ingenic.downloads.family.all")),
+        current: !this.selected.family,
+      },
+      ...(this.filters.families ?? []).map((family) => ({
+        id: family,
+        label: i18n(themePrefix(`ingenic.downloads.family.${family}`)),
+        current: this.selected.family === family,
+      })),
+    ];
   }
 
   // The type filter is drawn as a row of buttons rather than a select: there
@@ -181,6 +239,38 @@ export default class IngenicDownloads extends Component {
   @action
   async pickCategory(id) {
     await this.#applyFilter("category", id == null ? "" : String(id));
+  }
+
+  // Only the types this chip actually has. The server sends where each type is
+  // used, so a visitor who picked a chip sees its own list rather than every
+  // type on the site — most of which would return nothing and read as a bug.
+  #categoriesForSelection() {
+    const all = this.filters.categories ?? [];
+    const { family, product, series } = this.selected;
+
+    if (product) {
+      return all.filter((category) =>
+        (category.product_slugs ?? []).includes(product)
+      );
+    }
+
+    if (series) {
+      const slugs = this.filters.chips
+        .filter((chip) => chip.series_slug === series)
+        .map((chip) => chip.slug);
+
+      return all.filter((category) =>
+        (category.product_slugs ?? []).some((slug) => slugs.includes(slug))
+      );
+    }
+
+    if (family) {
+      return all.filter((category) =>
+        (category.families ?? []).includes(family)
+      );
+    }
+
+    return all;
   }
 
   // Built here rather than compared in the template: a template call with an
@@ -195,7 +285,7 @@ export default class IngenicDownloads extends Component {
         label: i18n(themePrefix("ingenic.downloads.all_types")),
         current: selected === "",
       },
-      ...this.filters.categories.map((category) => ({
+      ...this.#categoriesForSelection().map((category) => ({
         id: category.id,
         label: category.name,
         current: selected === String(category.id),
@@ -295,7 +385,13 @@ export default class IngenicDownloads extends Component {
     await this.#fetch();
   }
 
+  // Only the newest request may write. A click on a second chip does not wait
+  // for the first response, and without this token the slower request could
+  // land last and paint the list for the filter the visitor already left.
+  #requestSeq = 0;
+
   async #fetch() {
+    const seq = ++this.#requestSeq;
     this.loading = true;
 
     const params = new URLSearchParams();
@@ -313,6 +409,10 @@ export default class IngenicDownloads extends Component {
         headers: { Accept: "application/json" },
       });
 
+      if (seq !== this.#requestSeq) {
+        return;
+      }
+
       if (response.ok) {
         const payload = await response.json();
         this.downloads = payload.downloads ?? [];
@@ -328,9 +428,13 @@ export default class IngenicDownloads extends Component {
         }
       }
     } catch {
-      this.downloads = [];
+      if (seq === this.#requestSeq) {
+        this.downloads = [];
+      }
     } finally {
-      this.loading = false;
+      if (seq === this.#requestSeq) {
+        this.loading = false;
+      }
     }
   }
 
@@ -369,6 +473,27 @@ export default class IngenicDownloads extends Component {
         <p class="ingenic-notice ingenic-notice--error">{{this.error}}</p>
       {{/if}}
 
+      {{#if this.showsFamilies}}
+        <div
+          class="ingenic-downloads__families"
+          role="tablist"
+          aria-label={{i18n (themePrefix "ingenic.downloads.family.label")}}
+        >
+          {{#each this.familyButtons as |item|}}
+            <button
+              type="button"
+              role="tab"
+              class="ingenic-downloads__family {{if item.current 'is-current'}}"
+              aria-selected={{item.current}}
+              disabled={{this.loading}}
+              {{on "click" (fn this.pickFamily item.id)}}
+            >
+              {{item.label}}
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+
       <div
         class="ingenic-downloads__types"
         role="group"
@@ -379,6 +504,7 @@ export default class IngenicDownloads extends Component {
             type="button"
             class="ingenic-downloads__type {{if item.current 'is-current'}}"
             aria-pressed={{item.current}}
+            disabled={{this.loading}}
             {{on "click" (fn this.pickCategory item.id)}}
           >
             {{item.label}}
@@ -386,7 +512,8 @@ export default class IngenicDownloads extends Component {
         {{/each}}
       </div>
 
-      <div class="ingenic-downloads__filters">
+      <div class="ingenic-downloads__filters {{if this.isAlgorithmFamily 'ingenic-downloads__filters--two'}}">
+        {{#unless this.isAlgorithmFamily}}
         <label class="ingenic-docs__field">
           <span>{{i18n (themePrefix "ingenic.downloads.all_series")}}</span>
           <DNativeSelect
@@ -414,6 +541,7 @@ export default class IngenicDownloads extends Component {
             {{/each}}
           </DNativeSelect>
         </label>
+        {{/unless}}
 
         <label class="ingenic-docs__field">
           <span>{{i18n (themePrefix "ingenic.downloads.all_versions")}}</span>

@@ -74,6 +74,7 @@ en:
           edit_title: "Edit resource"
           fields:
             name: "Name"
+            family: "Catalogue"
             product_slug: "Product slug"
             kind: "Category"
             no_category: "No category"
@@ -97,6 +98,9 @@ en:
             position: "Order"
             description: "Description"
             published: "Published"
+          families:
+            chip: "Chip resource"
+            algorithm: "Algorithm"
           access:
             public_login: "Anyone signed in"
             public_login_hint: "Any signed-in account can download this file."

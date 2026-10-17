@@ -48,6 +48,23 @@ describe IngenicDownloadsController do
       expect(response.parsed_body["signed_in"]).to eq(false)
     end
 
+    it "keeps the algorithm library parallel to the chip resources" do
+      algorithms = IngenicDownloadCategory.find_or_create_by!(name: "algorithm", locale: "en")
+      resource(IngenicDownload::LOGIN_ONLY, name: "Encoder", family: "algorithm", product_slug: nil, category: algorithms)
+      resource(IngenicDownload::LOGIN_ONLY, name: "Chip SDK")
+
+      get "/ingenic/downloads.json?family=algorithm"
+
+      expect(response.parsed_body["downloads"].map { |row| row["name"] }).to eq(["Encoder"])
+
+      filters = response.parsed_body["filters"]
+      expect(filters["families"]).to eq(%w[chip algorithm])
+
+      entry = filters["categories"].find { |category| category["name"] == "algorithm" }
+      expect(entry["families"]).to eq(["algorithm"])
+      expect(entry["product_slugs"]).to eq([])
+    end
+
     it "never puts the resource's own address in the listing" do
       resource(IngenicDownload::LOGIN_ONLY)
 

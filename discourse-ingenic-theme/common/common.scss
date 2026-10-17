@@ -996,6 +996,42 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 .ingenic-downloads {
+  // The catalogue's first question: chip resources, or the algorithm library.
+  // Tabs rather than a select because there are two or three answers and the
+  // choice changes which controls below it apply.
+  &__families {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--ingenic-surface-border);
+    margin-bottom: 1rem;
+  }
+
+  &__family {
+    padding: 0.55rem 1rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--primary-medium);
+    font-size: var(--font-0);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      color: var(--ingenic-link);
+    }
+
+    &.is-current {
+      color: var(--ingenic-link);
+      border-bottom-color: var(--tertiary);
+      font-weight: 600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+  }
+
   // The type filter is a row of buttons above the selects. It carries the
   // shortest list on the page — SDK, firmware, manuals, tools — so it can be
   // shown whole and picked in one click instead of opened from a menu.
@@ -1027,6 +1063,13 @@ html.ingenic-nav-first .sidebar-sections {
       color: var(--ingenic-link);
       font-weight: 600;
     }
+
+    // A second click while the first is still travelling would race the two
+    // responses. The control says so and stops taking clicks.
+    &:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
   }
 
   // Four selects, four equal columns: the gaps and the widths are the same on
@@ -1054,6 +1097,18 @@ html.ingenic-nav-first .sidebar-sections {
 
   @media (max-width: 600px) {
     &__filters {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  // An algorithm has no chip, so that line has two controls rather than four.
+  // Two wide ones read better than four narrow ones and an empty half row.
+  &__filters--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 600px) {
+    &__filters--two {
       grid-template-columns: minmax(0, 1fr);
     }
   }

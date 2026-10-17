@@ -195,6 +195,27 @@ IngenicDownload.create!(
 `product_slug` 填产品树里型号的 slug。如果这个资源是整个系列共用的，填系列的
 slug 也是可以的。
 
+`family` 是下载目录的顶层归类：`chip`（默认，芯片资料）或 `algorithm`（算法）。
+算法面向多个芯片、不归属某一个型号，因此 `product_slug` 留空：
+
+```ruby
+algorithms = IngenicDownloadCategory.find_or_create_by!(name: "algorithm", locale: "en")
+
+IngenicDownload.create!(
+  family: "algorithm",
+  category: algorithms,
+  version: "2.1",
+  locale: "en",
+  name: "智能 H.264 编码库",
+  platform: "Linux",
+  access_level: "public_login",
+  file_url: "https://download.ingenic.com/algorithms/h264-2.1.tar.gz",
+)
+```
+
+当已发布的资源里出现第二个大类时，下载页才会显示大类标签页；在那之前页面仍是
+原来的芯片目录。
+
 `access_level` 取三个值之一：`public_login`（登录即可）、`login_form`（登录，
 并且已填写开发者信息）、`login_form_request`（登录、已填写开发者信息，并且申请
 已通过审核）。默认值是 `public_login`。

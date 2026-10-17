@@ -277,6 +277,7 @@ class IngenicDownloadsController < ::ApplicationController
             .published
             .where(locale: [I18n.locale.to_s, SiteSetting.ingenic_default_locale].uniq)
 
+        rows = rows.where(family: params[:family]) if params[:family].present?
         rows = rows.where(product_slug: params[:product]) if params[:product].present?
         rows = rows.where(product_slug: series_slugs) if params[:series].present?
         rows = rows.where(category_id: params[:category]) if params[:category].present?
@@ -316,6 +317,7 @@ class IngenicDownloadsController < ::ApplicationController
       # endpoint will refuse.
       "point_cost" => download.point_cost,
       "unlocked" => unlocked?(download),
+      "family" => download.family,
       "product_slug" => download.product_slug,
       "category_id" => download.category_id,
       "category_name" => download.category_name,
@@ -351,6 +353,9 @@ class IngenicDownloadsController < ::ApplicationController
   def filters
     all = IngenicDownload.published
     {
+      # Only the families that actually have a published resource. A tab that
+      # always opens on an empty page is the filter version of a dead link.
+      families: IngenicDownload::FAMILIES.select { |family| all.exists?(family: family) },
       series: product_tree[:series],
       chips: product_tree[:chips],
       categories: used_categories,
@@ -386,9 +391,26 @@ class IngenicDownloadsController < ::ApplicationController
       end
   end
 
+  # The categories, with where they are used. The type chips are drawn from
+  # this: a chip has its own list of material types, and offering every type on
+  # the site for a chip that has none of them is how a filter produces an empty
+  # page that looks like a bug. The usage map is small — one row per published
+  # resource — and building it here saves the theme a second request.
   def used_categories
-    ids = IngenicDownload.published.distinct.pluck(:category_id).compact
-    IngenicDownloadCategory.where(id: ids).ordered.map { |category| { "id" => category.id, "name" => category.name } }
+    usage = IngenicDownload.published.pluck(:category_id, :product_slug, :family)
+    grouped = usage.group_by(&:first)
+    ids = grouped.keys.compact
+
+    IngenicDownloadCategory.where(id: ids).ordered.map do |category|
+      rows = grouped[category.id] || []
+
+      {
+        "id" => category.id,
+        "name" => category.name,
+        "product_slugs" => rows.filter_map { |row| row[1] }.uniq,
+        "families" => rows.filter_map { |row| row[2] }.uniq,
+      }
+    end
   end
 
   def form_json

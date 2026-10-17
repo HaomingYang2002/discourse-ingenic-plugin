@@ -13,6 +13,7 @@ const ENDPOINT = "/admin/plugins/discourse-ingenic/downloads";
 // A new resource starts at the lowest tier and unpublished. Both defaults are
 // the ones that cannot leak a file by accident.
 const BLANK = {
+  family: "chip",
   product_slug: "",
   category_id: "",
   version: "",
@@ -75,6 +76,12 @@ export default class IngenicDownloadManager extends Component {
   get accessLevelHint() {
     const key = this.accessLevelKeys[this.draft?.access_level];
     return key ? i18n(`${key}_hint`) : null;
+  }
+
+  // An algorithm is offered across chips, so the part-number field would be a
+  // false attachment. The server does not require one for that family either.
+  get isAlgorithm() {
+    return this.draft?.family === "algorithm";
   }
 
   // The languages this Discourse serves, sent with the listing. A list
@@ -150,6 +157,17 @@ export default class IngenicDownloadManager extends Component {
   // The ui-kit selects drive the draft rather than the form, so the values they
   // own are kept in step here. They are still submitted as form fields: the
   // select carries a name and the browser reads the chosen option back out.
+  @action
+  pickFamily(value) {
+    this.draft = {
+      ...this.draft,
+      family: value,
+      // Switching an existing chip resource to an algorithm drops the part
+      // number rather than leaving a stale one behind the hidden field.
+      product_slug: value === "algorithm" ? "" : this.draft.product_slug,
+    };
+  }
+
   @action
   pickCategory(value) {
     this.draft = { ...this.draft, category_id: value };
@@ -283,9 +301,25 @@ export default class IngenicDownloadManager extends Component {
           </label>
 
           <label>
-            <span>{{i18n "admin.ingenic.downloads.fields.product_slug"}}</span>
-            <input name="product_slug" value={{this.draft.product_slug}} required />
+            <span>{{i18n "admin.ingenic.downloads.fields.family"}}</span>
+            <DNativeSelect
+              name="family"
+              @includeNone={{false}}
+              @value={{this.draft.family}}
+              @onChange={{this.pickFamily}}
+              as |select|
+            >
+              <select.Option @value="chip">{{i18n "admin.ingenic.downloads.families.chip"}}</select.Option>
+              <select.Option @value="algorithm">{{i18n "admin.ingenic.downloads.families.algorithm"}}</select.Option>
+            </DNativeSelect>
           </label>
+
+          {{#unless this.isAlgorithm}}
+            <label>
+              <span>{{i18n "admin.ingenic.downloads.fields.product_slug"}}</span>
+              <input name="product_slug" value={{this.draft.product_slug}} required />
+            </label>
+          {{/unless}}
 
           <label>
             <span>{{i18n "admin.ingenic.downloads.fields.kind"}}</span>
