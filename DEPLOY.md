@@ -327,18 +327,26 @@ setting is empty:
 
 ```json
 [
-  { "type": "categories", "limit": 3, "layout": "full" },
-  { "type": "latest",     "limit": 8, "layout": "main" },
-  { "type": "promotions", "limit": 3, "layout": "side" },
-  { "type": "hot",        "limit": 5, "layout": "side" },
-  { "type": "bounties",   "limit": 5, "layout": "full" }
+  { "type": "categories",  "limit": 3, "layout": "full" },
+  { "type": "latest",      "limit": 8, "layout": "main" },
+  { "type": "promotions",  "limit": 3, "layout": "side" },
+  { "type": "hot",         "limit": 5, "layout": "side" },
+  { "type": "bounties",    "limit": 4, "layout": "side" },
+  { "type": "leaderboard", "limit": 5, "layout": "side" }
 ]
 ```
+
+A site that has already saved a custom layout does not need to add the new card
+by hand: the plugin's migration appends `leaderboard` to the saved list and puts
+the four rail blocks in the order promotions → hot → bounties → leaderboard,
+leaving every other block where it was. An empty setting always follows the
+default layout above.
 
 The types are `categories` (the forum's sections as cards, plus a link to all of
 them), `latest` (newest discussions), `hot` (busiest this week), `bounties`
 (the richest standing 高分悬赏), `promotions` (the activity slots managed in
-**Ingenic → Site content → Promotions**), `announcements` and `discussions`
+**Ingenic → Site content → Promotions**), `leaderboard` (this week's earning
+members), `announcements` and `discussions`
 (topics from one category each), `downloads`, and `boards`. A block with no
 content draws nothing — promotions before a campaign, bounties before an offer —
 so a quiet front page is never a page of empty panels. `layout` is `full`,

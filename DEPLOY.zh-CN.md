@@ -307,17 +307,23 @@ rake ingenic:seed_categories[permissions]
 
 ```json
 [
-  { "type": "categories", "limit": 3, "layout": "full" },
-  { "type": "latest",     "limit": 8, "layout": "main" },
-  { "type": "promotions", "limit": 3, "layout": "side" },
-  { "type": "hot",        "limit": 5, "layout": "side" },
-  { "type": "bounties",   "limit": 5, "layout": "full" }
+  { "type": "categories",  "limit": 3, "layout": "full" },
+  { "type": "latest",      "limit": 8, "layout": "main" },
+  { "type": "promotions",  "limit": 3, "layout": "side" },
+  { "type": "hot",         "limit": 5, "layout": "side" },
+  { "type": "bounties",    "limit": 4, "layout": "side" },
+  { "type": "leaderboard", "limit": 5, "layout": "side" }
 ]
 ```
 
+已经保存过自定义首页布局的站点不需要手动添加新卡片：升级插件时，数据库迁移会把
+`leaderboard` 补到列表末尾，并把右侧四个卡片调整为「活动位 → 热门 → 悬赏 → 每周贡献」
+的顺序；其他区块的位置不动。留空（默认值）的站点始终跟随上面的默认布局。
+
 可用类型：`categories`（版块卡片，并带「所有分区」入口）、`latest`（最新讨论）、
 `hot`（本周热门）、`bounties`（积分最高的进行中悬赏）、`promotions`（在
-**Ingenic → 站点内容 → 推广位** 中维护的活动位）、`announcements` 与 `discussions`
+**Ingenic → 站点内容 → 推广位** 中维护的活动位）、`leaderboard`（本周获得积分的
+成员排行）、`announcements` 与 `discussions`
 （各读取一个分类下的主题）、`downloads`、`boards`。没有内容的区块不显示——活动位在
 没有活动时、悬赏在没有悬赏时都不会留下空面板。`layout` 取 `full`、`main` 或
 `side`；留空则按该类型的默认宽度。
