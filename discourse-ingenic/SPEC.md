@@ -327,15 +327,15 @@ are what still has to be run on a real instance.
 - [ ] `/ingenic/docs/<series>/<chip>.json` returns the latest version and page tree
 - [ ] `/ingenic/docs/<series>/<chip>/<version>.json` resolves an explicit version
 - [ ] a page not edited in a version resolves to the version that last changed it
-- [ ] unknown series, chip, version or page returns 404
+- [x] unknown series, chip, version or page returns 404
 - [ ] unpublished pages are absent from the tree and 404 when requested directly
-- [ ] `/ingenic/docs-search` finds a phrase in a page body
+- [x] `/ingenic/docs-search` finds a phrase in a page body
 - [ ] `/ingenic/downloads` filters correctly and returns filter options
-- [ ] a `login_form` resource refuses the file until a profile is stored
-- [ ] a `login_form_request` resource refuses the file until a grant exists
+- [x] a `login_form` resource refuses the file until a profile is stored
+- [x] a `login_form_request` resource refuses the file until a grant exists
 - [ ] approving a request creates a grant and emails the team address
-- [ ] revoking a grant closes that resource and leaves the others open
-- [ ] `/ingenic/downloads/:id/file` streams the file and never exposes its path
+- [x] revoking a grant closes that resource and leaves the others open
+- [x] `/ingenic/downloads/:id/file` streams the file and never exposes its path
 - [ ] `/ingenic/boards` returns only published boards, and filters by series and chip
 - [ ] a board reads its chip name from the tree and survives that chip's deletion
 - [ ] a post moves its author's balance, and deleting it leaves both the award and
@@ -344,16 +344,16 @@ are what still has to be run on a real instance.
 - [ ] a priced resource is never charged when the file turns out to be missing
 - [ ] `/ingenic/points` shows the reader their own history and nobody else's
 - [ ] `Ingenic::Points.rebuild!` corrects a balance that has been edited by hand
-- [ ] `rake ingenic:seed_categories` creates all five sections and reports them as
+- [x] `rake ingenic:seed_categories` creates all five sections and reports them as
       `created`; a second run reports `kept`
-- [ ] the two sub-forums are filed under `open-source`, which reports
+- [x] the two sub-forums are filed under `open-source`, which reports
       `has_children` and a subcategory count of 2 in `/categories.json`
-- [ ] a member POSTs a topic into `third-party` and gets 200, and into `official`
+- [x] a member POSTs a topic into `third-party` and gets 200, and into `official`
       and gets 403 — readable but refused, not 404
-- [ ] `GET /c/open-source/<id>` serves the section and `GET /c/open-source` is 404
+- [x] `GET /c/open-source/<id>` serves the section and `GET /c/open-source` is 404
 - [ ] malformed `ingenic_nav_items` / `ingenic_homepage_blocks` /
       `ingenic_developer_form_fields` degrade to an empty list instead of raising
-- [ ] `bundle exec rspec plugins/discourse-ingenic/spec` passes
+- [x] `bundle exec rspec plugins/discourse-ingenic/spec` passes
 
 ### Theme
 
@@ -378,7 +378,7 @@ are what still has to be run on a real instance.
       disappearing
 - [ ] an external nav entry is never highlighted; a docs entry stays highlighted
       on nested documentation pages
-- [ ] the Open Source row opens the section's own page, at the address carrying
+- [x] the Open Source row opens the section's own page, at the address carrying
       the id, and every category row's link answers 200
 - [ ] homepage blocks render in the configured order
 - [ ] disabling a block removes it without leaving a gap
@@ -418,7 +418,7 @@ are what still has to be run on a real instance.
 
 ## Known risks
 
-- **Nothing here has been seen in a browser.** The migrations, the specs (422
+- **Nothing here has been seen in a browser.** The migrations, the specs (423
   examples) and the HTTP paths have all been run against a Discourse development
   container, but no page has been opened, so the layout, the palette and the
   proportions are as designed rather than as confirmed. Nor has a message been

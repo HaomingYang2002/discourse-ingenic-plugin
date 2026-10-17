@@ -762,7 +762,7 @@ running server itself, over HTTP, rather than by reading the code:
 
 - the migrations ran, in the development database and in the test one, creating
   the tables, the foreign keys and the partial unique index the ledger relies on
-- the plugin's spec suite passes: 422 examples, 0 failures
+- the plugin's spec suite passes: 423 examples, 0 failures
 - `rake ingenic:seed_categories` ran against a real installation and left the
   five sections with the permissions it says they have, and `rake ingenic:doctor`
   reports no failures
@@ -785,6 +785,15 @@ running server itself, over HTTP, rather than by reading the code:
   of `/site.json`, a member published a project in Third-Party Open Source (200)
   and was refused in Official Open Source (403), and the navigation setting was
   written and read back through the endpoint the admin screens write through
+- 89 more checks went over HTTP at the screens and the writes behind them,
+  asking of each not only whether it opened but whether what it wrote was what
+  came back reading: every administrator screen and its refusal to a member, a
+  series, a chip, a version, a page, and a second version inheriting the first
+  one's page until it overrides it and again once it reverts, a board, a
+  download category and a resource, a permission, a promotion, a social link, a
+  footer column and the links inside it, a point rule and an adjustment,
+  documentation search, and the four documentation addresses that name nothing
+  answering 404 rather than somebody else's page
 
 What that leaves unverified, because a container is not a forum with people on
 it:
@@ -794,9 +803,12 @@ it:
   proportions are as designed rather than as confirmed
 - no message has been sent: the container has no mail server, so the
   request-to-download flow stops where a message would leave
-- the download centre has no files on it — `ingenic_download_storage_path` is
-  empty — so the three access levels, the grants and the audit log are covered by
-  the specs rather than by a member receiving a file
+- the download centre was tried with a real 200 MB file: the open tier streamed
+  it whole and it hashed to the checksum on the row, the form tier refused the
+  file until the developer information was submitted, and the approval tier
+  refused until an application was approved, streamed the file once it was, and
+  refused again after the grant was revoked. The bytes went through the
+  controller, not a static URL
 - the admin screens have not been opened: the endpoints behind them answer and
   the Ember code compiles, but nobody has clicked through them
 - nothing has been upgraded. This is the schema as created, not as altered by a
