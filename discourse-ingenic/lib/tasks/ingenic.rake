@@ -224,7 +224,7 @@ namespace :ingenic do
     if IngenicHeaderLink.count.zero?
       [
         {
-          label: "Ingenic",
+          label: "Ingenic Semiconductor",
           href: "https://www.ingenic.com",
           icon: "globe",
           show_label: true,

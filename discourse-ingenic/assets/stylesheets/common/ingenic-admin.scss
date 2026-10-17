@@ -26,6 +26,10 @@
   margin-top: 0.75rem;
 
   h4 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
     margin: 0 0 0.35rem;
     font-size: var(--font-down-1);
     text-transform: uppercase;
@@ -37,6 +41,40 @@
     list-style: none;
     margin: 0;
     padding: 0;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  li .ingenic-doc-manager__chip {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+// Rename, reorder and remove, on one line. They are one-glyph controls rather
+// than a menu because the list is short and the four actions are the whole
+// vocabulary for a filter row.
+.ingenic-doc-manager__tools {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.05rem;
+
+  button {
+    padding: 0 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+    line-height: 1.4;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--tertiary-hover);
+    }
   }
 }
 

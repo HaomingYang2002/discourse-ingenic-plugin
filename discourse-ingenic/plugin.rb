@@ -89,6 +89,7 @@ require_relative "app/controllers/ingenic_site_controller"
 require_relative "app/controllers/ingenic_points_controller"
 require_relative "app/controllers/ingenic_home_controller"
 require_relative "app/controllers/ingenic_bounties_controller"
+require_relative "app/controllers/ingenic_leaderboard_controller"
 end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
@@ -455,5 +456,9 @@ after_initialize do
     get "/ingenic/bounties", to: "ingenic_bounties#show", as: :ingenic_bounties
     post "/ingenic/bounties", to: "ingenic_bounties#create", as: :ingenic_bounty_create
     post "/ingenic/bounties/:id/cancel", to: "ingenic_bounties#cancel", as: :ingenic_bounty_cancel
+
+    # The weekly contribution ranking on the front page. Read-only, and public:
+    # a ranking nobody can see is a ranking that does not encourage anything.
+    get "/ingenic/leaderboard", to: "ingenic_leaderboard#index", as: :ingenic_leaderboard
   end
 end

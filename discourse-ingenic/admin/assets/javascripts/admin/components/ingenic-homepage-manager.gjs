@@ -23,6 +23,7 @@ const TYPES = [
   "downloads",
   "boards",
   "bounties",
+  "leaderboard",
 ];
 
 // "Automatic" is the control's own empty option, not a fourth layout.
@@ -37,6 +38,7 @@ const DEFAULT_BLOCKS = [
   { type: "promotions", limit: 3 },
   { type: "hot", limit: 5 },
   { type: "bounties", limit: 5 },
+  { type: "leaderboard", limit: 5 },
 ];
 
 /**

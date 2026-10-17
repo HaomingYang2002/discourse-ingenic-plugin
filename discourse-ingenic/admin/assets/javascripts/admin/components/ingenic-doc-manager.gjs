@@ -178,6 +178,103 @@ export default class IngenicDocManager extends Component {
     }
   }
 
+  // Series and chips are the download centre's first two filter rows, so the
+  // words a visitor picks from are edited here rather than in code. Renaming
+  // uses the browser's own prompt: it is one field, and a modal with one field
+  // is a form to learn for no gain.
+  @action
+  async renameProduct(record) {
+    const name = window.prompt(
+      i18n("admin.ingenic.documentation.rename_prompt"),
+      record.name
+    );
+
+    if (!name || name.trim() === record.name) {
+      return;
+    }
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await ajax(`${BASE}/documentation/products/${record.id}`, {
+        type: "PUT",
+        data: { name: name.trim() },
+      });
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // Positions are rewritten for the whole sibling list rather than swapped
+  // with the neighbour: rows created before this control existed all have
+  // position 0, and swapping two zeroes moves nothing.
+  @action
+  async moveProduct(record, direction) {
+    const siblings =
+      record.kind === "series"
+        ? this.series
+        : this.series.find((entry) => entry.id === record.parent_id)?.chips ?? [];
+    const index = siblings.findIndex((entry) => entry.id === record.id);
+    const target = index + direction;
+
+    if (index < 0 || target < 0 || target >= siblings.length) {
+      return;
+    }
+
+    const reordered = [...siblings];
+    reordered.splice(index, 1);
+    reordered.splice(target, 0, record);
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await Promise.all(
+        reordered.map((entry, position) =>
+          ajax(`${BASE}/documentation/products/${entry.id}`, {
+            type: "PUT",
+            data: { position },
+          })
+        )
+      );
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  @action
+  async destroyProduct(record) {
+    if (!window.confirm(i18n("admin.ingenic.documentation.delete_confirm"))) {
+      return;
+    }
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await ajax(`${BASE}/documentation/products/${record.id}`, {
+        type: "DELETE",
+      });
+      if (record.id === this.selectedChipId) {
+        this.selectedChipId = null;
+        this.selectedVersionId = null;
+        this.pages = [];
+      }
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   @action
   async destroyPage(page) {
     this.busy = true;
@@ -241,7 +338,15 @@ export default class IngenicDocManager extends Component {
 
         {{#each this.series as |entry|}}
           <section class="ingenic-doc-manager__series">
-            <h4>{{entry.name}}</h4>
+            <h4>
+              <span>{{entry.name}}</span>
+              <span class="ingenic-doc-manager__tools">
+                <button type="button" title={{i18n "admin.ingenic.documentation.move_up"}} {{on "click" (fn this.moveProduct entry -1)}}>↑</button>
+                <button type="button" title={{i18n "admin.ingenic.documentation.move_down"}} {{on "click" (fn this.moveProduct entry 1)}}>↓</button>
+                <button type="button" title={{i18n "admin.ingenic.documentation.rename"}} {{on "click" (fn this.renameProduct entry)}}>✎</button>
+                <button type="button" title={{i18n "admin.ingenic.documentation.delete"}} {{on "click" (fn this.destroyProduct entry)}}>×</button>
+              </span>
+            </h4>
             <ul>
               {{#each entry.chips as |chip|}}
                 <li>
@@ -252,6 +357,12 @@ export default class IngenicDocManager extends Component {
                   >
                     {{chip.name}}
                   </button>
+                  <span class="ingenic-doc-manager__tools">
+                    <button type="button" title={{i18n "admin.ingenic.documentation.move_up"}} {{on "click" (fn this.moveProduct chip -1)}}>↑</button>
+                    <button type="button" title={{i18n "admin.ingenic.documentation.move_down"}} {{on "click" (fn this.moveProduct chip 1)}}>↓</button>
+                    <button type="button" title={{i18n "admin.ingenic.documentation.rename"}} {{on "click" (fn this.renameProduct chip)}}>✎</button>
+                    <button type="button" title={{i18n "admin.ingenic.documentation.delete"}} {{on "click" (fn this.destroyProduct chip)}}>×</button>
+                  </span>
                 </li>
               {{/each}}
             </ul>

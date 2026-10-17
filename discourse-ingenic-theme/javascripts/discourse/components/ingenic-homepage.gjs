@@ -8,6 +8,7 @@ import IngenicBlockFeed from "./ingenic-block-feed";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
 import IngenicBlockBounties from "./ingenic-block-bounties";
+import IngenicBlockLeaderboard from "./ingenic-block-leaderboard";
 import IngenicPromotions from "./ingenic-promotions";
 import { i18n } from "discourse-i18n";
 
@@ -21,6 +22,7 @@ const BLOCK_COMPONENTS = {
   downloads: IngenicBlockDownloads,
   boards: IngenicBlockBoards,
   bounties: IngenicBlockBounties,
+  leaderboard: IngenicBlockLeaderboard,
 };
 
 // Where a block sits on the page. The front page follows meta.discourse.org's
@@ -38,6 +40,7 @@ const BLOCK_LAYOUTS = {
   latest: "main",
   promotions: "side",
   hot: "side",
+  leaderboard: "side",
 };
 
 // What the page shows before anyone has configured it. The order is meta's:
@@ -49,8 +52,9 @@ const DEFAULT_BLOCKS = [
   { type: "categories", position: 0, limit: 3 },
   { type: "latest", position: 1, limit: 8 },
   { type: "promotions", position: 2, limit: 3 },
-  { type: "bounties", position: 3, limit: 4 },
-  { type: "hot", position: 4, limit: 5 },
+  { type: "hot", position: 3, limit: 5 },
+  { type: "bounties", position: 4, limit: 4 },
+  { type: "leaderboard", position: 5, limit: 5 },
 ];
 
 /**

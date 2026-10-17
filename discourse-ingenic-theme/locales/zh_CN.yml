@@ -26,7 +26,7 @@ zh_CN:
       empty: "暂无内容。"
       topics:
         latest: "最新讨论"
-        hot: "热门主题"
+        hot: "热门帖子"
         replies:
           one: "%{count} 条回复"
           other: "%{count} 条回复"
@@ -47,6 +47,11 @@ zh_CN:
       label: "君正链接"
     promotions:
       title: "最新活动"
+    leaderboard:
+      title: "每周贡献排行"
+      points: "积分"
+      empty: "本周还没有产生贡献积分。"
+      loading: "加载中…"
     locale:
       title: "切换站点语言"
     footer:
@@ -78,7 +83,11 @@ zh_CN:
       title: "下载中心"
       subtitle: "SDK、固件、手册与工具。部分资源在提供文件前需要确认您的身份。"
       all_series: "全部系列"
-      all_products: "全部产品"
+      all_products: "不限"
+      all_resources: "全部资源"
+      series_label: "芯片系列"
+      product_label: "具体型号"
+      category_label: "资源分类"
       all_types: "全部类型"
       all_versions: "全部版本"
       all_platforms: "全部平台"

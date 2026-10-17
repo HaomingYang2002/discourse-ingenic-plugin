@@ -25,6 +25,11 @@
   // link in a paragraph.
   --ingenic-link: #0f7fa8;
 
+  // The filled state of a selected filter option. Darker than the accent on
+  // purpose: a whole word in a filled box has to carry white text, which the
+  // pale sky does not.
+  --ingenic-navy: #14395e;
+
   // What goes on top of an accent fill. Navy on a pale sky instead of white on
   // it, which is both legible and the way a pale accent is normally used: the
   // button is the sky, the words on it are the ink.
@@ -53,7 +58,21 @@
 
   --ingenic-radius: 8px;
   --ingenic-panel-border: var(--primary-low);
-  --d-sidebar-width: #{$ingenic_sidebar_width}px;
+
+  // Meta's page is narrower than the window, with the same margin on both
+  // sides; a full-bleed forum reads as a dashboard rather than as a page. The
+  // header follows because it is drawn in the same `.wrap`.
+  //
+  // Core adds the sidebar width to this value when it sizes `.wrap`, so the
+  // subtraction is what makes the whole page — sidebar, content and rail —
+  // end at 1280 pixels rather than the sidebar being extra.
+  --d-max-width: calc(1280px - var(--d-sidebar-width));
+
+  // Capped as well as configured: this setting shipped at 272px, and a theme
+  // update keeps the stored value, so the default alone would leave an
+  // existing forum with the wide sidebar the setting was meant to fix. An
+  // editor can still make it narrower.
+  --d-sidebar-width: min(#{$ingenic_sidebar_width}px, 240px);
 
   @include viewport.until(lg) {
     --d-sidebar-width: #{$d-sidebar-narrow-width};
@@ -112,14 +131,18 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 // The header buttons live in the outlet between the logo and the right-hand
-// cluster, which is the empty middle of the bar. That outlet is a plain flex
-// child, so it is given the middle of the row here and centres what the
-// Ingenic team put in it. Narrow screens hide the row rather than squeezing
-// the logo and the user menu: the same destinations are in the sidebar.
+// cluster. That outlet is a plain flex child; it starts its contents at the
+// logo so the row reads as part of the brand rather than as a floating group.
+// Narrow screens hide the row rather than squeezing the logo and the user
+// menu: the same destinations are in the sidebar.
 .before-header-panel-outlet:has(.ingenic-header-links) {
   display: flex;
   flex: 1 1 auto;
-  justify-content: center;
+  // Beside the logo, not floating in the middle of the header. The outlet is
+  // the whole space between the logo and the icon row, so centring it put the
+  // buttons wherever that space happened to end rather than where a reader
+  // looks for them.
+  justify-content: flex-start;
   min-width: 0;
 }
 
@@ -159,6 +182,14 @@ html.ingenic-nav-first .sidebar-sections {
   .ingenic-header-links {
     display: none;
   }
+}
+
+// The header's icon row is the language switcher and the account menu. Core
+// also draws a search trigger there; the site already has a search field on
+// the front page and in the sidebar, and the extra icon crowded the two that
+// matter.
+.d-header-icons .header-dropdown-toggle.search-dropdown {
+  display: none;
 }
 
 .ingenic-homepage {
@@ -851,6 +882,79 @@ html.ingenic-nav-first .sidebar-sections {
   }
 }
 
+// The weekly contribution ranking. A compact list rather than a chart: the
+// card lives in the homepage rail, and the thing a reader wants from it is the
+// names and the order, not a second reading of the numbers.
+.ingenic-leaderboard {
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--primary-very-low);
+    font-size: var(--font-down-1);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  // The first three are the week's winners and carry the accent. The rest are
+  // still ranked, just not decorated.
+  &__rank {
+    flex: 0 0 1.15rem;
+    color: var(--primary-medium);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+
+    &.is-top {
+      color: var(--ingenic-link);
+      font-weight: 700;
+    }
+  }
+
+  &__avatar {
+    width: 1.65rem;
+    height: 1.65rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--ingenic-sky-100);
+    object-fit: cover;
+  }
+
+  &__user {
+    flex: 1 1 auto;
+    overflow: hidden;
+    color: var(--primary-high);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--ingenic-link);
+    }
+  }
+
+  &__points {
+    flex-shrink: 0;
+    color: var(--ingenic-link);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__unit {
+    margin-left: 0.1rem;
+    color: var(--primary-medium);
+    font-size: var(--font-down-2);
+    font-weight: 400;
+  }
+}
+
 .ingenic-topic-list {
   margin: 0;
   padding: 0;
@@ -996,120 +1100,91 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 .ingenic-downloads {
-  // The catalogue's first question: chip resources, or the algorithm library.
-  // Tabs rather than a select because there are two or three answers and the
-  // choice changes which controls below it apply.
-  &__families {
+  // Three filter rows, each a fixed label and a set of words that can be
+  // picked in one click. Drawn as rows rather than selects because the whole
+  // point is to see the catalogue's shape before choosing anything: a visitor
+  // who does not know what a T33 is can still read "T Series" and start there.
+  &__filter {
     display: flex;
-    gap: 0.25rem;
+    align-items: flex-start;
+    gap: 1.5rem;
+    padding: 0.65rem 0;
     border-bottom: 1px solid var(--ingenic-surface-border);
-    margin-bottom: 1rem;
+    margin-bottom: 0.65rem;
+
+    &:first-of-type {
+      border-top: 1px solid var(--ingenic-surface-border);
+    }
+
+    &:last-of-type {
+      margin-bottom: 1.25rem;
+    }
   }
 
-  &__family {
-    padding: 0.55rem 1rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: none;
+  // The label column is fixed so the three rows start their options on the
+  // same vertical line, which is what makes them read as one control.
+  &__filter-label {
+    flex: 0 0 5.5rem;
+    padding-top: 0.35rem;
     color: var(--primary-medium);
-    font-size: var(--font-0);
-    cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease;
-
-    &:hover {
-      color: var(--ingenic-link);
-    }
-
-    &.is-current {
-      color: var(--ingenic-link);
-      border-bottom-color: var(--tertiary);
-      font-weight: 600;
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: progress;
-    }
-  }
-
-  // The type filter is a row of buttons above the selects. It carries the
-  // shortest list on the page — SDK, firmware, manuals, tools — so it can be
-  // shown whole and picked in one click instead of opened from a menu.
-  &__types {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.85rem;
-  }
-
-  &__type {
-    padding: 0.35rem 0.85rem;
-    border: 1px solid var(--ingenic-surface-border);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--primary-high);
     font-size: var(--font-down-1);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  &__options {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  // The word itself, not a bordered chip: the selected one is the only box on
+  // the row, so the choice is visible at a glance.
+  &__option {
+    padding: 0.35rem 0.7rem;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: none;
+    color: var(--primary-high);
+    font-size: var(--font-0);
+    line-height: 1.4;
     cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    transition: color 0.15s ease, background 0.15s ease;
 
     &:hover {
-      border-color: var(--tertiary);
       color: var(--ingenic-link);
+      background: var(--ingenic-sky-50);
     }
 
     &.is-current {
-      border-color: var(--tertiary);
-      background: var(--tertiary-very-low);
-      color: var(--ingenic-link);
+      background: var(--ingenic-navy);
+      color: #fff;
       font-weight: 600;
     }
 
-    // A second click while the first is still travelling would race the two
-    // responses. The control says so and stops taking clicks.
     &:disabled {
       opacity: 0.6;
       cursor: progress;
     }
   }
 
-  // Four selects, four equal columns: the gaps and the widths are the same on
-  // every row, rather than a last item stretching into whatever space was
-  // left over. They fall to two columns and then one as the container narrows.
-  &__filters {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-
-    // Equal columns are not enough on their own: a native select is only as
-    // wide as its longest option, so the four boxes ended at four different
-    // places. Filling the column is what makes the row look ruled.
-    select {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 900px) {
-    &__filters {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  // The resource row is the longest and the one that wraps; the gap between
+  // rows is wider than the gap between words so a wrapped line does not look
+  // like a second row of controls.
+  &__options--wrap {
+    row-gap: 0.35rem;
   }
 
   @media (max-width: 600px) {
-    &__filters {
-      grid-template-columns: minmax(0, 1fr);
+    &__filter {
+      display: block;
     }
-  }
 
-  // An algorithm has no chip, so that line has two controls rather than four.
-  // Two wide ones read better than four narrow ones and an empty half row.
-  &__filters--two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (max-width: 600px) {
-    &__filters--two {
-      grid-template-columns: minmax(0, 1fr);
+    &__filter-label {
+      display: block;
+      padding: 0 0 0.35rem;
     }
   }
 
@@ -1775,12 +1850,6 @@ html.ingenic-nav-first .sidebar-sections {
   }
 
   .ingenic-downloads {
-    // One column: four filter selects side by side would each be narrower than
-    // the option text they have to show.
-    &__filters {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
     &__prompt {
       display: block;
 

@@ -66,6 +66,7 @@ module DiscourseIngenic
       downloads
       boards
       bounties
+      leaderboard
     ].freeze
 
     HOMEPAGE_LAYOUTS = %w[full main side].freeze

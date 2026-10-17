@@ -8,7 +8,6 @@ import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { themePrefix } from "virtual:theme";
 import getURL from "discourse/lib/get-url";
 import { ajax } from "discourse/lib/ajax";
-import DNativeSelect from "discourse/ui-kit/d-native-select";
 import { i18n } from "discourse-i18n";
 
 const ENDPOINT = "/ingenic/downloads";
@@ -59,8 +58,6 @@ export default class IngenicDownloads extends Component {
     series: "",
     product: "",
     category: "",
-    version: "",
-    platform: "",
   };
   @tracked form = { fields: [], values: {}, completed: false };
   @tracked signedIn = false;
@@ -167,69 +164,129 @@ export default class IngenicDownloads extends Component {
     await this.#fetch();
   }
 
-  // Choosing a series drops a chip that does not belong to it: the control would
-  // otherwise be showing a value that is not in its own list, and a filter the
-  // visitor cannot see the reason for reads as an empty catalogue.
-  @action
-  async selectSeries(value) {
-    // A series owns its chips, and a chip owns its types: keeping either one
-    // after the parent changes leaves a filter that cannot match anything.
-    this.selected = {
-      ...this.selected,
-      series: value ?? "",
-      product: "",
-      category: "",
+  // The catalogue's first row: every chip series in the product tree, plus the
+  // algorithm line when algorithms have been published. Both come from data —
+  // a series is added, renamed and ordered on the documentation screen, and the
+  // algorithm line disappears when its last resource does — so this row is not
+  // a fixed list in the theme.
+  get seriesButtons() {
+    const selected = {
+      family: this.selected.family,
+      series: this.selected.series,
     };
-    await this.#fetch();
+    const all = { id: "all", label: i18n(themePrefix("ingenic.downloads.all_series")) };
+
+    const series = (this.filters.series ?? []).filter(
+      (entry) => !this.hasAlgorithm || entry.slug !== "algorithm"
+    );
+
+    const buttons = series.map((entry) => ({
+      id: entry.slug,
+      label: entry.name,
+      kind: "series",
+    }));
+
+    if (this.hasAlgorithm) {
+      // If the site keeps a series row for algorithms, its name is the label:
+      // renaming that one row renames this option too. The option still exists
+      // without it, because the resources are what make it real.
+      const named = (this.filters.series ?? []).find(
+        (entry) => entry.slug === "algorithm"
+      );
+
+      buttons.push({
+        id: "algorithm",
+        label: named?.name || i18n(themePrefix("ingenic.downloads.family.algorithm")),
+        kind: "algorithm",
+      });
+    }
+
+    return [
+      { ...all, kind: "all", current: !selected.family && !selected.series },
+      ...buttons.map((button) => ({
+        ...button,
+        current:
+          button.kind === "algorithm"
+            ? selected.family === "algorithm"
+            : selected.family !== "algorithm" && selected.series === button.id,
+      })),
+    ];
   }
 
-  @action
-  async selectProduct(value) {
-    this.selected = { ...this.selected, product: value ?? "", category: "" };
-    await this.#fetch();
-  }
-
-  // The catalogue has two top-level lines. A chip resource is filed under a
-  // part number; an algorithm is offered across parts and has none. Switching
-  // the line clears the chip-side filters, which do not apply to algorithms.
-  @action
-  async pickFamily(value) {
-    this.selected = {
-      family: value ?? "",
-      series: "",
-      product: "",
-      category: "",
-      version: "",
-      platform: "",
-    };
-    await this.#fetch();
+  get hasAlgorithm() {
+    return (this.filters.families ?? []).includes("algorithm");
   }
 
   get isAlgorithmFamily() {
     return this.selected.family === "algorithm";
   }
 
-  // Drawn as tabs rather than in the type row: this is the catalogue's first
-  // question, and answering it changes which other controls are meaningful.
-  // The row only exists once algorithms do; until then a single tab would be
-  // decoration.
-  get showsFamilies() {
-    return (this.filters.families?.length ?? 0) > 1;
+  // Choosing a series drops the chip and type below it: a filter that keeps a
+  // value which is no longer in its own list returns an empty page for a
+  // reason the visitor cannot see.
+  @action
+  async pickSeries(item) {
+    if (item.kind === "algorithm") {
+      this.selected = {
+        ...this.selected,
+        family: "algorithm",
+        series: "",
+        product: "",
+        category: "",
+      };
+    } else if (item.kind === "all") {
+      this.selected = {
+        ...this.selected,
+        family: "",
+        series: "",
+        product: "",
+        category: "",
+      };
+    } else {
+      this.selected = {
+        ...this.selected,
+        family: "",
+        series: item.id,
+        product: "",
+        category: "",
+      };
+    }
+
+    await this.#fetch();
   }
 
-  get familyButtons() {
+  // The model row. A chip belongs to one series, so choosing a series narrows
+  // this list; with no series chosen every chip in the catalogue is offered,
+  // because a visitor who knows the part number should not have to find its
+  // family first.
+  get productButtons() {
+    const selected = this.selected.product ?? "";
+
     return [
       {
-        id: null,
-        label: i18n(themePrefix("ingenic.downloads.family.all")),
-        current: !this.selected.family,
+        id: "",
+        label: i18n(themePrefix("ingenic.downloads.all_products")),
+        current: selected === "",
       },
-      ...(this.filters.families ?? []).map((family) => ({
-        id: family,
-        label: i18n(themePrefix(`ingenic.downloads.family.${family}`)),
-        current: this.selected.family === family,
+      ...this.chipOptions.map((chip) => ({
+        id: chip.slug,
+        label: chip.name,
+        current: selected === chip.slug,
       })),
     ];
+  }
+
+  // An algorithm runs across chips, so there is no model to choose and the row
+  // would be a control with one answer. It is left out rather than shown
+  // disabled: a row that cannot do anything is furniture.
+  get showsModels() {
+    return !this.isAlgorithmFamily && this.chipOptions.length > 0;
+  }
+
+  @action
+  async pickProduct(value) {
+    this.selected = { ...this.selected, product: value ?? "", category: "" };
+    await this.#fetch();
   }
 
   // The type filter is drawn as a row of buttons rather than a select: there
@@ -282,7 +339,7 @@ export default class IngenicDownloads extends Component {
     return [
       {
         id: null,
-        label: i18n(themePrefix("ingenic.downloads.all_types")),
+        label: i18n(themePrefix("ingenic.downloads.all_resources")),
         current: selected === "",
       },
       ...this.#categoriesForSelection().map((category) => ({
@@ -291,16 +348,6 @@ export default class IngenicDownloads extends Component {
         current: selected === String(category.id),
       })),
     ];
-  }
-
-  @action
-  async selectVersion(event) {
-    await this.#applyFilter("version", event.target.value);
-  }
-
-  @action
-  async selectPlatform(event) {
-    await this.#applyFilter("platform", event.target.value);
   }
 
   // The form opens on the resource that asked for it, so the visitor can see
@@ -473,95 +520,75 @@ export default class IngenicDownloads extends Component {
         <p class="ingenic-notice ingenic-notice--error">{{this.error}}</p>
       {{/if}}
 
-      {{#if this.showsFamilies}}
-        <div
-          class="ingenic-downloads__families"
-          role="tablist"
-          aria-label={{i18n (themePrefix "ingenic.downloads.family.label")}}
-        >
-          {{#each this.familyButtons as |item|}}
+      <div
+        class="ingenic-downloads__filter"
+        role="group"
+        aria-label={{i18n (themePrefix "ingenic.downloads.series_label")}}
+      >
+        <span class="ingenic-downloads__filter-label">
+          {{i18n (themePrefix "ingenic.downloads.series_label")}}
+        </span>
+        <div class="ingenic-downloads__options">
+          {{#each this.seriesButtons as |item|}}
             <button
               type="button"
-              role="tab"
-              class="ingenic-downloads__family {{if item.current 'is-current'}}"
-              aria-selected={{item.current}}
+              class="ingenic-downloads__option {{if item.current 'is-current'}}"
+              aria-pressed={{item.current}}
               disabled={{this.loading}}
-              {{on "click" (fn this.pickFamily item.id)}}
+              {{on "click" (fn this.pickSeries item)}}
             >
               {{item.label}}
             </button>
           {{/each}}
         </div>
+      </div>
+
+      {{#if this.showsModels}}
+        <div
+          class="ingenic-downloads__filter"
+          role="group"
+          aria-label={{i18n (themePrefix "ingenic.downloads.product_label")}}
+        >
+          <span class="ingenic-downloads__filter-label">
+            {{i18n (themePrefix "ingenic.downloads.product_label")}}
+          </span>
+          <div class="ingenic-downloads__options">
+            {{#each this.productButtons as |item|}}
+              <button
+                type="button"
+                class="ingenic-downloads__option {{if item.current 'is-current'}}"
+                aria-pressed={{item.current}}
+                disabled={{this.loading}}
+                {{on "click" (fn this.pickProduct item.id)}}
+              >
+                {{item.label}}
+              </button>
+            {{/each}}
+          </div>
+        </div>
       {{/if}}
 
       <div
-        class="ingenic-downloads__types"
+        class="ingenic-downloads__filter"
         role="group"
-        aria-label={{i18n (themePrefix "ingenic.downloads.all_types")}}
+        aria-label={{i18n (themePrefix "ingenic.downloads.category_label")}}
       >
-        {{#each this.categoryButtons as |item|}}
-          <button
-            type="button"
-            class="ingenic-downloads__type {{if item.current 'is-current'}}"
-            aria-pressed={{item.current}}
-            disabled={{this.loading}}
-            {{on "click" (fn this.pickCategory item.id)}}
-          >
-            {{item.label}}
-          </button>
-        {{/each}}
-      </div>
-
-      <div class="ingenic-downloads__filters {{if this.isAlgorithmFamily 'ingenic-downloads__filters--two'}}">
-        {{#unless this.isAlgorithmFamily}}
-        <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_series")}}</span>
-          <DNativeSelect
-            @value={{this.selected.series}}
-            @nonePlaceholder={{i18n (themePrefix "ingenic.downloads.all_series")}}
-            @onChange={{this.selectSeries}}
-            as |select|
-          >
-            {{#each this.filters.series as |series|}}
-              <select.Option @value={{series.slug}}>{{series.name}}</select.Option>
-            {{/each}}
-          </DNativeSelect>
-        </label>
-
-        <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_products")}}</span>
-          <DNativeSelect
-            @value={{this.selected.product}}
-            @nonePlaceholder={{i18n (themePrefix "ingenic.downloads.all_products")}}
-            @onChange={{this.selectProduct}}
-            as |select|
-          >
-            {{#each this.chipOptions as |chip|}}
-              <select.Option @value={{chip.slug}}>{{chip.name}}</select.Option>
-            {{/each}}
-          </DNativeSelect>
-        </label>
-        {{/unless}}
-
-        <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_versions")}}</span>
-          <select {{on "change" this.selectVersion}}>
-            <option value="">{{i18n (themePrefix "ingenic.downloads.all_versions")}}</option>
-            {{#each this.filters.versions as |version|}}
-              <option value={{version}}>{{version}}</option>
-            {{/each}}
-          </select>
-        </label>
-
-        <label class="ingenic-docs__field">
-          <span>{{i18n (themePrefix "ingenic.downloads.all_platforms")}}</span>
-          <select {{on "change" this.selectPlatform}}>
-            <option value="">{{i18n (themePrefix "ingenic.downloads.all_platforms")}}</option>
-            {{#each this.filters.platforms as |platform|}}
-              <option value={{platform}}>{{platform}}</option>
-            {{/each}}
-          </select>
-        </label>
+        <span class="ingenic-downloads__filter-label">
+          {{i18n (themePrefix "ingenic.downloads.category_label")}}
+        </span>
+        <div class="ingenic-downloads__options ingenic-downloads__options--wrap">
+          {{#each this.categoryButtons as |item|}}
+            <button
+              type="button"
+              class="ingenic-downloads__option {{if item.current 'is-current'}}"
+              aria-pressed={{item.current}}
+              disabled={{this.loading}}
+              {{on "click" (fn this.pickCategory item.id)}}
+            >
+              {{item.label}}
+            </button>
+          {{/each}}
+        </div>
       </div>
 
       {{#if this.needsDeveloperForm}}

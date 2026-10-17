@@ -219,8 +219,13 @@ IngenicDownload.create!(
 )
 ```
 
-The download page shows the family tabs once more than one family has a
-published resource; until then it stays the chip catalogue alone.
+The download centre's series row is drawn from the product tree, with the
+algorithm line as one option beside the chip series. The option appears only
+once a published `algorithm` resource exists. If the tree has a series whose
+slug is `algorithm`, its name is used as the option's label, so it can be
+renamed on the documentation screen; otherwise the interface's own "Algorithms"
+string is used. Choosing it hides the model row and narrows the resource types
+to the ones algorithm resources actually use.
 
 `access_level` is one of `public_login` (sign in), `login_form` (sign in and
 have developer information on file) or `login_form_request` (sign in, have

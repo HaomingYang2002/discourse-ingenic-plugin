@@ -28,7 +28,7 @@ en:
       empty: "Nothing here yet."
       topics:
         latest: "Latest discussions"
-        hot: "Hot topics"
+        hot: "Popular posts"
         replies:
           one: "%{count} reply"
           other: "%{count} replies"
@@ -47,6 +47,11 @@ en:
       label: "Ingenic links"
     promotions:
       title: "Latest activity"
+    leaderboard:
+      title: "Weekly contributors"
+      points: "pts"
+      empty: "No contribution points have been earned this week yet."
+      loading: "Loading…"
     locale:
       title: "Change site language"
     footer:
@@ -78,7 +83,11 @@ en:
       title: "Downloads"
       subtitle: "SDKs, firmware, manuals and tools. Some resources ask who you are before they hand over a file."
       all_series: "All series"
-      all_products: "All products"
+      all_products: "Any model"
+      all_resources: "All resources"
+      series_label: "Chip series"
+      product_label: "Model"
+      category_label: "Resource type"
       all_types: "All types"
       all_versions: "All versions"
       all_platforms: "All platforms"
