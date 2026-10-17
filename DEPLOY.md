@@ -1,11 +1,11 @@
 # Deploying the Ingenic community theme and plugin
 
-Two pieces, installed separately:
+Two independent repositories, installed separately:
 
-| Piece | What it is | How it installs |
+| Repository | What it is | How it installs |
 | --- | --- | --- |
-| `discourse-ingenic` | Rails plugin — documentation, downloads, boards, admin settings | files in `plugins/`, then rebuild |
-| `discourse-ingenic-theme` | Theme — layout, navigation, homepage, documentation UI | uploaded as a zip, no rebuild |
+| [`discourse-ingenic-plugin`](https://github.com/aishangletaohua/discourse-ingenic-plugin) | Rails plugin — documentation, downloads, boards, admin settings | cloned into `plugins/`, then rebuild |
+| [`discourse-ingenic-theme`](https://github.com/aishangletaohua/discourse-ingenic-theme) | Theme — layout, navigation, homepage, documentation UI, MCP page, AI assistant | installed from its git URL, no rebuild |
 
 Nothing here touches authentication. Google, GitHub and email login stay exactly
 as your Discourse is configured today.
@@ -17,10 +17,9 @@ verified against that version.
 
 ## 1. Plugin
 
-### Option A — from a git repository (recommended)
+### Option A — from the git repository (recommended)
 
-Put the `discourse-ingenic` directory in a repository your server can reach,
-then add it to `containers/app.yml`:
+Add it to `containers/app.yml`:
 
 ```yaml
 hooks:
@@ -28,7 +27,18 @@ hooks:
     - exec:
         cd: $home/plugins
         cmd:
-          - git clone https://<your-git-host>/discourse-ingenic.git
+          - git clone https://github.com/aishangletaohua/discourse-ingenic-plugin.git discourse-ingenic
+```
+
+To update it later, pull before the rebuild:
+
+```yaml
+hooks:
+  after_code:
+    - exec:
+        cd: $home/plugins/discourse-ingenic
+        cmd:
+          - git pull --ff-only
 ```
 
 ### Option B — copy the files
@@ -99,8 +109,19 @@ category and storage settings.
 
 ## 2. Theme
 
-**Admin → Customize → Themes → Install → From a file**, and upload
-`discourse-ingenic-theme.zip`.
+The theme has its own repository:
+<https://github.com/aishangletaohua/discourse-ingenic-theme>.
+
+**Admin → Customize → Themes → Install → From a git repository**, and enter:
+
+```
+https://github.com/aishangletaohua/discourse-ingenic-theme.git
+```
+
+Installing it this way means later updates are **Admin → Customize → Themes →
+Check for updates**, with no rebuild and no file upload. A zip built from the
+repository can still be uploaded under *From a file* on a server that cannot
+reach GitHub.
 
 Then:
 

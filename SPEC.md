@@ -5,8 +5,10 @@
 Two installable pieces:
 
 ```
-discourse-ingenic/          plugin — data, models, JSON endpoints, admin screens
+discourse-ingenic-plugin/   plugin — data, models, JSON endpoints, admin screens
+                            (files at the repository root; installed as plugins/discourse-ingenic)
 discourse-ingenic-theme/    theme  — layout, sidebar, homepage, docs/downloads/boards UI
+                            (its own repository, installed as a Discourse theme)
 ```
 
 Authentication is untouched: Google, GitHub and email stay as configured in

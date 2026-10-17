@@ -1,11 +1,11 @@
 # Ingenic 社区主题和插件部署说明
 
-本项目包含两个需要分别安装的部分：
+本项目包含两个独立的仓库，需要分别安装：
 
-| 部分 | 作用 | 安装方式 |
+| 仓库 | 作用 | 安装方式 |
 |---|---|---|
-| `discourse-ingenic` | Rails 插件：在线文档、下载中心、开发板、站点设置 | 放入 `plugins/` 后重建 Discourse |
-| `discourse-ingenic-theme` | 主题：布局、导航、首页、文档界面 | 上传 zip 文件，不需要重建 |
+| [`discourse-ingenic-plugin`](https://github.com/aishangletaohua/discourse-ingenic-plugin) | Rails 插件：在线文档、下载中心、开发板、站点设置 | 克隆到 `plugins/` 后重建 Discourse |
+| [`discourse-ingenic-theme`](https://github.com/aishangletaohua/discourse-ingenic-theme) | 主题：布局、导航、首页、文档界面、MCP 页面、AI 助手 | 从 Git 地址安装主题，不需要重建 |
 
 本项目不会修改登录认证。Google、GitHub 和邮箱登录仍然按照当前
 Discourse 的配置运行。
@@ -19,8 +19,7 @@ Discourse 的配置运行。
 
 ### 方式 A：从 Git 仓库安装（推荐）
 
-把 `discourse-ingenic` 放进服务器可以访问的 Git 仓库，然后在
-`containers/app.yml` 中增加：
+在 `containers/app.yml` 中增加：
 
 ```yaml
 hooks:
@@ -28,10 +27,19 @@ hooks:
     - exec:
         cd: $home/plugins
         cmd:
-          - git clone https://<你的-git-地址>/discourse-ingenic.git
+          - git clone https://github.com/aishangletaohua/discourse-ingenic-plugin.git discourse-ingenic
 ```
 
-将 `<你的-git-地址>` 替换成你们自己的仓库地址。
+以后升级插件时，在重建前先拉取：
+
+```yaml
+hooks:
+  after_code:
+    - exec:
+        cd: $home/plugins/discourse-ingenic
+        cmd:
+          - git pull --ff-only
+```
 
 ### 方式 B：直接复制文件
 
@@ -99,15 +107,22 @@ rake ingenic:setup
 
 ## 2. 安装主题
 
+主题有独立仓库：
+<https://github.com/aishangletaohua/discourse-ingenic-theme>。
+
 进入：
 
-**管理后台 → 自定义 → 主题 → 安装 → 从文件安装**
+**管理后台 → 自定义 → 主题 → 安装 → 从 Git 仓库安装**
 
-上传：
+填写：
 
 ```text
-discourse-ingenic-theme.zip
+https://github.com/aishangletaohua/discourse-ingenic-theme.git
 ```
+
+这样安装后，主题更新只需要在 **管理后台 → 自定义 → 主题 → 检查更新**，
+不需要重建，也不需要重新上传文件。如果服务器访问不了 GitHub，也可以在
+“从文件安装”里上传仓库打出的 zip 包。
 
 然后：
 
