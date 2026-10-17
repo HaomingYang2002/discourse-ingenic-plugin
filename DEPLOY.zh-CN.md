@@ -72,7 +72,7 @@ SiteSetting.ingenic_enabled          # 应为 true
 IngenicDocProduct.count              # 尚未录入内容时应为 0
 ```
 
-接着应用本论坛固定的三项站点默认值：
+接着应用本论坛固定的站点默认值：
 
 ```bash
 rake ingenic:setup
@@ -80,15 +80,20 @@ rake ingenic:setup
 
 任务会逐条打印改了什么，第二次运行不会做任何改动：
 
-- `title` 改为 **Ingenic**：页面左上角和浏览器标题都显示 Ingenic，而不是默认的
-  “Discourse”。
+- `title` 改为 **Ingenic**：浏览器标题显示 Ingenic，而不是默认的 “Discourse”。
+- 上传 **Ingenic 字标** 并设为 `logo`、`logo_small`、`mobile_logo`。页头显示的是
+  上传的 logo 而不是站点标题，而 Discourse 默认已经上传了自己的字标，所以只改
+  `title` 的话左上角仍然是 Discourse 的图标。图片位于
+  `discourse-ingenic/assets/images/ingenic-logo.png`。
 - `enable_powered_by_discourse` 关闭：页面底部不再出现 “Powered by Discourse”。
   主题样式也会隐藏该元素，即使某次部署漏配了设置也不会露出来。
-- `default_homepage` 改为 **latest**：首页就是论坛自己的主题列表，列为
-  Topic / Replies / Views / Activity，与 meta.discourse.org 的首页相同。主题自带的
-  卡片式首页（`ingenic-home`，地址 `/ingenic/home`）仍可选用，但不再是默认首页。
+- `default_homepage` 改为 **ingenic-home**：`/` 是 Ingenic 首页（见下文「首页」）。
+  原生 latest 列表仍在 `/latest` 和侧边栏中。
+- 写入页脚默认内容：两个合作平台（ingenic.com 与中文论坛）和两个链接栏目
+  （Developers、Community）。主题在页脚列表为空时整块不显示，所以新装站点需要
+  这些初始内容。只在两个列表都为空时写入，已经自行配置过合作方的站点不会被覆盖。
 
-之后 `rake ingenic:doctor` 会连同语言、版块和存储设置一起检查这三项。
+之后 `rake ingenic:doctor` 会连同语言、版块和存储设置一起检查。
 
 ---
 
@@ -293,83 +298,58 @@ rake ingenic:seed_categories[permissions]
 
 `rake ingenic:doctor` 同样会列出缺失的分类（以及插件和主题需要的其他设置）。
 
-一个可直接修改的 `ingenic_homepage_blocks` 示例：
+`ingenic_homepage_blocks` 配置 Ingenic 首页（`/` 和 `/ingenic/home`）。它可以在
+**管理后台 → 插件 → Ingenic → 站点内容 → 首页** 中编辑：新增、删除、上下移动区块，
+并逐块设置标题、宽度和显示数量。站点设置里保存的是同一份列表的 JSON，便于导出，
+也便于一次性写入。
+
+留空时首页使用下面的默认布局：
 
 ```json
 [
-  { "type": "categories",    "enabled": true, "position": 0 },
-  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
-  { "type": "promotions",    "enabled": true, "position": 2 },
-  { "type": "announcements", "enabled": true, "position": 3, "limit": 5,  "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 4, "limit": 10, "category": "technical-discussions" },
-  { "type": "downloads",     "enabled": true, "position": 5, "limit": 6 },
-  { "type": "boards",        "enabled": true, "position": 6, "limit": 4 }
+  { "type": "categories", "limit": 3, "layout": "full" },
+  { "type": "latest",     "limit": 8, "layout": "main" },
+  { "type": "promotions", "limit": 3, "layout": "side" },
+  { "type": "hot",        "limit": 5, "layout": "side" },
+  { "type": "bounties",   "limit": 5, "layout": "full" }
 ]
 ```
 
-`promotions` 对应在 **Ingenic → Site → Promotions** 中维护的活动推广位；没有配置
-任何活动时该模块不显示。`bounties` 模块列出积分最高的进行中悬赏，没有悬赏时不
-显示任何内容，所以从第一天起就可以一直开着。如果填入的类型名没有对应的组件，该
-模块同样不会显示，所以写错名字的表现是"一直不出现"。
+可用类型：`categories`（版块卡片，并带「所有分区」入口）、`latest`（最新讨论）、
+`hot`（本周热门）、`bounties`（积分最高的进行中悬赏）、`promotions`（在
+**Ingenic → 站点内容 → 推广位** 中维护的活动位）、`announcements` 与 `discussions`
+（各读取一个分类下的主题）、`downloads`、`boards`。没有内容的区块不显示——活动位在
+没有活动时、悬赏在没有悬赏时都不会留下空面板。`layout` 取 `full`、`main` 或
+`side`；留空则按该类型的默认宽度。
+
+`categories` 加
+`"categories": ["official-announcements", "technical-discussions"]` 可以指定显示哪些
+版块及其顺序；不加则按主题数取最活跃的一级版块，数量由 `limit` 决定。
+`"show_all": false` 会去掉标题末尾的 **所有分区** 链接。
 
 ### 首页
 
-首页使用 Discourse 自己的 **latest** 主题列表，也就是 meta.discourse.org 打开时
-显示的那一页：主题表格，列为分类、回复数、浏览数和最新活动。这是核心设置，不是
-插件设置：
+首页是 Ingenic 自己的页面，注册名为 **ingenic-home**：欢迎语与搜索框、热门分区卡片、
+最新讨论、右侧的活动与热门主题栏、合作平台与页脚分区跳转，以及底部的 高分悬赏。
+整体形状参照 meta.discourse.org，内容与区块都可以按上一节增删改。
 
 | 设置 | 取值 | 作用 |
 |---|---|---|
-| `default_homepage` | `latest`（实际存储值为 `latest`） | 让 `/` 成为论坛的主题列表 |
+| `default_homepage` | `ingenic-home`（实际存储值为 `ingenic-home`） | 让 `/` 成为 Ingenic 首页 |
 
 在 **管理后台 → 设置 → 界面** 中设置，或用命令行：
 
 ```bash
 ./launcher enter app
 rails c
-SiteSetting.default_homepage = "latest"
+SiteSetting.default_homepage = "ingenic-home"
 ```
 
-`rake ingenic:setup` 会连同站点名称和 powered-by 开关一起设置。
-
-主题另外带一个卡片式首页——横幅、五个工具入口、版块网格、活动推广位和悬赏版块——
-以 **ingenic-home** 作为首页选项注册。它的地址是 `/ingenic/home`，仍然可以选用；
-管理员可以在 `default_homepage` 中选择 `ingenic-home` 把它设为首页。只有
+`rake ingenic:setup` 会连同站点名称、字标和 powered-by 开关一起设置。只有
 `ingenic_enabled` 开启时这个选项才会出现在列表里；如果站点选中过它、之后又关掉了
 插件，站点会回落到普通首页，而不是报错。
 
-下面的 `ingenic_homepage_blocks` 只配置这个卡片式首页；在 `latest` 作为首页时，
-它不会出现在 `/` 上。
-
-一个可直接修改的 `ingenic_homepage_blocks` 示例——版块网格加悬赏版块，这也是留空
-时的默认效果：
-
-```json
-[
-  { "type": "categories", "enabled": true, "position": 0, "limit": 8 },
-  { "type": "bounties",   "enabled": true, "position": 1, "limit": 4 }
-]
-```
-
-`categories` 把论坛版块以卡片形式列出，每张卡片进入对应版块。加
-`"categories": ["official-announcements", "technical-discussions"]` 可以指定显示哪些
-版块及其顺序；不加则按主题数取最活跃的一级版块，数量由 `limit` 决定。
-`"show_all": false` 会去掉标题末尾的 **所有版块** 链接。
-
-`bounties` 列出积分最高的进行中悬赏；没有悬赏时它什么都不显示——没有标题，也没有
-空行——所以在论坛还没用起悬赏之前一直开着也没有副作用。默认模块里带上它，正是这个
-原因。
-
-如果想同时保留公告和技术讨论模块，把它们排在后面：
-
-```json
-[
-  { "type": "categories",    "enabled": true, "position": 0, "limit": 8 },
-  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
-  { "type": "announcements", "enabled": true, "position": 2, "limit": 5, "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 3, "limit": 6, "category": "technical-discussions" }
-]
-```
+原生 latest 列表仍在侧边栏和 `/latest` 中。
 
 
 ### 界面语言
@@ -393,7 +373,7 @@ cookie——这是 Discourse 的规则，不是插件的行为。
 
 ### 页面底部
 
-在主题自己的页脚（第三方平台区与链接列，在 **Ingenic → Site** 中配置）下面，
+在主题自己的页脚（第三方平台区与链接列，在 **Ingenic → 站点内容** 中配置）下面，
 Discourse 还会画一行自己的内容：**由 Discourse 提供技术支持**，它出现在大多数页面的
 最底部。隐藏它只需要改一项核心设置，不需要动主题：
 
@@ -403,7 +383,7 @@ Discourse 还会画一行自己的内容：**由 Discourse 提供技术支持**�
 
 位置在 **管理后台 → 设置 → 站点管理员**，也可以在设置页直接搜索 `powered by`
 （搜索框匹配的是设置项名称与英文说明，中文界面下也建议用 `powered by`）。主题自己的
-页脚是另一回事——它由 **Ingenic → Site** 配置，不受这一项影响。
+页脚是另一回事——它由 **Ingenic → 站点内容** 配置，不受这一项影响。
 
 ### 主题设置
 
@@ -443,7 +423,7 @@ Discourse 还会画一行自己的内容：**由 Discourse 提供技术支持**�
 
 这个页面**连查看也是仅限管理员**的，不只是修改：流水账里会出现账号名，而一次调整会改变某个成员在站内的状态。产品或开发板的范围权限到不了这里——积分余额不属于任何产品或开发板。
 
-**Site（站点）**：站点中属于"内容"而不是"论坛"的三部分，分三个标签页。*Promotions* 是首页的活动推广位，每项包含图片、标题和跳转地址。*Partner platforms* 是页脚的第三方平台区，每一项可以是跳转链接，也可以是二维码图片——网页类平台用链接，App 类平台用二维码让访客扫码。*Footer columns* 是页脚链接列，列数不限，每列有自己的标题和按顺序排列的链接。
+**Site（站点内容）**：站点中属于"内容"而不是"论坛"的部分，分四个标签页。*Home page* 是首页布局：决定首页绘制哪些区块、顺序，以及每个区块的标题、宽度和显示数量。区块在这里新增、用箭头上下移动、删除或就地编辑，整份列表一次保存。*Promotions* 是首页的活动推广位，每项包含图片、标题和跳转地址。*Partner platforms* 是页脚的第三方平台区，每一项可以是跳转链接，也可以是二维码图片——网页类平台用链接，App 类平台用二维码让访客扫码。*Footer columns* 是页脚链接列与页面底部的分区跳转链接，列数不限，每列有自己的标题和按顺序排列的链接。
 
 ### 下载访问级别
 
@@ -577,7 +557,7 @@ rails c
 - [ ] 在导航里选 **最新** 会进入主题列表，返回首页时首页仍然在
 - [ ] 版块模块标题末尾的 **所有版块** 链接进入 `/categories`
 - [ ] 点击版块卡片会进入对应分类
-- [ ] 如果配置了 `promotions` 模块，**Ingenic → Site** 中配置的活动推广位出现在首页
+- [ ] 如果配置了 `promotions` 模块，**Ingenic → 站点内容** 中配置的活动推广位出现在首页
 - [ ] 页脚显示第三方平台区（网页类为链接、App 类为可扫描的二维码）以及配置好的链接列
 - [ ] 关闭 `enable_powered_by_discourse` 后，页面结束在该页脚处，底部不再有 **由 Discourse 提供技术支持**
 - [ ] `ingenic_official_groups` 中列出的群组成员，用户名旁显示对应图标；自己选择过其他图标的成员保留原图标

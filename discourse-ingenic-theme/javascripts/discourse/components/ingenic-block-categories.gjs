@@ -76,24 +76,27 @@ export default class IngenicBlockCategories extends Component {
             <a
               class="ingenic-sections__card"
               href={{section.url}}
-              style="border-top-color: #{{section.color}}"
+              style="--ingenic-category: #{{section.color}}"
             >
-              <span class="ingenic-sections__name">
+              <span class="ingenic-sections__icon" aria-hidden="true">
                 {{#if section.icon}}
                   {{dIcon section.icon}}
                 {{/if}}
-                {{section.name}}
               </span>
 
-              {{#if section.description_text}}
-                <span class="ingenic-sections__description">{{section.description_text}}</span>
-              {{/if}}
+              <span class="ingenic-sections__text">
+                <span class="ingenic-sections__name">{{section.name}}</span>
 
-              <span class="ingenic-sections__count">
-                {{i18n
-                  (themePrefix "ingenic.home.sections.topic_count")
-                  count=section.topic_count
-                }}
+                {{#if section.description_text}}
+                  <span class="ingenic-sections__description">{{section.description_text}}</span>
+                {{/if}}
+
+                <span class="ingenic-sections__count">
+                  {{i18n
+                    (themePrefix "ingenic.home.sections.topic_count")
+                    count=section.topic_count
+                  }}
+                </span>
               </span>
             </a>
           {{/each}}

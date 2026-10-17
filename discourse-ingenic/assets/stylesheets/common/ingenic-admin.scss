@@ -275,6 +275,58 @@
   overflow-wrap: anywhere;
 }
 
+// The home page layout: one row per block, with the block's own fields. They
+// wrap rather than shrink, so a narrow screen stacks them instead of squeezing
+// five controls onto one line, and the arrows stay beside the row.
+.ingenic-admin-block {
+  flex-wrap: wrap;
+}
+
+.ingenic-admin-block__fields {
+  display: flex;
+  flex: 1 1 34rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+
+  label {
+    display: flex;
+    flex: 1 1 9rem;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    span {
+      font-size: var(--font-down-1);
+      color: var(--primary-medium);
+    }
+  }
+
+  .ingenic-admin-block__wide {
+    flex-basis: 100%;
+  }
+
+  .checkbox-label {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  input:not([type="checkbox"]),
+  select {
+    width: 100%;
+  }
+}
+
+.ingenic-admin-block__add {
+  margin-top: 1rem;
+  align-items: center;
+
+  .d-native-select {
+    min-width: 12rem;
+  }
+}
+
 .ingenic-admin-note {
   margin: 0.5rem 0;
   padding: 0.6rem 0.75rem;

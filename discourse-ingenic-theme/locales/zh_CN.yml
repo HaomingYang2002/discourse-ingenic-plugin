@@ -21,10 +21,21 @@ zh_CN:
       subtitle: "面向君正开发者的文档、资源与技术讨论。"
       eyebrow: "君正开发者社区"
       quick_links: "君正快速链接"
+      search_placeholder: "搜索论坛"
+      search: "搜索"
       empty: "暂无内容。"
+      topics:
+        latest: "最新讨论"
+        hot: "热门主题"
+        replies:
+          one: "%{count} 条回复"
+          other: "%{count} 条回复"
+        views:
+          one: "%{count} 次浏览"
+          other: "%{count} 次浏览"
       sections:
-        title: "论坛版块"
-        all: "所有版块"
+        title: "热门分区"
+        all: "所有分区"
         empty: "暂无可查看的版块。"
         topic_count:
           # Chinese has one plural form, so both keys read the same here. Kept
@@ -32,7 +43,7 @@ zh_CN:
           one: "%{count} 个主题"
           other: "%{count} 个主题"
     promotions:
-      title: "近期活动"
+      title: "最新活动"
     locale:
       title: "切换站点语言"
     footer:

@@ -198,6 +198,11 @@ export default class IngenicDocs extends Component {
       });
 
       if (!response.ok) {
+        // A bad address must not take the way out of it with it. The controls
+        // render from the catalogue, so a deep link that resolves to nothing
+        // still leaves the picker usable; without this, the error was the
+        // whole page and the only way to other documentation was Back.
+        await this.#loadCatalogue();
         this.notFound = true;
         return;
       }
@@ -218,6 +223,38 @@ export default class IngenicDocs extends Component {
       this.notFound = true;
     } finally {
       this.loading = false;
+    }
+  }
+
+  // Enough state for the controls to work after a 404. The requested address
+  // is still wrong and stays in the URL, but the picker, the version dropdown
+  // and the tree are drawn from the catalogue's first product, so the reader
+  // can leave the broken page without going back.
+  async #loadCatalogue() {
+    if (this.hasProducts) {
+      return;
+    }
+
+    try {
+      const response = await fetch(getURL(ROUTE_PREFIX), {
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = await response.json();
+
+      this.series = payload.series ?? [];
+      this.chip = payload.product ?? null;
+      this.chipSlug = payload.chip_slug ?? null;
+      this.versions = payload.versions ?? [];
+      this.version = payload.version ?? null;
+      this.pages = payload.pages ?? [];
+    } catch {
+      // Nothing to pick from; the notice remains the page, which is all that
+      // can be said when even the catalogue cannot be read.
     }
   }
 
@@ -368,8 +405,6 @@ export default class IngenicDocs extends Component {
     <div class="ingenic-docs" {{didInsert this.load}} {{didUpdate this.load @path}}>
       {{#if this.loading}}
         <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.loading")}}</p>
-      {{else if this.notFound}}
-        <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.not_found")}}</p>
       {{else if this.hasProducts}}
         <div class="ingenic-docs__panes">
           <aside class="ingenic-docs__controls">
@@ -534,7 +569,11 @@ export default class IngenicDocs extends Component {
           </aside>
 
           <article class="ingenic-docs__body">
-            {{#if this.page}}
+            {{#if this.notFound}}
+              <p class="ingenic-docs__notice">
+                {{i18n (themePrefix "ingenic.docs.not_found")}}
+              </p>
+            {{else if this.page}}
               <h1 class="ingenic-docs__title">{{this.page.title}}</h1>
               <div class="ingenic-docs__content">{{trustHTML this.page.body}}</div>
 
@@ -586,6 +625,8 @@ export default class IngenicDocs extends Component {
             {{/if}}
           </article>
         </div>
+      {{else if this.notFound}}
+        <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.not_found")}}</p>
       {{else}}
         <p class="ingenic-docs__notice">{{i18n (themePrefix "ingenic.docs.no_products")}}</p>
       {{/if}}

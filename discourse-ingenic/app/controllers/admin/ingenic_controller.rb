@@ -445,11 +445,61 @@ module Admin
       authorize_admin_only!
 
       render_json_dump(
+        homepage_blocks: DiscourseIngenic::ConfigParser.homepage_blocks,
         promotions: IngenicPromotion.ordered.map { |record| promotion_json(record) },
         social_links: IngenicSocialLink.ordered.map { |record| social_link_json(record) },
         footer_columns:
           IngenicFooterColumn.includes(:links).ordered.map { |record| footer_column_json(record) },
       )
+    end
+
+    # The front page's layout: which blocks it draws and in what order.
+    #
+    # The list is replaced whole rather than edited row by row, because a block
+    # has no identity apart from its place in the list — reordering two of them
+    # is a change to the list, not to either one. A type the renderer does not
+    # know is refused rather than dropped: saved-and-invisible is the one
+    # outcome an editor could not see anywhere.
+    def update_homepage_blocks
+      authorize_admin_only!
+
+      blocks = params[:blocks]
+      blocks = JSON.parse(blocks) if blocks.is_a?(String)
+
+      if !blocks.is_a?(Array) || !blocks.all? { |block| block.is_a?(Hash) }
+        return render_json_error(I18n.t("ingenic.admin_errors.invalid_homepage_blocks"), status: 422)
+      end
+
+      normalized = blocks.map.with_index do |block, index|
+        type = block["type"].to_s
+        if !DiscourseIngenic::ConfigParser::HOMEPAGE_BLOCK_TYPES.include?(type)
+          return render_json_error(
+            I18n.t("ingenic.admin_errors.invalid_homepage_blocks"),
+            status: 422,
+          )
+        end
+
+        layout = block["layout"].to_s
+        limit = block["limit"].to_s.to_i
+        {
+          "type" => type,
+          "layout" => DiscourseIngenic::ConfigParser::HOMEPAGE_LAYOUTS.include?(layout) ? layout : "",
+          "position" => index,
+          # Zero is "not given", not "show none": a block with no limit would
+          # draw whatever it found, which is the one thing the field exists to
+          # prevent.
+          "limit" => limit.zero? ? 5 : limit.clamp(1, 50),
+          "category" => block["category"].to_s.strip,
+          "title" => block["title"].to_s.strip,
+          "categories" => DiscourseIngenic::ConfigParser.slug_list(block["categories"]),
+          "show_all" => block["show_all"] != false,
+        }
+      end
+
+      SiteSetting.ingenic_homepage_blocks = JSON.generate(normalized)
+      render_json_dump(homepage_blocks: DiscourseIngenic::ConfigParser.homepage_blocks)
+    rescue JSON::ParserError
+      render_json_error(I18n.t("ingenic.admin_errors.invalid_homepage_blocks"), status: 422)
     end
 
     # Promotions ------------------------------------------------------------

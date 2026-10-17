@@ -2,38 +2,56 @@ import { themePrefix } from "virtual:theme";
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
+import getURL from "discourse/lib/get-url";
 import IngenicBlockCategories from "./ingenic-block-categories";
 import IngenicBlockTopics from "./ingenic-block-topics";
+import IngenicBlockFeed from "./ingenic-block-feed";
 import IngenicBlockDownloads from "./ingenic-block-downloads";
 import IngenicBlockBoards from "./ingenic-block-boards";
 import IngenicBlockBounties from "./ingenic-block-bounties";
 import IngenicPromotions from "./ingenic-promotions";
 import { i18n } from "discourse-i18n";
 
-// Search is deliberately absent: the header already carries the forum's own
-// search, and a second box on the homepage that ran the same query was one
-// place too many to type it.
 const BLOCK_COMPONENTS = {
   categories: IngenicBlockCategories,
   promotions: IngenicPromotions,
   announcements: IngenicBlockTopics,
   discussions: IngenicBlockTopics,
+  latest: IngenicBlockFeed,
+  hot: IngenicBlockFeed,
   downloads: IngenicBlockDownloads,
   boards: IngenicBlockBoards,
   bounties: IngenicBlockBounties,
 };
 
-// What the page shows before anyone has configured it. A front page made of
-// nothing but a banner is not a front page, and the sections grid is the one
-// block that needs no decision from an editor to be worth reading. Configured
-// blocks replace this list wholesale, the way the navigation setting does.
-//
-// The bounty panel is here because it draws nothing while nothing is on offer:
-// it is a default that costs a forum with no bounties nothing, and the one
-// front-page block whose content the members produce themselves.
+// Where a block sits on the page. The front page follows meta.discourse.org's
+// shape — the sections across the top, the discussion feed down the left, the
+// shorter lists in a rail on the right — without freezing that shape: an
+// editor can move a block between the full width, the main column and the rail
+// from the admin screen.
+const BLOCK_LAYOUTS = {
+  categories: "full",
+  bounties: "full",
+  downloads: "full",
+  boards: "main",
+  announcements: "main",
+  discussions: "main",
+  latest: "main",
+  promotions: "side",
+  hot: "side",
+};
+
+// What the page shows before anyone has configured it. The order is meta's:
+// sections first, then what was said last, with what is on and what is hot
+// beside it, and the bounty board across the bottom. A block with no content
+// (promotions before a campaign, a category nobody has written in) draws
+// nothing, so an unconfigured forum still gets a page rather than placeholders.
 const DEFAULT_BLOCKS = [
-  { type: "categories", position: 0 },
-  { type: "bounties", position: 1 },
+  { type: "categories", position: 0, limit: 3 },
+  { type: "latest", position: 1, limit: 8 },
+  { type: "promotions", position: 2, limit: 3 },
+  { type: "hot", position: 3, limit: 5 },
+  { type: "bounties", position: 4 },
 ];
 
 /**
@@ -53,8 +71,16 @@ export default class IngenicHomepage extends Component {
     const blocks = configured.length ? configured : DEFAULT_BLOCKS;
 
     return blocks
-      .map((block) => ({ block, Component: BLOCK_COMPONENTS[block.type] }))
+      .map((block) => ({
+        block,
+        layout: block.layout || BLOCK_LAYOUTS[block.type] || "main",
+        Component: BLOCK_COMPONENTS[block.type],
+      }))
       .filter((entry) => entry.Component);
+  }
+
+  get hasRail() {
+    return this.blocks.some((entry) => entry.layout === "side");
   }
 
   get heroTitle() {
@@ -62,24 +88,44 @@ export default class IngenicHomepage extends Component {
   }
 
   get heroSubtitle() {
-    return settings.ingenic_hero_subtitle || i18n(themePrefix("ingenic.home.subtitle"));
+    return (
+      settings.ingenic_hero_subtitle ||
+      i18n(themePrefix("ingenic.home.subtitle"))
+    );
   }
 
   <template>
     <div class="ingenic-homepage">
       <section class="ingenic-homepage__hero">
-        <div>
-          <p class="ingenic-homepage__eyebrow">{{i18n (themePrefix "ingenic.home.eyebrow")}}</p>
-          <h1>{{this.heroTitle}}</h1>
-          <p>{{this.heroSubtitle}}</p>
-        </div>
-        <div class="ingenic-homepage__hero-actions">
-          <a class="btn btn-primary" href="/ingenic/docs">{{i18n (themePrefix "ingenic.nav.docs")}}</a>
-          <a class="btn" href="/latest">{{i18n (themePrefix "ingenic.nav.discussions")}}</a>
-        </div>
+        <p class="ingenic-homepage__eyebrow">
+          {{i18n (themePrefix "ingenic.home.eyebrow")}}
+        </p>
+        <h1>{{this.heroTitle}}</h1>
+        <p>{{this.heroSubtitle}}</p>
+
+        <form
+          class="ingenic-homepage__search"
+          action={{getURL "/search"}}
+          method="get"
+          role="search"
+        >
+          <input
+            type="search"
+            name="q"
+            class="ingenic-homepage__search-input"
+            placeholder={{i18n (themePrefix "ingenic.home.search_placeholder")}}
+            aria-label={{i18n (themePrefix "ingenic.home.search_placeholder")}}
+          />
+          <button class="btn btn-primary" type="submit">
+            {{i18n (themePrefix "ingenic.home.search")}}
+          </button>
+        </form>
       </section>
 
-      <nav class="ingenic-homepage__quick-links" aria-label={{i18n (themePrefix "ingenic.home.quick_links")}}>
+      <nav
+        class="ingenic-homepage__quick-links"
+        aria-label={{i18n (themePrefix "ingenic.home.quick_links")}}
+      >
         <a href="/ingenic/docs">{{dIcon "book"}}{{i18n (themePrefix "ingenic.nav.docs")}}</a>
         <a href="/ingenic/downloads">{{dIcon "download"}}{{i18n (themePrefix "ingenic.nav.downloads")}}</a>
         <a href="/ingenic/boards">{{dIcon "microchip"}}{{i18n (themePrefix "ingenic.nav.boards")}}</a>
@@ -87,9 +133,13 @@ export default class IngenicHomepage extends Component {
         <a href="/ingenic/points">{{dIcon "star"}}{{i18n (themePrefix "ingenic.nav.points")}}</a>
       </nav>
 
-      <div class="ingenic-homepage__blocks">
+      <div
+        class="ingenic-homepage__blocks {{if this.hasRail 'ingenic-homepage__blocks--with-rail'}}"
+      >
         {{#each this.blocks as |entry|}}
-          <entry.Component @block={{entry.block}} />
+          <div class="ingenic-homepage__block ingenic-homepage__block--{{entry.layout}}">
+            <entry.Component @block={{entry.block}} />
+          </div>
         {{/each}}
       </div>
     </div>

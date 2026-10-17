@@ -53,13 +53,32 @@ module DiscourseIngenic
       NAV_SECTIONS.include?(section) ? section : NAV_SECTIONS.first
     end
 
+    # The block types the front page knows how to draw. Kept here rather than
+    # only in the theme so the admin endpoint can refuse a type that would be
+    # saved and then silently skipped by the renderer.
+    HOMEPAGE_BLOCK_TYPES = %w[
+      categories
+      promotions
+      announcements
+      discussions
+      latest
+      hot
+      downloads
+      boards
+      bounties
+    ].freeze
+
+    HOMEPAGE_LAYOUTS = %w[full main side].freeze
+
     def homepage_blocks
       parse_list(SiteSetting.ingenic_homepage_blocks)
         .select { |item| item["enabled"] != false }
         .map
         .with_index do |item, index|
+          layout = item["layout"].to_s
           {
             "type" => item["type"].to_s,
+            "layout" => HOMEPAGE_LAYOUTS.include?(layout) ? layout : "",
             "position" => item["position"].is_a?(Integer) ? item["position"] : index,
             "limit" => item["limit"].is_a?(Integer) ? item["limit"] : 5,
             "category" => item["category"].to_s,

@@ -23,16 +23,27 @@ en:
       subtitle: "Documentation, resources, and technical discussions for Ingenic developers."
       eyebrow: "Ingenic developer community"
       quick_links: "Ingenic quick links"
+      search_placeholder: "Search the forum"
+      search: "Search"
       empty: "Nothing here yet."
+      topics:
+        latest: "Latest discussions"
+        hot: "Hot topics"
+        replies:
+          one: "%{count} reply"
+          other: "%{count} replies"
+        views:
+          one: "%{count} view"
+          other: "%{count} views"
       sections:
-        title: "Forum sections"
-        all: "All sections"
+        title: "Popular sections"
+        all: "All categories"
         empty: "No sections are visible to you yet."
         topic_count:
           one: "%{count} topic"
           other: "%{count} topics"
     promotions:
-      title: "What's on"
+      title: "Latest activity"
     locale:
       title: "Change site language"
     footer:

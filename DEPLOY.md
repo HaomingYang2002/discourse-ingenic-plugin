@@ -66,7 +66,7 @@ SiteSetting.ingenic_enabled          # => true
 IngenicDocProduct.count              # => 0, no content yet
 ```
 
-Then apply the three site defaults this forum always wants:
+Then apply the site defaults this forum always wants:
 
 ```bash
 rake ingenic:setup
@@ -74,18 +74,25 @@ rake ingenic:setup
 
 It prints every change it makes and changes nothing on a second run:
 
-- `title` becomes **Ingenic** — the word in the top-left corner, and the page
-  title. Without this a fresh site still says "Discourse".
+- `title` becomes **Ingenic** — the page title. Without this a fresh site still
+  says "Discourse".
+- The **Ingenic wordmark** is uploaded and set as `logo`, `logo_small` and
+  `mobile_logo`. The header draws the uploaded logo instead of the site title,
+  and a stock Discourse ships with its own wordmark already uploaded, so
+  changing the title alone leaves the Discourse logo in the top-left corner.
+  The image is `discourse-ingenic/assets/images/ingenic-logo.png`.
 - `enable_powered_by_discourse` is switched **off** — the "Powered by Discourse"
   strip at the foot of every page. The theme also hides that element, so a
   setting left behind by a deployment does not bring it back.
-- `default_homepage` becomes **latest** — the forum's own topic table, with the
-  Topic / Replies / Views / Activity columns, which is the same front page
-  meta.discourse.org shows. The theme's card-style homepage
-  (`ingenic-home`, at `/ingenic/home`) remains available as a choice but is
-  not what a visitor lands on.
+- `default_homepage` becomes **ingenic-home** — the Ingenic home page at `/`,
+  described under *The front page* below. The native latest list remains at
+  `/latest` and in the sidebar.
+- The **footer is seeded** with two partner platforms (ingenic.com and the
+  Chinese forum) and two link columns (Developers, Community), because the
+  theme hides the footer until those lists have content. Seeded only while both
+  lists are empty: a forum that has chosen its own partners is not overridden.
 
-`rake ingenic:doctor` checks all three afterwards, along with the language,
+`rake ingenic:doctor` checks the settings afterwards, along with the language,
 category and storage settings.
 
 ---
@@ -309,63 +316,61 @@ rake ingenic:seed_categories[permissions]
 `rake ingenic:doctor` reports the same slugs when they are missing, along with
 the settings the plugin and the theme need.
 
-`ingenic_homepage_blocks` configures the card homepage at `/ingenic/home`. It is
-not drawn at `/`, which is the native topic list; an administrator who prefers
-the card page can select **ingenic-home** as the site's default homepage under
-**Admin → Settings → default_homepage**.
+`ingenic_homepage_blocks` configures the Ingenic home page at `/`
+and `/ingenic/home`. It is edited on **Admin → Plugins → Ingenic → Site
+content → Home page**, which can add, remove and reorder blocks and set each
+one's heading, width and size. The setting holds the same list as JSON for
+export and for a deployment that would rather write it in one go.
 
-A starting `ingenic_homepage_blocks`:
+A starting `ingenic_homepage_blocks` — the layout a fresh install draws when the
+setting is empty:
 
 ```json
 [
-  { "type": "categories",    "enabled": true, "position": 0 },
-  { "type": "bounties",      "enabled": true, "position": 1, "limit": 4 },
-  { "type": "promotions",    "enabled": true, "position": 2 },
-  { "type": "announcements", "enabled": true, "position": 3, "limit": 5,  "category": "official-announcements" },
-  { "type": "discussions",   "enabled": true, "position": 4, "limit": 10, "category": "technical-discussions" },
-  { "type": "downloads",     "enabled": true, "position": 5, "limit": 6 },
-  { "type": "boards",        "enabled": true, "position": 6, "limit": 4 }
+  { "type": "categories", "limit": 3, "layout": "full" },
+  { "type": "latest",     "limit": 8, "layout": "main" },
+  { "type": "promotions", "limit": 3, "layout": "side" },
+  { "type": "hot",        "limit": 5, "layout": "side" },
+  { "type": "bounties",   "limit": 5, "layout": "full" }
 ]
 ```
 
-`promotions` draws the activity slots managed in **Ingenic → Site → Promotions**;
-with no promotions configured the block renders nothing. The `bounties` block
-lists the richest standing offers and renders nothing while there are none, so it
-is safe to leave on from the first day. A supported type with no component behind
-it also renders nothing, so a mistyped name is a block that silently never
-appears.
+The types are `categories` (the forum's sections as cards, plus a link to all of
+them), `latest` (newest discussions), `hot` (busiest this week), `bounties`
+(the richest standing 高分悬赏), `promotions` (the activity slots managed in
+**Ingenic → Site content → Promotions**), `announcements` and `discussions`
+(topics from one category each), `downloads`, and `boards`. A block with no
+content draws nothing — promotions before a campaign, bounties before an offer —
+so a quiet front page is never a page of empty panels. `layout` is `full`,
+`main` or `side`; leaving it empty uses the theme's default for that type.
 
 ### The front page
 
-The front page is Discourse's own **latest** topic list, the same page
-meta.discourse.org opens on: a table of topics with category, replies, views and
-activity columns. That is a core setting, not a plugin one:
+The front page is the Ingenic home page, registered as **ingenic-home**: a
+welcome and a search box, the popular sections as cards, the latest
+discussions, a rail of activity and hot topics, the partner platforms and the
+footer's section links, and 高分悬赏 across the bottom. It follows
+meta.discourse.org's shape without copying its content, and every block is
+editable from the admin screen above.
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| `default_homepage` | `latest` (stored value `latest`) | Makes `/` the forum's topic list |
+| `default_homepage` | `ingenic-home` (stored value `ingenic-home`) | Makes `/` the Ingenic home page |
 
 Admin → Settings → Interface, or by console:
 
 ```bash
 ./launcher enter app
 rails c
-SiteSetting.default_homepage = "latest"
+SiteSetting.default_homepage = "ingenic-home"
 ```
 
-`rake ingenic:setup` sets it, together with the site's name and the powered-by
-switch.
-
-The theme also ships a card-style home page — banner, the five tool links, the
-section grid, promotions and bounties — registered as the homepage
-**ingenic-home**. It is at `/ingenic/home` and stays available as a choice; an
-administrator who wants it as the front page selects `ingenic-home` under
-`default_homepage`. The plugin lists that option only while `ingenic_enabled` is
+`rake ingenic:setup` sets it, together with the site's name, logo and the
+powered-by switch. The plugin lists the option only while `ingenic_enabled` is
 on, and a site that had it selected and then switches the plugin off falls back
 to the ordinary homepage instead of showing an error.
 
-The blocks below configure that card page. They have no effect on `/` while
-`latest` is the homepage.
+The native latest list is still one click away in the sidebar and at `/latest`.
 
 ### Language
 
@@ -394,7 +399,7 @@ Discourse's rule, not the plugin's.
 ### The foot of the page
 
 Below the theme's own footer (the partner platform strip and the link columns,
-configured in **Ingenic → Site**) Discourse draws a line of its own: **Powered by
+configured in **Ingenic → Site content**) Discourse draws a line of its own: **Powered by
 Discourse**, the last thing on most pages. Hiding it is one core setting, not a
 theme change:
 
@@ -404,7 +409,7 @@ theme change:
 
 It is under **Admin → Settings → Site admin**, or search the settings screen for
 `powered by`. The theme's own footer is a separate thing — it comes from
-**Ingenic → Site** and is unaffected by this setting.
+**Ingenic → Site content** and is unaffected by this setting.
 
 ### Theme settings
 
@@ -475,13 +480,17 @@ Reading this screen is administrator-only, not just writing it: the ledger names
 accounts, and an adjustment moves a member's standing. A product or board scoped
 permission does not reach it — there is no product a points balance belongs to.
 
-**Site** — the three parts of the site that are content rather than forum, in
-three tabs. *Promotions* are the homepage activity slots, each with a picture, a
+**Site** — the parts of the site that are content rather than forum, in four
+tabs. *Home page* is the layout: which blocks the front page draws, in what
+order, each one's heading, width and size. A block is added from this tab, moved
+with the arrows, removed, or edited in place, and the whole list is saved
+together. *Promotions* are the homepage activity slots, each with a picture, a
 headline and a destination. *Partner platforms* is the strip in the footer,
 which takes either a link or a QR code image — a platform whose home is a web
 page gets a link, one that lives in an app gets a code the visitor scans.
-*Footer columns* are the footer's link columns: as many as you want, each with
-its own heading and its own ordered links.
+*Footer columns* are the footer's link columns and the section jump links at
+the bottom of every page: as many as you want, each with its own heading and its
+own ordered links.
 
 ### Access levels
 
@@ -670,7 +679,7 @@ Open these and check each one:
 - [ ] `/` is the forum's topic list, with the Topic / Replies / Views / Activity columns and the Latest / Hot / New tabs — the same front page meta.discourse.org has
 - [ ] `/ingenic/home` still shows the card page: banner, the five tool links and the section cards, with no topic list on it
 - [ ] the **All sections** link at the end of the card page's section block opens `/categories`
-- [ ] the promotions you configured in **Ingenic → Site** appear on `/ingenic/home` if you added a `promotions` block
+- [ ] the promotions you configured in **Ingenic → Site content** appear on `/ingenic/home` if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
 - [ ] with `enable_powered_by_discourse` off, the page ends at that footer and the **Powered by Discourse** line is gone
 - [ ] a member of a listed `ingenic_official_groups` group wears its badge beside their username, and a member who picked a badge of their own keeps it

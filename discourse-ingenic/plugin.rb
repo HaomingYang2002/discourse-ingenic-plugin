@@ -339,6 +339,10 @@ after_initialize do
       # its own fields.
       get "/site" => "admin/ingenic#site"
 
+      # The front page's block list, replaced whole: a block is a place in the
+      # list, not a record with an address of its own.
+      put "/homepage-blocks" => "admin/ingenic#update_homepage_blocks"
+
       post "/promotions" => "admin/ingenic#create_promotion"
       put "/promotions/:id" => "admin/ingenic#update_promotion"
       delete "/promotions/:id" => "admin/ingenic#destroy_promotion"
@@ -362,8 +366,15 @@ after_initialize do
     # use, and what makes the address survive a refresh.
     get "/ingenic/home", to: "ingenic_home#index", as: :ingenic_home
 
-    get "/ingenic/docs", to: "ingenic_docs#show", as: :ingenic_documentation_root
-    get "/ingenic/docs/*path", to: "ingenic_docs#show", as: :ingenic_documentation
+    # `format: /json/` is not decoration: a version slug is a version number,
+    # and Rails otherwise reads the last dot in the path as the start of a
+    # format. `/t-series/t33/1.1` reached the controller as `t-series/t33/1`
+    # with the format `1`, so every version selection 404ed while the version
+    # before it was the only one that could be opened. Constraining the format
+    # to the one extension this endpoint actually accepts keeps the dot in the
+    # path and still lets `/.../1.1.json` ask for JSON explicitly.
+    get "/ingenic/docs", to: "ingenic_docs#show", constraints: { format: /json/ }, as: :ingenic_documentation_root
+    get "/ingenic/docs/*path", to: "ingenic_docs#show", constraints: { format: /json/ }, as: :ingenic_documentation
 
     # A sibling of the documentation glob rather than a path inside it: a route
     # like /ingenic/docs/search would be swallowed by the glob above, and

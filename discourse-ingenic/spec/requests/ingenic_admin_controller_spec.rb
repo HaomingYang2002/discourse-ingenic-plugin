@@ -160,6 +160,41 @@ describe Admin::IngenicController do
       column_json = response.parsed_body["footer_columns"].first
       expect(column_json["title"]).to eq("Developers")
       expect(column_json["links"].first["label"]).to eq("Downloads")
+      expect(response.parsed_body["homepage_blocks"]).to eq([])
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/homepage-blocks" do
+    it "saves the list in the order it was sent" do
+      blocks = [
+        { type: "categories", limit: 3, categories: "engineering, announcements" },
+        { type: "latest", limit: 8, layout: "main" },
+        { type: "hot", limit: 5, layout: "side" },
+      ]
+
+      put "/admin/plugins/discourse-ingenic/homepage-blocks.json", params: { blocks: blocks.to_json }
+
+      expect(response.status).to eq(200)
+      saved = DiscourseIngenic::ConfigParser.homepage_blocks
+      expect(saved.map { |block| block["type"] }).to eq(%w[categories latest hot])
+      expect(saved.map { |block| block["position"] }).to eq([0, 1, 2])
+      expect(saved.first["categories"]).to eq(%w[engineering announcements])
+      expect(saved.last["layout"]).to eq("side")
+    end
+
+    it "refuses a type the home page cannot draw, and writes nothing" do
+      put "/admin/plugins/discourse-ingenic/homepage-blocks.json",
+          params: { blocks: [{ type: "latest" }, { type: "weather" }].to_json }
+
+      expect(response.status).to eq(422)
+      expect(SiteSetting.ingenic_homepage_blocks).to eq("")
+    end
+
+    it "refuses a body that is not a list" do
+      put "/admin/plugins/discourse-ingenic/homepage-blocks.json", params: { blocks: "not json" }
+
+      expect(response.status).to eq(422)
+      expect(SiteSetting.ingenic_homepage_blocks).to eq("")
     end
   end
 

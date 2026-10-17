@@ -45,19 +45,25 @@ plugins:
     type: string
     multiline: true
 
-  # JSON array controlling which blocks appear on the custom homepage and in
-  # what order. Supported types: promotions, announcements, discussions,
-  # downloads, boards.
+  # JSON array controlling which blocks appear on the Ingenic home page and in
+  # what order. Supported types: categories, latest, hot, bounties, promotions,
+  # announcements, discussions, downloads, boards.
   #
-  # A type with no component behind it renders nothing, so a name that is not in
-  # that list is a block that silently never appears.
+  # This is edited on Admin → Plugins → Ingenic → Site content → Home page,
+  # which adds, removes and reorders blocks. "layout" is full, main or side;
+  # "limit" is how many rows a block draws; "categories" names section slugs in
+  # the order to show them; "category" is the section the announcements and
+  # discussions blocks read.
   #
   # [
-  #   { "type": "promotions",    "enabled": true,  "position": 0 },
-  #   { "type": "announcements", "enabled": true,  "position": 2, "limit": 5, "category": "official-announcements" },
-  #   { "type": "discussions",   "enabled": true,  "position": 3, "limit": 10, "category": "technical-discussions" },
-  #   { "type": "downloads",     "enabled": true,  "position": 4, "limit": 6 },
-  #   { "type": "boards",        "enabled": true,  "position": 5, "limit": 4 }
+  #   { "type": "categories",    "limit": 3, "categories": "official-announcements, technical-discussions" },
+  #   { "type": "latest",        "limit": 8, "layout": "main" },
+  #   { "type": "promotions",    "limit": 3, "layout": "side" },
+  #   { "type": "hot",           "limit": 5, "layout": "side" },
+  #   { "type": "bounties",      "limit": 5, "layout": "full" },
+  #   { "type": "announcements", "limit": 5, "category": "official-announcements" },
+  #   { "type": "downloads",     "limit": 6 },
+  #   { "type": "boards",        "limit": 4 }
   # ]
   ingenic_homepage_blocks:
     default: ""

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "digest"
+
 # Moving this forum's configuration between machines.
 #
 #   rake ingenic:export_config                      # writes ./ingenic-config.yml
@@ -76,7 +78,7 @@ namespace :ingenic do
     end
   end
 
-  desc "Name the site Ingenic, use the native latest home page, and drop Discourse's badge"
+  desc "Name the site Ingenic, install its wordmark, choose the Ingenic home page, seed the footer links, and drop Discourse's badge"
   task setup: :environment do
     # Three settings that decide what a visitor sees before they read anything:
     # who the forum says it belongs to, whether the front page is the forum's
@@ -92,19 +94,119 @@ namespace :ingenic do
       SiteSetting.title = "Ingenic"
     end
 
+    # The header draws an uploaded logo ahead of the site title, and a stock
+    # Discourse ships with its own wordmark already uploaded. Renaming the site
+    # therefore changes the page title and nothing a visitor sees in the corner;
+    # the logo has to be an upload too. The wordmark is shipped with the plugin
+    # and found by digest so a second run reuses the first upload.
+    logo_file = Rails.root.join("plugins/discourse-ingenic/assets/images/ingenic-logo.png")
+    if logo_file.file?
+      digest = Digest::SHA1.file(logo_file).hexdigest
+      logo =
+        Upload.find_by(sha1: digest) ||
+          UploadCreator.new(
+            File.open(logo_file),
+            "ingenic-logo.png",
+            type: "site_logo",
+            origin: "site_setting",
+          ).create_for(Discourse.system_user.id)
+
+      if logo.persisted?
+        { logo: "logo", logo_small: "logo_small", mobile_logo: "mobile_logo" }.each do |setting, label|
+          current = SiteSetting.public_send(setting)
+          next if current&.id == logo.id
+          changes << "#{label}: #{current&.original_filename || "none"} → ingenic-logo.png"
+          SiteSetting.public_send("#{setting}=", logo)
+        end
+      else
+        puts "Could not install the logo: #{logo.errors.full_messages.to_sentence}"
+      end
+    end
+
     if SiteSetting.enable_powered_by_discourse
       changes << "enable_powered_by_discourse: true → false"
       SiteSetting.enable_powered_by_discourse = false
     end
 
-    # Meta's front page is Discourse's own latest list, and this forum is meant
-    # to read like it: the topic table with its category, replies, views and
-    # activity columns, not a page of cards. `ingenic-home` stays available as
-    # a choice for a deployment that wants the announcement blocks, but it is
-    # not what a fresh install lands on.
-    if SiteSetting.default_homepage != "latest"
-      changes << "default_homepage: #{SiteSetting.default_homepage.inspect} → \"latest\""
-      SiteSetting.default_homepage = "latest"
+    # The front page is the Ingenic one: a welcome and a search box, the
+    # popular sections as cards, the latest discussions, and the rail of
+    # activity and hot topics. Meta's shape, the forum's own content. The
+    # native latest list is still one click away in the sidebar and at
+    # /latest; it is not what `/` is.
+    if SiteSetting.default_homepage != "ingenic-home"
+      changes << "default_homepage: #{SiteSetting.default_homepage.inspect} → \"ingenic-home\""
+      SiteSetting.default_homepage = "ingenic-home"
+    end
+
+    # Both footer lists are content, and the theme hides the footer until there
+    # is some: a fresh install would reach the bottom of the page with nothing
+    # there. Two destinations every Ingenic deployment has, plus the sections a
+    # reader actually needs from the bottom of a page. Seeded only when the
+    # lists are empty — a forum that has chosen its own partners is not
+    # overridden, and both are edited in Admin → Plugins → Ingenic → Site
+    # content.
+    if IngenicSocialLink.count.zero?
+      [
+        { label: "Ingenic", href: "https://www.ingenic.com" },
+        { label: "Ingenic Forum", href: "https://forum.ingenic.com" },
+      ].each_with_index do |attrs, index|
+        IngenicSocialLink.create!(
+          kind: IngenicSocialLink::LINK,
+          position: index,
+          published: true,
+          **attrs,
+        )
+        changes << "partner platform: #{attrs[:label]} → #{attrs[:href]}"
+      end
+    end
+
+    if IngenicFooterColumn.count.zero?
+      {
+        "Developers" => [
+          ["Online documentation", "/ingenic/docs"],
+          ["SDK & firmware", "/ingenic/downloads"],
+          ["Development boards", "/ingenic/boards"],
+        ],
+        "Community" => [
+          ["Latest topics", "/latest"],
+          ["All categories", "/categories"],
+          ["Bounties", "/ingenic/bounties"],
+        ],
+      }.each_with_index do |(title, links), index|
+        column =
+          IngenicFooterColumn.create!(title: title, position: index, published: true)
+        links.each_with_index do |(label, href), link_index|
+          IngenicFooterLink.create!(
+            column: column,
+            label: label,
+            href: href,
+            external: false,
+            position: link_index,
+            published: true,
+          )
+        end
+        changes << "footer column: #{title} (#{links.size} links)"
+      end
+    end
+
+    # One welcome slot, because the promotions block draws nothing until there
+    # is one and a section that is invisible on a fresh install reads as a
+    # feature that was never finished. It points at pages this forum really
+    # has, and the same admin screen replaces or removes it.
+    if IngenicPromotion.count.zero?
+      IngenicPromotion.create!(
+        corner_label: "Docs",
+        title: "The T Series documentation is online",
+        description: "Versioned reference for each chip, beside the SDK and firmware " \
+                       "downloads and the boards they run on.",
+        button_label: "Browse the documentation",
+        button_href: "/ingenic/docs",
+        button_external: false,
+        locale: "en",
+        position: 0,
+        published: true,
+      )
+      changes << "promotion: a welcome slot pointing at /ingenic/docs"
     end
 
     if changes.empty?
@@ -161,14 +263,19 @@ namespace :ingenic do
         "the header introduces the forum as #{SiteSetting.title.inspect} — rake ingenic:setup names it Ingenic",
       ],
       [
+        "logo",
+        SiteSetting.logo.present? && !SiteSetting.logo.url.to_s.include?("discourse-logo-sketch"),
+        "the header still wears Discourse's own logo, which overrides the site title — rake ingenic:setup installs the Ingenic wordmark",
+      ],
+      [
         "enable_powered_by_discourse",
         !SiteSetting.enable_powered_by_discourse,
         "the page ends in Discourse's own badge — rake ingenic:setup switches it off",
       ],
       [
         "default_homepage",
-        SiteSetting.default_homepage == "latest",
-        "the front page is #{SiteSetting.default_homepage.inspect} rather than the topic list meta.discourse.org shows — rake ingenic:setup switches it",
+        SiteSetting.default_homepage == "ingenic-home",
+        "the front page is #{SiteSetting.default_homepage.inspect} rather than the Ingenic home page — rake ingenic:setup switches it",
       ],
     ]
 

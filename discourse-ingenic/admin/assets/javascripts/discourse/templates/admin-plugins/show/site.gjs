@@ -4,6 +4,7 @@ import { action } from "@ember/object";
 import { on } from "@ember/modifier";
 import { fn } from "@ember/helper";
 import DPageSubheader from "discourse/ui-kit/d-page-subheader";
+import IngenicHomepageManager from "../../../../admin/components/ingenic-homepage-manager";
 import IngenicPromotionManager from "../../../../admin/components/ingenic-promotion-manager";
 import IngenicSocialLinkManager from "../../../../admin/components/ingenic-social-link-manager";
 import IngenicFooterManager from "../../../../admin/components/ingenic-footer-manager";
@@ -20,7 +21,13 @@ import { i18n } from "discourse-i18n";
  * them at a time.
  */
 export default class AdminPluginsShowSite extends Component {
-  @tracked tab = "promotions";
+  // The layout comes first: it decides what the front page is, and the other
+  // tabs fill the slots it places.
+  @tracked tab = "homepage";
+
+  get isHomepage() {
+    return this.tab === "homepage";
+  }
 
   get isPromotions() {
     return this.tab === "promotions";
@@ -49,6 +56,13 @@ export default class AdminPluginsShowSite extends Component {
 
       <div class="ingenic-admin__tabs">
         <button
+          class="btn {{if this.isHomepage 'btn-primary'}}"
+          type="button"
+          {{on "click" (fn this.show "homepage")}}
+        >
+          {{i18n "admin.ingenic.site.tab_homepage"}}
+        </button>
+        <button
           class="btn {{if this.isPromotions 'btn-primary'}}"
           type="button"
           {{on "click" (fn this.show "promotions")}}
@@ -71,7 +85,9 @@ export default class AdminPluginsShowSite extends Component {
         </button>
       </div>
 
-      {{#if this.isSocialLinks}}
+      {{#if this.isHomepage}}
+        <IngenicHomepageManager @homepageBlocks={{@model.homepage_blocks}} />
+      {{else if this.isSocialLinks}}
         <IngenicSocialLinkManager @socialLinks={{@model.social_links}} />
       {{else if this.isFooter}}
         <IngenicFooterManager @footerColumns={{@model.footer_columns}} />

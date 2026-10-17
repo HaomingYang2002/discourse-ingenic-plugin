@@ -256,6 +256,33 @@ describe IngenicDocsController do
     end
   end
 
+  describe "version numbers in the path" do
+    # A version slug is a version number. Rails treats the last dot in a path
+    # as the start of a format unless the route says otherwise, so a browser
+    # fetching /2.1.0 asked for version "2" with format "1.0" and got a 404 —
+    # which is every version choice the reader could make.
+    it "keeps the dot in the version when the client asks for JSON" do
+      get "/ingenic/docs/t-series/t32pro/2.1.0", headers: { "Accept" => "application/json" }
+
+      expect(response.media_type).to eq("application/json")
+      expect(response.parsed_body["version"]["slug"]).to eq("2.1.0")
+    end
+
+    it "keeps the dot in the version when a page is named too" do
+      get "/ingenic/docs/t-series/t32pro/2.1.0/overview",
+          headers: { "Accept" => "application/json" }
+
+      expect(response.parsed_body["page"]["slug"]).to eq("overview")
+    end
+
+    it "serves the app shell to a browser refresh on a dotted version" do
+      get "/ingenic/docs/t-series/t32pro/2.1.0"
+
+      expect(response.status).to eq(200)
+      expect(response.body).to include('id="data-preloaded"')
+    end
+  end
+
   describe "translated content" do
     fab!(:translated_overview) do
       IngenicDocPage.create!(
