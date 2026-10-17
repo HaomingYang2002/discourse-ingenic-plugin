@@ -12,11 +12,14 @@ en:
       bounties: "Bounties"
       announcements: "Official Announcements"
       discussions: "Technical Discussions"
-      # The two lists that are drawn without a heading. Nothing shows these
-      # words; they are what the sidebar's filter matches against, so typing
-      # "forum" or "points" finds the whole list.
+      site_feedback: "Site Feedback"
+      all_categories: "All Categories"
+      # The lists that are drawn without a heading. Nothing shows these words;
+      # they are what the sidebar's filter matches against, so typing "forum"
+      # or "points" finds the whole list.
       sections:
         forum: "Forum"
+        topics: "Topics"
         member: "Bounties and points"
     home:
       title: "Build with Ingenic"
@@ -143,16 +146,19 @@ en:
       disabled: "Points are switched off at the moment. Your total is where it was left, and nothing is being earned or spent."
       spend_note: "Points are spent in the download centre: a resource that costs points is unlocked once, and then stays yours."
     boards:
-      title: "Development Boards"
-      subtitle: "Boards for evaluating and building on Ingenic chips. Apply for one or buy it from the Ingenic team."
+      title: "Boards & Samples"
+      subtitle: "Development boards and sample chips for evaluating and building on Ingenic silicon. Apply for one or buy it from the Ingenic team."
       apply: "Apply"
       buy: "Buy now"
       documentation: "Documentation"
-      all_series: "All series"
+      kind_board: "Development boards"
+      kind_sample: "Sample chips"
+      chip_filter: "Chip"
       all_chips: "All chips"
       clear_filters: "Clear filters"
-      no_match: "No boards match these filters."
-      empty: "No development boards are listed yet."
+      no_match: "Nothing matches these filters."
+      empty: "Nothing is listed in this part of the catalogue yet."
+      close: "Close"
     bounties:
       title: "Bounties"
       subtitle: "Points a member has set aside on their own question, paid in full to whoever writes the answer they accept."

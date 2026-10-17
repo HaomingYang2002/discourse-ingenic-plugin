@@ -66,30 +66,37 @@ describe IngenicBoardsController do
 
       entry = response.parsed_body["boards"].first
       expect(entry["slug"]).to eq("halley5")
+      expect(entry["kind"]).to eq("board")
       expect(entry["chip_name"]).to eq("T33")
       expect(entry["series_slug"]).to eq("t-series")
       expect(entry["product_slug"]).to eq("t33")
       expect(entry["specs"]).to eq("DDR3 1GB")
     end
 
-    it "offers both filters, with each chip naming the series it belongs to" do
+    it "offers both kinds and every chip, each naming the series it belongs to" do
       get "/ingenic/boards.json"
 
       filters = response.parsed_body["filters"]
-      expect(filters["series"].map { |item| item["slug"] }).to contain_exactly(
-        "t-series",
-        "c-series",
-      )
-      expect(filters["chips"].find { |item| item["slug"] == "c100" }["series_slug"]).to eq(
-        "c-series",
-      )
+      expect(filters["kinds"]).to contain_exactly("board", "sample")
+
+      chip_filter = filters["chips"].find { |item| item["slug"] == "c100" }
+      expect(chip_filter["series_slug"]).to eq("c-series")
+      expect(chip_filter["series_name"]).to eq("C Series")
     end
 
-    it "narrows to one series through the chips filed under it" do
+    it "narrows to one kind" do
       board(product: chip)
-      board(slug: "halley3", name: "Halley3", product: other_chip)
+      board(slug: "t33-sample", name: "T33 Sample", kind: "sample", product: chip)
 
-      get "/ingenic/boards.json?series=t-series"
+      get "/ingenic/boards.json?kind=sample"
+
+      expect(response.parsed_body["boards"].map { |item| item["slug"] }).to eq(["t33-sample"])
+    end
+
+    it "ignores an unknown kind rather than showing an empty catalogue" do
+      board(product: chip)
+
+      get "/ingenic/boards.json?kind=module"
 
       expect(response.parsed_body["boards"].map { |item| item["slug"] }).to eq(["halley5"])
     end
@@ -103,12 +110,12 @@ describe IngenicBoardsController do
       expect(response.parsed_body["boards"].map { |item| item["slug"] }).to eq(["halley3"])
     end
 
-    it "still offers the series it is filtering by, so the choice can be undone" do
-      board(product: chip)
+    it "still offers both kinds while one is filtered, so the choice can be undone" do
+      board(product: chip, kind: "sample")
 
-      get "/ingenic/boards.json?series=t-series"
+      get "/ingenic/boards.json?kind=sample"
 
-      expect(response.parsed_body["filters"]["series"].length).to eq(2)
+      expect(response.parsed_body["filters"]["kinds"]).to contain_exactly("board", "sample")
     end
 
     it "leaves a withdrawn board out of the catalogue" do

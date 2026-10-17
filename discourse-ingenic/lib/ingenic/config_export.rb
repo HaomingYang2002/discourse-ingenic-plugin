@@ -186,8 +186,10 @@ module Ingenic
           "slug" => board.slug,
           "locale" => board.locale,
           "name" => board.name,
+          "kind" => board.kind,
           "chip" => board.chip,
           "description" => board.description,
+          "details" => board.details,
           "specs" => board.specs,
           "image_url" => board.image_url,
           "documentation_url" => board.documentation_url,
@@ -507,8 +509,10 @@ module Ingenic
 
         upsert(report, IngenicBoard, { slug: row["slug"], locale: locale_of(row) }) do |board|
           board.name = row["name"]
+          board.kind = row.fetch("kind", "board")
           board.chip = row["chip"]
           board.description = row["description"]
+          board.details = row["details"]
           board.specs = row["specs"]
           board.image_url = row["image_url"]
           board.documentation_url = row["documentation_url"]

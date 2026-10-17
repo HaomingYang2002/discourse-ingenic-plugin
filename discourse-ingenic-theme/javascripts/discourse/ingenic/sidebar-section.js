@@ -1,7 +1,8 @@
 import { themePrefix } from "virtual:theme";
 import { service } from "@ember/service";
+import getURL from "discourse/lib/get-url";
 import { i18n } from "discourse-i18n";
-import { resolveNavItems } from "./nav-items";
+import { hrefFor, resolveNavItems } from "./nav-items";
 
 /**
  * Registers the Ingenic navigation as first-class Discourse sidebar sections.
@@ -28,9 +29,9 @@ import { resolveNavItems } from "./nav-items";
  * true from `displaySectionContent` for it, whatever the collapse state says.
  */
 
-// The three groups, in the order they are read. `text` is the heading for the
-// one group that has one; for the other two it is only what the sidebar's
-// filter matches, since nothing is drawn.
+// The groups, in the order they are read. `text` is the heading for the one
+// group that has one; for the others it is only what the sidebar's filter
+// matches, since nothing is drawn.
 const GROUPS = [
   {
     name: "ingenic-forum",
@@ -51,6 +52,17 @@ const GROUPS = [
     section: "member",
     titled: false,
     textKey: "ingenic.nav.sections.member",
+  },
+  // Site Feedback and All categories used to be drawn by core's Categories
+  // section. That section repeated the forum's name above the same three links
+  // and pushed the lists below it down, so it is hidden and the two links are
+  // drawn directly under Topics instead — same order, no heading. Core offers
+  // no API for removing a link from its own section, hence the stylesheet.
+  {
+    name: "ingenic-topic-links",
+    section: "topic-links",
+    titled: false,
+    textKey: "ingenic.nav.sections.topics",
   },
 ];
 
@@ -153,8 +165,48 @@ export function registerIngenicSidebarSections(api) {
           }
 
           get links() {
+            if (group.section === "topic-links") {
+              return this.topicLinks;
+            }
+
             return resolveNavItems(this.site, group.section).map(
               (item) => new IngenicSectionLink({ item, router: this.router }),
+            );
+          }
+
+          // Written out here rather than in the navigation defaults because
+          // the configured `ingenic_nav_items` setting replaces the shipped
+          // list wholesale. These two links are not tools an editor chose to
+          // show; they are how the site is browsed, and hiding core's
+          // Categories section without them would leave no way to browse it at
+          // all. Site Feedback's id is read from the site, the same way an
+          // entry naming a category resolves one.
+          get topicLinks() {
+            const items = [
+              {
+                key: "site-feedback",
+                icon: "comments",
+                label: i18n(themePrefix("ingenic.nav.site_feedback")),
+                href: hrefFor({ category: "site-feedback" }, this.site),
+              },
+              {
+                key: "all-categories",
+                icon: "list",
+                label: i18n(themePrefix("ingenic.nav.all_categories")),
+                href: "/categories",
+              },
+            ];
+
+            return items.map(
+              (item) =>
+                new IngenicSectionLink({
+                  item: {
+                    ...item,
+                    url: getURL(item.href),
+                    external: false,
+                  },
+                  router: this.router,
+                }),
             );
           }
 

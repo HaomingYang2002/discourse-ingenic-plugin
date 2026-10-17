@@ -36,7 +36,10 @@ class IngenicBoardsController < ::ApplicationController
             .includes(product: :parent)
             .where(locale: [locale, default_locale].uniq)
 
-        rows = rows.for_series(params[:series]) if params[:series].present?
+        # The first filter is the kind of thing — a board or a sample — and the
+        # second is the chip. An unknown kind is ignored rather than turned
+        # into an empty page, so a stale bookmark still shows the catalogue.
+        rows = rows.for_kind(params[:kind]) if IngenicBoard::KINDS.include?(params[:kind])
         rows = rows.for_chip(params[:chip]) if params[:chip].present?
 
         # One row per board, and the slug is what a board *is*: the unique index
@@ -53,20 +56,22 @@ class IngenicBoardsController < ::ApplicationController
   end
 
   # The filter options come from the tree, not from the boards on the page, so
-  # choosing a series does not make the other series disappear from the control
-  # that would undo the choice.
+  # choosing a chip does not make the other chips disappear from the control
+  # that would undo the choice. The chip carries its series' name because the
+  # selector no longer has a series filter to narrow it down: "T33" alone is
+  # not enough context when every series is listed together.
   def filters
-    series =
-      IngenicDocProduct.series.published.ordered.map do |record|
-        { "slug" => record.slug, "name" => record.name }
-      end
-
     chips =
-      IngenicDocProduct.chips.published.ordered.map do |record|
-        { "slug" => record.slug, "name" => record.name, "series_slug" => record.parent&.slug }
+      IngenicDocProduct.chips.includes(:parent).published.ordered.map do |record|
+        {
+          "slug" => record.slug,
+          "name" => record.name,
+          "series_slug" => record.parent&.slug,
+          "series_name" => record.parent&.name,
+        }
       end
 
-    { series: series, chips: chips }
+    { kinds: IngenicBoard::KINDS, chips: chips }
   end
 
   def locale

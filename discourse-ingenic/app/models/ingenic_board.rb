@@ -1,12 +1,19 @@
 # frozen_string_literal: true
 
-# A development board in the catalogue.
+# A development board or sample chip in the catalogue.
 #
-# A board is a physical thing the Ingenic team sells or lends, so the plugin
-# never takes an order for one: the two links on a card leave the forum, and
-# everything here is presentation.
+# Both are physical things the Ingenic team sells or lends, so the plugin never
+# takes an order for one: the links on a card leave the forum, and everything
+# here is presentation. They are one model because they are one catalogue to a
+# visitor — the first filter chooses which of the two — and because everything
+# except `kind` is written the same way for both.
 class IngenicBoard < ActiveRecord::Base
   self.table_name = "ingenic_boards"
+
+  # What the catalogue's first filter chooses between. A string so a third
+  # kind is a row value rather than a migration; the column's default is
+  # "board", which is also what every row created before this column was.
+  KINDS = %w[board sample].freeze
 
   belongs_to :product,
              class_name: "IngenicDocProduct",
@@ -15,6 +22,7 @@ class IngenicBoard < ActiveRecord::Base
 
   validates :slug, presence: true, uniqueness: { scope: :locale }
   validates :name, presence: true
+  validates :kind, presence: true, inclusion: { in: KINDS }
   validates :application_url, presence: true
   validate :product_is_a_chip
   validate :purchase_link_is_usable
@@ -27,6 +35,7 @@ class IngenicBoard < ActiveRecord::Base
 
   scope :published, -> { where(published: true) }
   scope :ordered, -> { order(position: :asc, name: :asc) }
+  scope :for_kind, ->(kind) { where(kind: kind) }
 
   # Both filters read the product tree rather than a chip name typed onto the
   # board, so a series is a board whose chip's parent is that series.

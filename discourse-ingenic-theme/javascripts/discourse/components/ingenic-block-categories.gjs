@@ -170,6 +170,7 @@ export default class IngenicBlockCategories extends Component {
 
       {{#if this.showAll}}
         <a class="ingenic-sections__all" href="/categories">
+          <span class="ingenic-sections__all-arrow" aria-hidden="true">→</span>
           {{i18n (themePrefix "ingenic.home.sections.all")}}
         </a>
       {{/if}}

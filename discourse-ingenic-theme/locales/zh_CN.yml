@@ -12,9 +12,12 @@ zh_CN:
       bounties: "高分悬赏"
       announcements: "官方公告"
       discussions: "技术讨论"
-      # 两个不带标题的分组。这两行文字不会显示，只用于侧边栏的搜索匹配。
+      site_feedback: "站点反馈"
+      all_categories: "所有分区"
+      # 不带标题的分组。这些文字不会显示，只用于侧边栏的搜索匹配。
       sections:
         forum: "论坛"
+        topics: "话题"
         member: "悬赏与积分"
     home:
       title: "使用君正芯片开发"
@@ -143,16 +146,19 @@ zh_CN:
       disabled: "积分功能当前已关闭。您的积分保持不变，也不会产生任何获取或消耗。"
       spend_note: "积分在下载中心消耗：需要积分的资源只需解锁一次，之后长期可用。"
     boards:
-      title: "开发板商店"
-      subtitle: "用于评估和基于君正芯片开发的开发板。可申请或向君正团队购买。"
+      title: "开发板与样片"
+      subtitle: "用于评估和基于君正芯片开发的开发板与样片。可申请或向君正团队购买。"
       apply: "申请"
       buy: "立即购买"
       documentation: "文档"
-      all_series: "全部系列"
+      kind_board: "开发板"
+      kind_sample: "样片"
+      chip_filter: "芯片型号"
       all_chips: "全部型号"
       clear_filters: "清除筛选"
-      no_match: "没有符合这些筛选条件的开发板。"
-      empty: "暂无开发板。"
+      no_match: "没有符合这些筛选条件的项目。"
+      empty: "这一类目下暂无内容。"
+      close: "关闭"
     bounties:
       title: "高分悬赏"
       subtitle: "会员在自己的帖子里挂出的积分，采纳答案后全额支付给答主。"

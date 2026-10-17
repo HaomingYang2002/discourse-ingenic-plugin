@@ -16,9 +16,11 @@ const BLANK = {
   slug: "",
   name: "",
   locale: "",
+  kind: "board",
   product_id: "",
   chip: "",
   description: "",
+  details: "",
   specs: "",
   image_url: "",
   documentation_url: "",
@@ -61,6 +63,17 @@ export default class IngenicBoardManager extends Component {
       chip.series_name ? `${chip.series_name} › ${chip.name}` : chip.name;
   }
 
+  // Kept in one place so the list and the select cannot disagree about what a
+  // stored value means.
+  get kindLabel() {
+    return (record) =>
+      i18n(
+        record.kind === "sample"
+          ? "admin.ingenic.boards.fields.kind_sample"
+          : "admin.ingenic.boards.fields.kind_board"
+      );
+  }
+
   @action
   startNew() {
     this.draft = { ...BLANK, locale: this.defaultLocale };
@@ -86,6 +99,11 @@ export default class IngenicBoardManager extends Component {
   // built from, so the two are kept in step. The value still travels as a form
   // field: the select carries a name and the browser reads the choice back out
   // of it when the form is submitted.
+  @action
+  pickKind(value) {
+    this.draft = { ...this.draft, kind: value || "board" };
+  }
+
   @action
   pickChip(value) {
     this.draft = { ...this.draft, product_id: value ?? "" };
@@ -202,6 +220,23 @@ export default class IngenicBoardManager extends Component {
           </label>
 
           <label>
+            <span>{{i18n "admin.ingenic.boards.fields.kind"}}</span>
+            <DNativeSelect
+              name="kind"
+              @value={{this.draft.kind}}
+              @onChange={{this.pickKind}}
+              as |select|
+            >
+              <select.Option @value="board">
+                {{i18n "admin.ingenic.boards.fields.kind_board"}}
+              </select.Option>
+              <select.Option @value="sample">
+                {{i18n "admin.ingenic.boards.fields.kind_sample"}}
+              </select.Option>
+            </DNativeSelect>
+          </label>
+
+          <label>
             <span>{{i18n "admin.ingenic.boards.fields.chip_from_tree"}}</span>
             {{! A Glimmer-rendered `selected` attribute does not survive
                 re-rendering, which is the bug DNativeSelect exists to work
@@ -265,6 +300,15 @@ export default class IngenicBoardManager extends Component {
           </label>
 
           <label class="ingenic-admin-form__wide">
+            <span>{{i18n "admin.ingenic.boards.fields.details"}}</span>
+            <textarea name="details" rows="5">{{this.draft.details}}</textarea>
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.boards.fields.details_hint"}}
+          </p>
+
+          <label class="ingenic-admin-form__wide">
             <span>{{i18n "admin.ingenic.boards.fields.specs"}}</span>
             <textarea name="specs">{{this.draft.specs}}</textarea>
           </label>
@@ -296,6 +340,7 @@ export default class IngenicBoardManager extends Component {
               <strong>{{record.name}}</strong>
               <div class="ingenic-admin-list__meta">
                 {{record.slug}}
+                · {{this.kindLabel record}}
                 {{#if record.chip_name}}· {{record.chip_name}}{{/if}}
                 {{#if record.series_name}}· {{record.series_name}}{{/if}}
                 · {{record.locale}}

@@ -65,8 +65,10 @@
   //
   // Core adds the sidebar width to this value when it sizes `.wrap`, so the
   // subtraction is what makes the whole page — sidebar, content and rail —
-  // end at 1280 pixels rather than the sidebar being extra.
-  --d-max-width: calc(1280px - var(--d-sidebar-width));
+  // end at this width rather than the sidebar being extra. 1400 rather than
+  // 1280 keeps the same page shape on a laptop while giving the blocks and the
+  // feed noticeably more room, which is what the margins were taking up.
+  --d-max-width: calc(1400px - var(--d-sidebar-width));
 
   // Capped as well as configured: this setting shipped at 272px, and a theme
   // update keeps the stored value, so the default alone would leave an
@@ -127,6 +129,23 @@ html.ingenic-nav-first .sidebar-sections {
 
   > .sidebar-section-wrapper[data-section-name^="ingenic-"] {
     order: -1;
+  }
+
+  // Core's Categories section held General, Site Feedback and All categories.
+  // The forum list above it already names the forum, and the two links that
+  // matter are drawn in `ingenic-topic-links`, directly under Topics. The
+  // section is not collapsed but removed: leaving it as an empty triangle
+  // would make the sidebar look broken.
+  > .sidebar-section-wrapper[data-section-name="categories"] {
+    display: none;
+  }
+
+  // Same specificity as the rule above and later, so this section sits at the
+  // default order — below core's Topics, which is where the user asked for the
+  // two links to go — instead of above the whole forum list with the Ingenic
+  // sections.
+  > .sidebar-section-wrapper[data-section-name="ingenic-topic-links"] {
+    order: 0;
   }
 }
 
@@ -193,8 +212,8 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 .ingenic-homepage {
-  max-width: 1280px;
-  margin: 0 auto 2rem;
+  max-width: 1400px;
+  margin: 0 auto 2.5rem;
 
   // The welcome band. Meta's front page opens with a centred greeting and a
   // search box rather than a banner with two buttons, and that is the shape a
@@ -206,7 +225,7 @@ html.ingenic-nav-first .sidebar-sections {
   // it is a heading rather than a banner: meta's front page does not make a
   // reader scroll past its own introduction to reach the forum.
   &__hero {
-    margin-bottom: 0.85rem;
+    margin-bottom: 1.4rem;
     padding: clamp(1rem, 2.2vw, 1.6rem) 1rem 1.15rem;
     border-radius: var(--ingenic-radius);
     background:
@@ -269,13 +288,15 @@ html.ingenic-nav-first .sidebar-sections {
   &__blocks {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
+    gap: 1.5rem;
 
     // The discussion feed down the left and the shorter lists in a rail. The
     // feed spans the two rows the rail's cards occupy, so the pair reads as
-    // one block rather than as a card with a hole under it.
+    // one block rather than as a card with a hole under it. The rail keeps a
+    // fixed floor: the extra page width goes to the feed, not to a wider rail.
     &--with-rail {
-      grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.65fr);
+      grid-template-columns: minmax(0, 1.65fr) minmax(18rem, 0.6fr);
+      column-gap: 1.35rem;
     }
   }
 
@@ -309,8 +330,8 @@ html.ingenic-nav-first .sidebar-sections {
 }
 
 .ingenic-section {
-  margin-bottom: 1rem;
-  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.4rem;
   border: 1px solid var(--ingenic-panel-border);
   border-radius: var(--ingenic-radius);
   background: var(--secondary);
@@ -320,11 +341,11 @@ html.ingenic-nav-first .sidebar-sections {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.9rem;
     border-bottom: 1px solid var(--primary-very-low);
 
     h2 {
-      margin: 0 0 0.6rem;
+      margin: 0 0 0.8rem;
       font-size: var(--font-up-1);
     }
   }
@@ -364,18 +385,31 @@ html.ingenic-nav-first .sidebar-sections {
 .ingenic-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.65rem;
+  gap: 0.85rem;
 
+  // Centred under the cards and read as "on to the list": the arrow turns the
+  // line into a direction rather than a label. Full width so the centring is
+  // against the section, not against the width of the words.
   &__all {
-    display: inline-block;
-    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+    padding-top: 0.65rem;
     color: var(--primary-medium);
     font-size: var(--font-down-1);
 
     &:hover,
     &:focus {
       color: var(--ingenic-link);
+      text-decoration: none;
     }
+  }
+
+  &__all-arrow {
+    font-size: var(--font-up-1);
+    line-height: 1;
   }
 
   &__card {
@@ -463,8 +497,8 @@ html.ingenic-nav-first .sidebar-sections {
   &__item {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.65rem 0;
+    gap: 0.25rem;
+    padding: 0.8rem 0;
     border-bottom: 1px solid var(--primary-very-low);
 
     &:last-child {
@@ -990,6 +1024,14 @@ html.ingenic-nav-first .sidebar-sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: 0.75rem;
+
+  // The shop cards are wider than a download or a link card: they carry a
+  // picture and a paragraph, and four to a row is the most that stays legible
+  // on a laptop.
+  &--products {
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 1.15rem;
+  }
 }
 
 .ingenic-card {
@@ -1075,26 +1117,312 @@ html.ingenic-nav-first .sidebar-sections {
   }
 }
 
-// The catalogue's two filters and the control that undoes them. Laid out on
-// the same grid as the download filters so the two pages read alike.
+// The catalogue's two filters and the control that undoes them. The first is
+// drawn as a segmented pair of buttons rather than a select: it is a choice
+// between two named things, and both names should be readable without opening
+// anything. The second is a select because the product tree can be long.
 .ingenic-boards {
   &__filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
     align-items: end;
-    margin-bottom: 1rem;
+    gap: 0.75rem 1.25rem;
+    margin-bottom: 1.35rem;
 
-    // The clear control is a button in a row of labelled selects, so it is
-    // aligned with the controls rather than with their labels.
+    // The clear control is a button in a row of controls, so it is aligned
+    // with them rather than with their labels.
     .btn {
-      justify-self: start;
+      flex: 0 0 auto;
     }
 
-    // Same reason as the download filters: a native select sizes itself to its
-    // options, so equal columns alone leave boxes of different widths.
+    // A native select sizes itself to its options, so the wrapper gives it the
+    // column's width instead.
     select {
       width: 100%;
+    }
+  }
+
+  &__kinds {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border: 1px solid var(--ingenic-surface-border);
+    border-radius: 999px;
+    background: var(--ingenic-surface-tint);
+  }
+
+  &__kind {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--primary-high);
+    font-size: var(--font-0);
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      color: var(--ingenic-link);
+    }
+
+    &.is-current {
+      background: var(--ingenic-navy);
+      color: #fff;
+    }
+  }
+
+  &__chip {
+    display: flex;
+    flex: 0 1 18rem;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 12rem;
+
+    > span {
+      color: var(--primary-medium);
+      font-size: var(--font-down-1);
+      font-weight: 700;
+    }
+  }
+}
+
+// A catalogue card, shaped like a shop listing: the picture is the top of the
+// card and gets the whole width, the introduction has room to breathe, and the
+// two links are on the bottom edge. Clicking anywhere on it opens the detail
+// dialog; the links stop their own clicks so they leave the site instead.
+.ingenic-product-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--primary-low);
+  border-radius: calc(var(--ingenic-radius) + 2px);
+  background: var(--secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--ingenic-surface-border);
+    box-shadow: 0 8px 22px rgb(12 40 60 / 10%);
+    outline: none;
+    transform: translateY(-1px);
+  }
+
+  &__media {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    padding: 1.1rem;
+    border-bottom: 1px solid var(--primary-very-low);
+    background: var(--ingenic-sky-50);
+  }
+
+  // `contain` rather than `cover`: the picture is the thing being looked at,
+  // and cropping the edge of a board hides the connectors someone is counting.
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  &__placeholder {
+    color: var(--primary-low-mid);
+    font-size: 2.5rem;
+  }
+
+  &__body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1rem 1.15rem 0.5rem;
+  }
+
+  &__name {
+    margin: 0;
+    color: var(--primary);
+    font-size: var(--font-up-1);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  &__meta {
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+  }
+
+  // Three lines at most, and three lines' worth of room even when the text is
+  // shorter: the links then sit on the same line across a row, which is what
+  // makes the grid read as a shelf rather than as a ragged list.
+  &__description {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0.15rem 0 0;
+    color: var(--primary-high);
+    font-size: var(--font-0);
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    min-height: calc(1.45em * 3);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding: 0.85rem 1.15rem 1.15rem;
+
+    // Core's plain button is transparent on white, which reads as a bare word
+    // rather than the second of two choices. Give it an outline of its own.
+    .btn:not(.btn-primary) {
+      border-color: var(--ingenic-surface-border);
+      background: var(--secondary);
+      color: var(--ingenic-navy);
+    }
+
+    .btn {
+      flex: 1 1 0;
+      justify-content: center;
+    }
+  }
+}
+
+// The card's detail page, drawn over the catalogue. A dialog rather than a
+// route because the catalogue is where the visitor was and where they will go
+// back to; the whole screen is the backdrop and Escape closes it.
+.ingenic-board-dialog {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgb(8 30 48 / 55%);
+
+  &__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(760px, 100%);
+    max-height: min(88vh, 900px);
+    overflow: hidden;
+    border-radius: calc(var(--ingenic-radius) + 4px);
+    background: var(--secondary);
+    box-shadow: 0 24px 64px rgb(8 30 48 / 35%);
+  }
+
+  &__close {
+    position: absolute;
+    z-index: 1;
+    top: 0.65rem;
+    right: 0.65rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--secondary);
+    box-shadow: 0 1px 6px rgb(8 30 48 / 18%);
+    color: var(--primary-high);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ingenic-link);
+    }
+  }
+
+  &__scroll {
+    overflow-y: auto;
+    padding: 1.5rem 1.6rem 1.1rem;
+  }
+
+  &__media {
+    display: grid;
+    place-items: center;
+    margin-bottom: 1.15rem;
+    padding: 1.25rem;
+    border-radius: var(--ingenic-radius);
+    background: var(--ingenic-sky-50);
+  }
+
+  &__image {
+    max-width: 100%;
+    max-height: 19rem;
+    object-fit: contain;
+  }
+
+  &__title {
+    margin: 0 2.2rem 0.35rem 0;
+    font-size: var(--font-up-2);
+    line-height: 1.25;
+  }
+
+  &__meta {
+    margin-bottom: 1rem;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+  }
+
+  // Written by an administrator as plain text, so the line breaks they typed
+  // are kept.
+  &__details {
+    margin: 0 0 1rem;
+    color: var(--primary-high);
+    font-size: var(--font-0);
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+
+  &__specs {
+    margin: 0 0 1.1rem;
+    padding-left: 1.15rem;
+    color: var(--primary-high);
+    font-size: var(--font-0);
+    line-height: 1.65;
+  }
+
+  &__documentation {
+    display: inline-block;
+    margin-bottom: 0.35rem;
+    font-size: var(--font-down-1);
+    font-weight: 600;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.6rem;
+    border-top: 1px solid var(--primary-very-low);
+    background: var(--secondary);
+
+    .btn:not(.btn-primary) {
+      border-color: var(--ingenic-surface-border);
+      background: var(--secondary);
+      color: var(--ingenic-navy);
+    }
+
+    .btn {
+      flex: 1 1 0;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 600px) {
+    padding: 0.75rem;
+
+    &__scroll {
+      padding: 1.15rem 1.1rem 0.9rem;
+    }
+
+    &__actions {
+      padding: 0.85rem 1.1rem;
     }
   }
 }
