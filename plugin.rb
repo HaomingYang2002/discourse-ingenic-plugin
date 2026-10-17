@@ -85,6 +85,7 @@ require_relative "app/controllers/admin/ingenic_controller"
 require_relative "app/controllers/ingenic_docs_controller"
 require_relative "app/controllers/ingenic_downloads_controller"
 require_relative "app/controllers/ingenic_boards_controller"
+require_relative "app/controllers/ingenic_mcp_controller"
 require_relative "app/controllers/ingenic_site_controller"
 require_relative "app/controllers/ingenic_points_controller"
 require_relative "app/controllers/ingenic_home_controller"
@@ -435,6 +436,12 @@ after_initialize do
     get "/ingenic/downloads/:id/file", to: "ingenic_downloads#deliver", as: :ingenic_download_file
 
     get "/ingenic/boards", to: "ingenic_boards#index", as: :ingenic_boards
+
+    # The MCP landing page. `/mcp` itself belongs to core and answers POST (a
+    # GET there is deliberately 405), so the human-readable page lives under
+    # the plugin's own prefix and points at the endpoint rather than replacing
+    # it.
+    get "/ingenic/mcp", to: "ingenic_mcp#index", as: :ingenic_mcp
 
     # The homepage slots, the footer's partner strip and the footer's link
     # columns. One address because the theme asks for them together, and there is

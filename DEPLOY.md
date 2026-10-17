@@ -452,6 +452,28 @@ It is under **Admin → Settings → Site admin**, or search the settings screen
 | `ingenic_hero_title` | empty | Optional headline above the homepage blocks |
 | `ingenic_hero_subtitle` | empty | Optional supporting line |
 
+### MCP and the assistant
+
+Both are Discourse features the theme surfaces; neither is a plugin setting.
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `mcp_server_enabled` | on | Serves `/mcp` and shows **MCP** in the sidebar between the forum links and **More**. Off, the link is hidden and `/ingenic/mcp` explains that the server is not enabled |
+| `ai_bot_enabled` | on | Shows the floating assistant in the bottom-right corner. It comes from `discourse-ai`; the theme hides the launcher when the bot is off |
+
+**MCP** is set under **Admin → Settings → MCP**; approved clients, the exposed
+tools and the server's activity are managed under **Admin → MCP**. The theme's
+page at `/ingenic/mcp` is documentation for a developer — the endpoint to paste
+into a client, the three steps of connecting one, and snippets for Claude Code
+and VS Code. The endpoint itself is `/mcp`, which only answers `POST`; a `GET`
+there is deliberately `405`, so the human-readable page lives under the plugin's
+own prefix.
+
+**The assistant** is `discourse-ai`'s bot. The launcher opens a short panel and
+leads into `/discourse-ai/ai-bot/conversations`; a signed-out reader gets a
+sign-in link that returns to that page. If `discourse-ai` is not installed, the
+launcher does not appear.
+
 ---
 
 ## 4. Content
@@ -758,6 +780,11 @@ Open these and check each one:
 - [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; its labels are **EN** and **中文**, each language named in its own language; picking 中文 reloads the page in Chinese, and picking EN brings it back
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
+- [ ] the sidebar order is Topics · MCP · Site Feedback · All Categories · More, and clicking **MCP** opens `/ingenic/mcp` with that row highlighted
+- [ ] `/ingenic/mcp` shows the address `https://<your forum>/mcp`, a **Copy** button that copies it, and the steps and client snippets; the same page in 中文 is fully translated
+- [ ] with `mcp_server_enabled` off, **MCP** disappears from the sidebar and `/ingenic/mcp` says the server is not enabled
+- [ ] the robot launcher sits in the bottom-right corner, opens a panel, closes with **Escape**, and its button leads to the AI bot's conversations (or to sign-in first when signed out)
+- [ ] with `ai_bot_enabled` off, the launcher is gone and the rest of the page is unaffected
 - [ ] a docs URL can be pasted into a fresh tab and opens directly
 - [ ] `/ingenic/home` opens the same page as `/`
 - [ ] the section block shows three cards out of the box — Technical Discussions, Online Documentation, Official Announcements — and **All sections** opens `/categories`
