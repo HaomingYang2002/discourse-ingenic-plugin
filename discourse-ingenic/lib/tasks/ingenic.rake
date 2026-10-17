@@ -78,7 +78,7 @@ namespace :ingenic do
     end
   end
 
-  desc "Name the site Ingenic, install its wordmark, choose the Ingenic home page, seed the footer links, and drop Discourse's badge"
+  desc "Name the site Ingenic, fill an empty logo with a stand-in, choose the Ingenic home page, seed the footer links, and drop Discourse's badge"
   task setup: :environment do
     # Three settings that decide what a visitor sees before they read anything:
     # who the forum says it belongs to, whether the front page is the forum's
@@ -99,6 +99,12 @@ namespace :ingenic do
     # therefore changes the page title and nothing a visitor sees in the corner;
     # the logo has to be an upload too. The wordmark is shipped with the plugin
     # and found by digest so a second run reuses the first upload.
+    # The file shipped with the plugin is a stand-in, not this site's own
+    # wordmark: an administrator replaces it in Admin → Site settings →
+    # Branding, and that upload is what visitors should keep seeing. So the
+    # logo is filled in only where it is empty — a value someone chose is not
+    # this task's to overwrite, and rerunning it after a deployment must not
+    # put the placeholder back.
     logo_file = Rails.root.join("plugins/discourse-ingenic/assets/images/ingenic-logo.png")
     if logo_file.file?
       digest = Digest::SHA1.file(logo_file).hexdigest
@@ -114,8 +120,8 @@ namespace :ingenic do
       if logo.persisted?
         { logo: "logo", logo_small: "logo_small", mobile_logo: "mobile_logo" }.each do |setting, label|
           current = SiteSetting.public_send(setting)
-          next if current&.id == logo.id
-          changes << "#{label}: #{current&.original_filename || "none"} → ingenic-logo.png"
+          next if current.present?
+          changes << "#{label}: none → ingenic-logo.png (a stand-in — replace it under Branding)"
           SiteSetting.public_send("#{setting}=", logo)
         end
       else
@@ -265,7 +271,7 @@ namespace :ingenic do
       [
         "logo",
         SiteSetting.logo.present? && !SiteSetting.logo.url.to_s.include?("discourse-logo-sketch"),
-        "the header still wears Discourse's own logo, which overrides the site title — rake ingenic:setup installs the Ingenic wordmark",
+        "the header still wears Discourse's own logo, which overrides the site title — upload your own under Branding; rake ingenic:setup fills an empty logo with a stand-in",
       ],
       [
         "enable_powered_by_discourse",

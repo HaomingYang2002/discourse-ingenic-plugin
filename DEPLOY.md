@@ -638,6 +638,50 @@ Then create a product, a version and pages, as in `docs/seeding.md`. Until there
 is at least one published product, `/ingenic/docs` shows its "not available"
 state — that is expected, not a bug.
 
+### What a site can change, and what is written into the code
+
+There are two kinds of thing here, and they are changed in two different places.
+Knowing which is which is what makes a deployment a settings change rather than
+a release.
+
+**Content and appearance, edited in the admin screens — no deployment:**
+
+| What | Where |
+| --- | --- |
+| Wordmark, small and mobile logo, favicon | **Admin → Site settings → Branding** (`logo`, `logo_small`, `mobile_logo`, `favicon`) |
+| Front page blocks — add, remove, reorder, heading, width, count | **Ingenic → Site content → Home page** |
+| Promotion picture, headline, button and destination | **Ingenic → Site content → Promotions** |
+| Partner platform icon or QR image, label, destination | **Ingenic → Site content → Partner platforms** |
+| Footer columns and the section jump links at the bottom of every page | **Ingenic → Site content → Footer columns** |
+| Board picture, specifications, documentation and Buy links | **Ingenic → Boards** |
+| SDK and firmware files, their access level and price | **Ingenic → Downloads** |
+| Documentation series, chips, versions and pages | **Ingenic → Documentation** |
+| Sidebar entries, labels and destinations | plugin setting `ingenic_nav_items` (JSON; empty uses the shipped list) |
+| Hero headline and supporting line | theme setting `ingenic_hero_title` / `ingenic_hero_subtitle` |
+| Sidebar width, side, order and heading; languages offered | theme settings |
+| Download storage path, application email, developer form, points values, bounty limits | plugin site settings |
+
+Two details worth knowing about the images:
+
+- The wordmark shipped in the plugin (`assets/images/ingenic-logo.png`) is a
+  **stand-in drawn for testing**, not an Ingenic brand file. Replace it under
+  Branding. `rake ingenic:setup` fills the logo only when it is empty, so it
+  will not put the stand-in back over an upload of your own.
+- Pictures inside promotions, partner platforms and boards are **URLs**, not
+  uploads. Upload the image to the forum first (or host it on a CDN) and paste
+  its address. The logo and favicon are the two places that take an upload.
+
+**Fixed in the code — changing any of these is a code change and a redeploy:**
+
+- Colours, type, spacing and the sky-blue palette (theme SCSS).
+- The five shortcut buttons under the home page search, and where they point.
+- The nine block types and the three widths (full, main, side) the renderer
+  understands. A type it does not know is refused rather than half-drawn.
+- Interface labels and their English and Chinese translations.
+- The sidebar's icons and its three groups (forum / developer resources / the
+  member's own).
+- The stand-in wordmark file.
+
 ---
 
 ## 5. Verify
