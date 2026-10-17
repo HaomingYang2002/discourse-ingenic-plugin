@@ -143,6 +143,23 @@ describe IngenicBoard do
     end
   end
 
+  describe "the links out" do
+    it "accepts a board with only an application link" do
+      expect(unsaved_board(purchase_url: nil)).to be_valid
+    end
+
+    it "accepts a board with only a purchase link" do
+      expect(unsaved_board(application_url: nil, purchase_url: "https://example.com/buy")).to be_valid
+    end
+
+    it "accepts a board with neither link, which the catalogue shows as sold out" do
+      record = board(application_url: nil, purchase_url: nil)
+
+      expect(record.reload.application_url).to be_nil
+      expect(record.purchase_url).to be_nil
+    end
+  end
+
   describe "publication" do
     it "leaves a withdrawn board out of the published list" do
       record = board(product: chip)

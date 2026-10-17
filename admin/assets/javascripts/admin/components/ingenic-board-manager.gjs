@@ -267,8 +267,12 @@ export default class IngenicBoardManager extends Component {
 
           <label>
             <span>{{i18n "admin.ingenic.boards.fields.application_url"}}</span>
-            <input name="application_url" value={{this.draft.application_url}} required />
+            <input name="application_url" value={{this.draft.application_url}} />
           </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.boards.fields.application_url_hint"}}
+          </p>
 
           <label>
             <span>{{i18n "admin.ingenic.boards.fields.documentation_url"}}</span>

@@ -23,7 +23,9 @@ class IngenicBoard < ActiveRecord::Base
   validates :slug, presence: true, uniqueness: { scope: :locale }
   validates :name, presence: true
   validates :kind, presence: true, inclusion: { in: KINDS }
-  validates :application_url, presence: true
+  # Neither link is required: a card draws the buttons whose links are set, and
+  # a board with neither is sold out. The card is what tells the visitor, so
+  # there is nothing here to validate.
   validate :product_is_a_chip
   validate :purchase_link_is_usable
 
