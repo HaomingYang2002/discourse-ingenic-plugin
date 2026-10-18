@@ -20,7 +20,16 @@ require "rails_helper"
 #     a running application server may still be reading the column — so the
 #     migration aborted there and nothing after it ran.
 RSpec.describe "migrations" do
-  ROOT = File.expand_path("../..", __dir__)
+  # The plugin is its own repository now, so the spec tree sits directly under
+  # it. Walk up to the file that marks the root rather than counting `..`, so
+  # the tests do not depend on where the repository happens to be checked out.
+  ROOT =
+    begin
+      dir = File.expand_path(__dir__)
+      dir = File.dirname(dir) until File.exist?(File.join(dir, "plugin.rb")) || dir == "/"
+      dir
+    end
+
   REGULAR = File.join(ROOT, "db/migrate")
   POST = File.join(ROOT, "db/post_migrate")
 

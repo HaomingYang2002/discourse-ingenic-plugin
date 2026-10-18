@@ -10,8 +10,18 @@ require "rails_helper"
 # or a job reaches for it. That makes it exactly the kind of mistake a passing
 # test suite would hide, which is why it gets its own test.
 RSpec.describe "plugin requires" do
+  # The plugin is its own repository now, so the spec tree sits directly under
+  # it. Walk up to the file that marks the root rather than counting `..`, so
+  # the tests do not depend on where the repository happens to be checked out.
+  def root
+    @root ||= begin
+      dir = File.expand_path(__dir__)
+      dir = File.dirname(dir) until File.exist?(File.join(dir, "plugin.rb")) || dir == "/"
+      dir
+    end
+  end
+
   it "names every ruby file it ships" do
-    root = File.expand_path("..", __dir__)
     source = File.read(File.join(root, "plugin.rb"))
     required = source.scan(/require_relative\s+"([^"]+)"/).flatten
 
@@ -24,7 +34,6 @@ RSpec.describe "plugin requires" do
   end
 
   it "does not require files that are not there" do
-    root = File.expand_path("..", __dir__)
     source = File.read(File.join(root, "plugin.rb"))
     required = source.scan(/require_relative\s+"([^"]+)"/).flatten
 
@@ -46,7 +55,6 @@ RSpec.describe "plugin requires" do
   # does not matter. This test is deliberately limited to the class-body forms
   # for that reason.
   it "requires a file before whatever names its constants in a class body" do
-    root = File.expand_path("..", __dir__)
     required =
       File
         .read(File.join(root, "plugin.rb"))
