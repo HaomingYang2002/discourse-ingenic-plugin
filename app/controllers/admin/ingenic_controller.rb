@@ -139,18 +139,25 @@ module Admin
     end
 
     def create_board
-      # A board has no parent scope to inherit from: it is created by whoever
-      # holds the boards feature, or by an administrator. Scoped managers edit
-      # the boards they were granted.
-      authorize_create!(feature: "boards")
+      # A board belongs to a chip when it has one, and that chip's boards owner
+      # may add it even without the boards screen. A board with no chip has no
+      # scope to inherit from, so it takes the screen-wide grant.
       record = IngenicBoard.new(board_params)
+      authorize_area_create!(record, "boards")
       save_or_error(record) { render_json_dump(board: board_json(record)) }
     end
 
     def update_board
       record = IngenicBoard.find(params[:id])
-      record.assign_attributes(board_params)
       authorize_ingenic!(record)
+
+      previous_product_id = record.product_id
+      record.assign_attributes(board_params)
+      # Moving a board between chips is a grant on the destination as well as
+      # the source, or a manager could file their board under somebody else's.
+      if record.product_id != previous_product_id
+        authorize_area_create!(record, "boards")
+      end
       save_or_error(record) { render_json_dump(board: board_json(record)) }
     end
 
@@ -231,11 +238,10 @@ module Admin
     end
 
     def create_download
-      # A resource with no parent scope to inherit from is created by whoever
-      # holds the downloads feature; a scoped manager edits the resources they
-      # were granted.
-      authorize_create!(feature: "downloads")
+      # A chip resource belongs to the person who looks after that chip's
+      # downloads; an algorithm has no chip, so it takes the screen-wide grant.
       record = IngenicDownload.new(download_params)
+      authorize_area_create!(record, "downloads")
       uploaded = apply_upload(record)
 
       begin
@@ -260,8 +266,15 @@ module Admin
 
     def update_download
       record = IngenicDownload.find(params[:id])
-      record.assign_attributes(download_params)
       authorize_ingenic!(record)
+
+      previous_slug = record.product_slug
+      record.assign_attributes(download_params)
+      # Re-filing the resource under another chip needs a grant on that chip
+      # too, not only on the one it came from.
+      if record.product_slug != previous_slug
+        authorize_area_create!(record, "downloads")
+      end
 
       replaced = record.storage_path
       uploaded = apply_upload(record)
@@ -647,8 +660,47 @@ module Admin
         permissions:
           IngenicPermission
             .includes(:user, :group)
-            .order(:resource_type, :resource_id)
+            .order(:area, :resource_type, :resource_id)
             .map { |permission| permission_json(permission) },
+        products:
+          IngenicDocProduct
+            .order(:kind, :position, :name)
+            .map do |product|
+              {
+                "id" => product.id,
+                "slug" => product.slug,
+                "name" => product.name,
+                "kind" => product.kind,
+                "parent_id" => product.parent_id,
+              }
+            end,
+      )
+    end
+
+    # The user and group pickers' search. A raw id box asked an administrator
+    # to know a number; this answers the question they actually have, which is
+    # "who is this?" — by username or full name for an account, by name for a
+    # group. Empty query returns the first page so a picker opened with no
+    # typing still shows something to choose.
+    def permission_principals
+      authorize_ingenic!(permissions: true)
+      query = params[:q].to_s.strip
+      pattern = "%#{query}%"
+
+      users = User.activated.not_suspended
+      users = users.where("username ILIKE :q OR name ILIKE :q", q: pattern) if query.present?
+      users = users.order(:username).limit(20)
+
+      groups = Group.all
+      groups = groups.where("name ILIKE ?", pattern) if query.present?
+      groups = groups.order(:name).limit(20)
+
+      render_json_dump(
+        users:
+          users.map do |user|
+            { "id" => user.id, "username" => user.username, "name" => user.name }
+          end,
+        groups: groups.map { |group| { "id" => group.id, "name" => group.name } },
       )
     end
 
@@ -744,6 +796,106 @@ module Admin
         end
       end
 
+      head :no_content
+    end
+
+    # Category × group, the forum's own sections rather than the plugin's
+    # screens. A category is where a topic lives, so this is the matrix that
+    # answers "who may post in Technical Discussions" and "who may publish in
+    # Official Open Source". It writes Discourse's `category_groups` rows
+    # directly, which is the same table Admin → Categories edits.
+    #
+    # Only custom groups are offered. Automatic groups already mean something
+    # fixed — staff moderate everything, trust levels gate by activity — and a
+    # row against one would either be ignored or quietly widen a rule the forum
+    # did not choose here.
+    def category_permissions
+      authorize_admin_only!
+
+      render_json_dump(
+        categories:
+          Category.order(:parent_category_id, :position, :name).map do |category|
+            {
+              "id" => category.id,
+              "name" => category.name,
+              "slug" => category.slug,
+              "color" => category.color,
+              "parent_id" => category.parent_category_id,
+              "permissions" => category.permissions_params,
+            }
+          end,
+        groups:
+          Group.where(automatic: false).order(:name).map do |group|
+            { "id" => group.id, "name" => group.name, "full_name" => group.full_name }
+          end,
+        permission_types: CategoryGroup.permission_types,
+      )
+    end
+
+    def update_category_permissions
+      authorize_admin_only!
+
+      payload = params[:changes]
+      payload = JSON.parse(payload) if payload.is_a?(String)
+      raise Discourse::InvalidParameters.new(:changes) unless payload.is_a?(Array)
+
+      assignable = Group.where(automatic: false).pluck(:id).to_set
+      types = CategoryGroup.permission_types
+      touched = Set.new
+      had_rows = {}
+
+      CategoryGroup.transaction do
+        payload.each do |row|
+          # The payload arrives as JSON, so its keys are strings; a form-encoded
+          # request hands back ActionController::Parameters instead.
+          row = row.to_unsafe_h if row.respond_to?(:to_unsafe_h)
+          row = row.with_indifferent_access if row.respond_to?(:with_indifferent_access)
+          category = Category.find_by(id: row[:category_id])
+          group_id = row[:group_id].to_i
+          next if category.nil? || !assignable.include?(group_id)
+
+          # Read before this row is applied: the guard below is about a
+          # category losing the last row it had, not about one that never had
+          # any. A category with no rows is already open to everyone, so "none"
+          # there changes nothing and must not block the rest of the save.
+          had_rows[category.id] =
+            CategoryGroup.where(category_id: category.id).exists? unless had_rows.key?(category.id)
+          touched << category.id
+          wanted = row[:permission].to_s
+          if wanted == "none"
+            CategoryGroup.where(category_id: category.id, group_id: group_id).delete_all
+            next
+          end
+
+          type = types[wanted.to_sym]
+          raise Discourse::InvalidParameters.new(:permission) if type.nil?
+
+          entry =
+            CategoryGroup.find_or_initialize_by(category_id: category.id, group_id: group_id)
+          entry.permission_type = type
+          entry.save!
+        end
+
+        # Discourse reads "no rows" as everyone-full, so clearing every group
+        # from a category that had only custom rows would quietly make it
+        # readable and postable by the whole site. Refuse instead of doing the
+        # opposite of what was asked.
+        emptied =
+          touched.find do |id|
+            had_rows[id] && CategoryGroup.where(category_id: id).count.zero?
+          end
+        if emptied
+          category = Category.find_by(id: emptied)
+          raise Discourse::InvalidParameters.new(
+                  I18n.t(
+                    "ingenic.admin_errors.category_needs_grant",
+                    category: category&.name || emptied,
+                  ),
+                )
+        end
+      end
+
+      Site.clear_cache
       head :no_content
     end
 
@@ -888,7 +1040,7 @@ module Admin
     end
 
     def permission_params
-      params.permit(:user_id, :group_id, :resource_type, :resource_id, :permission)
+      params.permit(:user_id, :group_id, :resource_type, :resource_id, :permission, :area)
     end
 
     # The event is deliberately not permitted: it is the ledger's vocabulary,
@@ -1360,8 +1512,49 @@ module Admin
         )
     end
 
+    # The screen shows names, not ids. A grant is only meaningful to the person
+    # reading it as "the C Series team may manage T33's downloads", so the
+    # principal and the record are resolved here and the row carries both the
+    # labels and the ids an edit or a revoke needs.
     def permission_json(permission)
-      permission.attributes.slice("id", "user_id", "group_id", "resource_type", "resource_id", "permission")
+      resource = permission.resource
+
+      permission
+        .attributes
+        .slice("id", "user_id", "group_id", "area", "resource_type", "resource_id", "permission")
+        .merge(
+          "principal" =>
+            if permission.user
+              {
+                "type" => "user",
+                "id" => permission.user_id,
+                "username" => permission.user.username,
+                "name" => permission.user.name,
+              }
+            elsif permission.group
+              { "type" => "group", "id" => permission.group_id, "name" => permission.group.name }
+            end,
+          "resource" => {
+            "type" => permission.resource_type,
+            "id" => permission.resource_id,
+            "label" => permission_resource_label(resource),
+          },
+        )
+    end
+
+    def permission_resource_label(resource)
+      return I18n.t("ingenic.admin_errors.missing_resource") if resource.nil?
+
+      case resource
+      when IngenicDocProduct
+        resource.chip? ? "#{resource.name} · #{resource.parent&.name}" : resource.name
+      when IngenicDocPage
+        resource.title
+      when IngenicBoard, IngenicDownload
+        resource.name
+      else
+        "#{resource.class.name} ##{resource.id}"
+      end
     end
   end
 end

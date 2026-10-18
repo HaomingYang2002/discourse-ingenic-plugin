@@ -90,7 +90,8 @@ These were considered and deliberately left out of this version:
 
 | Area | Members can | Administrators can |
 | --- | --- | --- |
-| Forum | Read, post, reply, like, flag, bookmark, message, search | Categories, groups, trust levels, site settings — all core Discourse |
+| Forum | Read, post, reply, like, flag, bookmark, message, search; choose existing tags on a topic | Categories, groups, trust levels, site settings — all core Discourse; per-section permissions and the tag vocabulary |
+| Tags and status | Choose a tag while posting; see 公告, 已解决 and 高赞 beside titles | Create tags, assign their colours, and leave acceptance and likes to apply the status tags |
 | Documentation | Pick a series and chip, switch version, search, read, follow previous/next, open the forum discussion | Create the product tree, versions and pages; control publishing; grant scoped edit rights |
 | Downloads | Filter the catalogue; download, fill in developer details, apply for access, unlock with points | Upload files, set access and price, review applications, grant or revoke access, read the download record |
 | Boards | Filter by type and chip, read the dialog, follow Apply or Buy | Create cards, set type, chip, links, sold-out switch, specifications, publication and order |
@@ -124,6 +125,10 @@ Below that, in Discourse's community section, are **MCP**, **Site Feedback** and
 **All Categories**. The MCP link appears only while the site's MCP server is
 enabled; Site Feedback appears when the site has that category.
 
+Discourse's own **Tags** and **Chat** sections are not shown. A tag here labels
+or dates a topic; it is not a second way to browse, so the tag list stays out of
+the sidebar (see 4.4). The forum does not use chat.
+
 The site may let you collapse sections or filter the sidebar; those controls are
 Discourse's own. The developer-resources heading can be renamed by an
 administrator, and the whole list can be replaced in the site settings, so a
@@ -142,13 +147,39 @@ the current week. It is a display of the points ledger, not a separate score.
 ### 4.4 Posting and discussions
 
 Posting, replying, quoting, mentions, likes, bookmarks, notifications and
-flags are all standard Discourse behaviour. Two Ingenic features attach to
+flags are all standard Discourse behaviour. Three Ingenic features attach to
 topics:
 
 - A **bounty banner** appears above the posts when the topic carries a standing
-  offer (see section 9).
+  offer (see section 9). A **Bounty** field in the composer lets you set one
+  aside while writing the first post (see 9.2).
 - The **official identity badge** appears beside the names of members of the
   groups an administrator listed for it.
+- **Tags** say what a topic is about and what state it is in. When posting you
+  may choose from the tags that already exist; creating a new tag is an
+  administrator's job, so the vocabulary stays a vocabulary rather than a
+  collection of one-off spellings.
+
+Three tags are status rather than subject: **公告** (official notice),
+**已解决** (solved) and **高赞** (well liked). Only staff may apply them.
+**已解决** is put on a question when its author accepts an answer — staff can
+accept on the author's behalf — and comes off if the acceptance is undone.
+**高赞** is applied automatically when the likes across the topic's live posts
+reach the threshold, 20 by default, and is taken off again if the count falls
+below it. A 高赞 that a moderator applied by hand is never removed by that
+automatic pass.
+
+In a topic list, the first line of each row is its section, and that badge is
+the way into the category; tags are not a second navigation list.
+
+**Open Source** is a section rather than a place to post. Its page shows the two
+sub-sections as cards at the top — Third-Party Open Source and Official Open
+Source — and below them the topics of both together. A card opens its
+sub-section; the merged list is for readers who do not care which one a project
+belongs to. The parent itself is read-only and takes no topics: posting happens
+in one of the two sub-sections. By default Official Open Source accepts topics
+from administrators only, while anyone with an account may publish in
+Third-Party Open Source.
 
 ### 4.5 Language
 
@@ -383,6 +414,15 @@ system and the solved plugin to be enabled.
 
 ### 9.2 Opening and settling
 
+A new topic can carry a bounty from the moment it is posted: the composer's
+**Bounty** field holds the amount, and the offer opens as soon as the topic
+exists. If the amount is more than your balance, the composer asks whether to
+adjust it or to post without a bounty — a topic posted without one can still get
+an offer afterwards. If the amount is above the forum's ceiling, the field says
+so and waits for a smaller number.
+
+To do it from an existing topic:
+
 1. Open your own topic.
 2. Choose **Set a bounty on this question**, enter an amount within the allowed
    range and submit. The points leave your balance at that moment.
@@ -451,25 +491,31 @@ The button only appears while the AI bot is enabled for the site.
 ### 11.1 Where the screens are
 
 Everything the plugin owns is under **Admin → Plugins → Ingenic**. Opening any
-one of them draws the plugin's tab bar under the page heading — **Documentation**,
-**Downloads**, **Development boards**, **Permissions**, **Points** and **Site
-content** — so the screens can be reached by clicking a tab. The admin sidebar's
-single **Ingenic** entry opens **Documentation** first. Each screen also has its
-own address, which is what to bookmark or link to:
+one of them draws the plugin's tab bar under the page heading —
+**Documentation**, **Development boards**, **Permissions**, **Permission
+matrix**, **Section permissions**, **Tag colours**, **Downloads**, **Points**
+and **Site content** — so the screens can be reached by clicking a tab. The
+admin sidebar's single **Ingenic** entry opens **Documentation** first. Each
+screen also has its own address, which is what to bookmark or link to:
 
 | Screen | Address | What it manages |
 | --- | --- | --- |
 | Documentation | `/admin/plugins/discourse-ingenic/documentation` | Series, chips, versions, pages |
-| Downloads | `/admin/plugins/discourse-ingenic/downloads` | Resources, applications, access, categories, download record |
 | Development boards | `/admin/plugins/discourse-ingenic/boards` | Board and sample cards |
+| Permissions | `/admin/plugins/discourse-ingenic/permissions` | Per-chip grants for documentation, downloads and boards |
+| Permission matrix | `/admin/plugins/discourse-ingenic/group-permissions` | Which management screens a custom group may use |
+| Section permissions | `/admin/plugins/discourse-ingenic/category-permissions` | Category × group posting and reading levels |
+| Tag colours | `/admin/plugins/discourse-ingenic/tag-colours` | The colour family of each tag |
+| Downloads | `/admin/plugins/discourse-ingenic/downloads` | Resources, applications, access, categories, download record |
 | Points | `/admin/plugins/discourse-ingenic/points` | Rules, adjustments, balances, movements |
-| Permissions | `/admin/plugins/discourse-ingenic/permissions` | Scoped management grants |
 | Site content | `/admin/plugins/discourse-ingenic/site` | Home layout, home cards, promotions, header buttons, partner platforms, footer |
 
 Scoped managers see the documentation, boards and downloads they were granted.
-The application queue, access list, download record, points, permissions and
-site content remain administrator-only. The server enforces this; hiding a
-button is not the boundary.
+The application queue, access list, download record, points and site content
+remain administrator-only. The Permissions, Permission matrix, Section
+permissions and Tag colours screens are administrator-only as well, because
+each of them decides who else may do something. The server enforces this;
+hiding a button is not the boundary.
 
 Before the first content is added, deploy the plugin and theme and run the
 category seeding task — see [`DEPLOY.md`](../DEPLOY.md) and
@@ -566,18 +612,63 @@ are untouched, and an administrator's manual adjustment still works.
 
 ### 11.6 Permissions
 
-A grant names a principal (a user or a group), a resource type and a resource
-ID. The resource types offered in the screen are documentation product,
-documentation page and development board; scoped download management is also
-supported by the data model. A product grant is inherited by its versions and
-pages; a page grant is inherited only by that page's children. Granting a series
-lets a manager edit its chips and their pages; granting one chip does not give
-access to its siblings or its parent.
+Permissions come in two layers, and they answer different questions.
+
+**What a group may manage.** The **Permission matrix** grants a whole
+management screen to a custom group: documentation, development boards,
+downloads, points or site content. A tick means "every product", not "this
+product". Automatic groups (staff, trust levels, everyone) are not listed: a
+tick on `everyone` would hand a management screen to every visitor, which is
+not a decision a checkbox should make by accident.
+
+**Which chip a person looks after.** The **Permissions** screen is built around
+the product tree. A chip can have three independent owners — its documentation,
+its downloads and its development boards — because T33's documentation and
+T33's SDK are often different people. Choose a series or a chip on the left,
+then the tab for the job, then search for a member or a group by username, full
+name or group name. A grant on a series is inherited by every chip under it; the
+chip's tab shows those as inherited, and they are revoked on the series, where
+they were given, rather than copied down. Grants on individual pages, boards and
+downloads made before the tree existed are listed separately at the bottom and
+can still be revoked.
 
 Every create, read, update and delete is checked on the server, so a hidden
 button is only presentation.
 
-### 11.7 Site content
+**Forum sections.** The **Section permissions** screen sets, for each category,
+what each custom group may do there. The levels are Discourse's own and are not
+three shades of one verb: **No grant**, **Can read**, **Can reply** (reply
+without starting a topic) and **Can post** (start a topic and reply). A category
+with no group rows at all is open to every group; a save that would leave a
+category that had rows with none is refused, because that would quietly open it
+to everyone. Automatic groups keep whatever they already have — the screen only
+edits custom groups.
+
+### 11.7 Tags and status
+
+The **Tag colours** screen assigns each tag one of five colour families: sky for
+general discussion, tech for platforms, tools and hardware, resolved for
+answered questions, announcement for official notices, and hot for topics the
+community liked. The families are fixed so the forum keeps one visual language,
+while the tag list is the site's own — a tag created this morning appears on
+the screen without a release. A tag with no assignment falls back to the family
+its name suggests, and then to sky.
+
+The vocabulary is a site policy, not a convention:
+
+- Only administrators may create a tag; any signed-in account may choose an
+  existing one while posting.
+- **公告**, **已解决** and **高赞** belong to a tag group only staff may apply.
+  Members see them and cannot add them.
+- **已解决** follows discourse-solved's accepted answer. **高赞** is applied by
+  a scheduled pass that counts likes across the topic's live posts and compares
+  them with `ingenic_high_like_threshold` (20 by default); it adds the tag at
+  the threshold and removes it when the count falls back, but never removes one
+  a moderator applied by hand.
+- Tags are not navigation: Discourse's Tags section is hidden from the sidebar,
+  and the category badge on a topic remains the way into its section.
+
+### 11.8 Site content
 
 The **Site content** screen has six tabs:
 
@@ -602,7 +693,7 @@ The home page block types are: popular sections, promotions, announcements,
 discussions, latest topics, hot topics, downloads, development boards, bounties
 and the weekly contributor leaderboard.
 
-### 11.8 Site settings
+### 11.9 Site settings
 
 The settings that matter most are under **Admin → Settings** (search for
 `ingenic`):
@@ -624,6 +715,8 @@ The settings that matter most are under **Admin → Settings** (search for
 | `ingenic_bounty_min_points` | Smallest allowed bounty (default 50) |
 | `ingenic_bounty_max_points` | Largest allowed bounty (default 5000) |
 | `ingenic_bounty_expiry_days` | Days before an unanswered bounty is refunded (default 14) |
+| `ingenic_high_like_enabled` | Turns the automatic 高赞 pass on or off |
+| `ingenic_high_like_threshold` | Likes across a topic's live posts that earn 高赞 (default 20) |
 
 `ingenic_nav_items` is a JSON array. An entry looks like this:
 
@@ -644,7 +737,7 @@ the group. Use `"category": "technical-discussions"` instead of `href` to point
 at a Discourse category. An empty setting uses the theme's default list. A
 configured list replaces the default wholesale.
 
-### 11.9 Theme settings
+### 11.10 Theme settings
 
 Under **Admin → Customize → Themes → Ingenic Community → Settings**:
 
@@ -662,7 +755,7 @@ The language switcher also needs Discourse's `allow_user_locale` and
 `set_locale_from_cookie` settings. The accent colour is the **Ingenic Light**
 colour scheme, editable with Discourse's normal colour pickers.
 
-### 11.10 Content languages
+### 11.11 Content languages
 
 Every documentation page, download and board row carries a locale. Use
 Discourse's own codes — `en`, `zh_CN` — because they are compared with the
@@ -674,7 +767,7 @@ The theme's interface strings live in `locales/en.yml` and `locales/zh_CN.yml`;
 adding another language means adding a file with the same keys. The header
 switcher only offers languages listed in `ingenic_locales`.
 
-### 11.11 Housekeeping
+### 11.12 Housekeeping
 
 - Run `rake ingenic:doctor` after a restore or a category change; it reports
   missing forum sections.

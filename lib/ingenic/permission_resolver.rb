@@ -15,6 +15,21 @@ module Ingenic
       "IngenicDownload" => "downloads",
     }.freeze
 
+    # Which job a record belongs to when nobody has named one. A product is the
+    # exception: it is shared by all three, so the caller passes the area it
+    # means and the default here is only the documentation screen's reading of
+    # "may this person manage this chip".
+    # Literal strings, not `IngenicPermission::DOCUMENTATION`: this file is
+    # required at plugin activation, before the `after_initialize` block has
+    # loaded the models those constants live in.
+    AREA_FOR_CLASS = {
+      "IngenicDocProduct" => "documentation",
+      "IngenicDocVersion" => "documentation",
+      "IngenicDocPage" => "documentation",
+      "IngenicBoard" => "boards",
+      "IngenicDownload" => "downloads",
+    }.freeze
+
     def initialize(user)
       @user = user
     end
@@ -34,23 +49,23 @@ module Ingenic
     end
 
     def can_manage?(record)
+      can_manage_area?(record, AREA_FOR_CLASS[record.class.name])
+    end
+
+    # The per-chip question in one domain: may this account look after this
+    # product's documentation, downloads or boards? A whole-screen grant counts
+    # in every domain, because it is the same trust the screen represents.
+    def can_manage_area?(record, area)
       return true if admin?
-      return false unless @user
+      return false if @user.nil? || record.nil?
 
-      feature = FEATURE_FOR_CLASS[record.class.name]
-      return true if feature && can_manage_feature?(feature)
+      area = area.to_s
+      return false unless IngenicPermission::AREAS.include?(area)
+      return true if can_manage_feature?(area)
 
-      scopes = permission_scopes(record)
+      scopes = scopes_for(record, area)
       scopes.any? do |resource_type, resource_ids|
-        IngenicPermission.where(
-          permission: "manage",
-          resource_type: resource_type,
-          resource_id: resource_ids,
-        ).where(
-          "user_id = :user_id OR group_id IN (:group_ids)",
-          user_id: @user.id,
-          group_ids: group_ids,
-        ).exists?
+        grants_for(resource_type, area).where(resource_id: resource_ids).exists?
       end
     end
 
@@ -60,26 +75,44 @@ module Ingenic
       feature = FEATURE_FOR_CLASS[klass.name]
       return klass.all if feature && can_manage_feature?(feature)
 
-      direct_ids = grants_for(klass.name).pluck(:resource_id)
-      if klass == IngenicDocVersion
-        product_ids = descendant_ids(
-          IngenicDocProduct,
-          grants_for("IngenicDocProduct").pluck(:resource_id),
-        )
+      case klass.name
+      when "IngenicDownload"
+        visible_downloads
+      when "IngenicBoard"
+        visible_boards
+      when "IngenicDocVersion"
+        direct_ids = grants_for("IngenicDocVersion", IngenicPermission::DOCUMENTATION).pluck(:resource_id)
+        product_ids =
+          descendant_ids(
+            IngenicDocProduct,
+            grants_for("IngenicDocProduct", IngenicPermission::DOCUMENTATION).pluck(:resource_id),
+          )
         product_version_ids = IngenicDocVersion.where(product_id: product_ids).pluck(:id)
-        return klass.where(id: direct_ids + product_version_ids)
-      elsif klass == IngenicDocPage
-        product_ids = descendant_ids(IngenicDocProduct, grants_for("IngenicDocProduct").pluck(:resource_id))
-        product_page_ids = IngenicDocPage.where(
-          version_id: IngenicDocVersion.where(product_id: product_ids).select(:id),
-        ).pluck(:id)
+        klass.where(id: direct_ids + product_version_ids)
+      when "IngenicDocPage"
+        direct_ids = grants_for("IngenicDocPage", IngenicPermission::DOCUMENTATION).pluck(:resource_id)
+        product_ids =
+          descendant_ids(
+            IngenicDocProduct,
+            grants_for("IngenicDocProduct", IngenicPermission::DOCUMENTATION).pluck(:resource_id),
+          )
+        product_page_ids =
+          IngenicDocPage.where(
+            version_id: IngenicDocVersion.where(product_id: product_ids).select(:id),
+          ).pluck(:id)
         page_ids = descendant_ids(IngenicDocPage, direct_ids)
-        return klass.where(id: page_ids + product_page_ids)
+        klass.where(id: page_ids + product_page_ids)
+      else
+        product_ids =
+          descendant_ids(
+            IngenicDocProduct,
+            grants_for("IngenicDocProduct", IngenicPermission::DOCUMENTATION).pluck(:resource_id),
+          )
+        direct_ids = grants_for(klass.name, IngenicPermission::DOCUMENTATION).pluck(:resource_id)
+        return klass.none if direct_ids.empty? && product_ids.empty?
+
+        klass.where(id: descendant_ids(klass, direct_ids) + product_ids)
       end
-
-      return klass.none if direct_ids.empty?
-
-      klass.where(id: descendant_ids(klass, direct_ids))
     end
 
     def can_manage_permissions?
@@ -101,6 +134,33 @@ module Ingenic
 
     attr_reader :user
 
+    # Downloads and boards are filed under a chip by a slug or a foreign key,
+    # not by the product tree's own id list. Both listings have to agree with
+    # what `can_manage_area?` would say about one record, or a scoped manager
+    # sees an empty page for a chip they were just granted.
+    def visible_downloads
+      direct_ids = grants_for("IngenicDownload", IngenicPermission::DOWNLOADS).pluck(:resource_id)
+      product_ids =
+        descendant_ids(
+          IngenicDocProduct,
+          grants_for("IngenicDocProduct", IngenicPermission::DOWNLOADS).pluck(:resource_id),
+        )
+      slugs = IngenicDocProduct.where(id: product_ids).pluck(:slug)
+
+      IngenicDownload.where(id: direct_ids).or(IngenicDownload.where(product_slug: slugs))
+    end
+
+    def visible_boards
+      direct_ids = grants_for("IngenicBoard", IngenicPermission::BOARDS).pluck(:resource_id)
+      product_ids =
+        descendant_ids(
+          IngenicDocProduct,
+          grants_for("IngenicDocProduct", IngenicPermission::BOARDS).pluck(:resource_id),
+        )
+
+      IngenicBoard.where(id: direct_ids).or(IngenicBoard.where(product_id: product_ids))
+    end
+
     def group_ids
       # `everyone` is an automatic group rather than a row anybody joins, and its
       # id is only known once Discourse has seeded its own groups — so the
@@ -112,12 +172,12 @@ module Ingenic
       @group_ids ||= @user.groups.pluck(:id) + [Group::AUTO_GROUPS[:everyone]]
     end
 
-    def grants_for(resource_type)
-      IngenicPermission.where(permission: "manage", resource_type: resource_type)
+    def grants_for(resource_type, area)
+      IngenicPermission.where(permission: "manage", resource_type: resource_type, area: area)
         .where("user_id = :user_id OR group_id IN (:group_ids)", user_id: @user.id, group_ids: group_ids)
     end
 
-    def permission_scopes(record)
+    def scopes_for(record, area)
       case record
       when IngenicDocProduct
         [["IngenicDocProduct", product_ancestors(record).map(&:id)]]
@@ -129,7 +189,14 @@ module Ingenic
           ["IngenicDocPage", page_ancestors(record).map(&:id)],
         ]
       when IngenicBoard
-        [["IngenicBoard", [record.id]]]
+        scopes = [["IngenicBoard", [record.id]]]
+        scopes << ["IngenicDocProduct", product_ancestors(record.product).map(&:id)] if record.product
+        scopes
+      when IngenicDownload
+        scopes = [["IngenicDownload", [record.id]]]
+        product = IngenicDocProduct.find_by(slug: record.product_slug) if record.product_slug.present?
+        scopes << ["IngenicDocProduct", product_ancestors(product).map(&:id)] if product
+        scopes
       else
         [[record.class.name, [record.id]]]
       end
@@ -153,30 +220,36 @@ module Ingenic
       result
     end
 
+    # Every id in the subtree, the given roots included. Walked one generation
+    # at a time and only over ids not already seen: asking for the children of
+    # the whole accumulated set re-finds the generation just added, because a
+    # child's parent is still in the set, and grows the result forever.
     def descendant_ids(klass, ids)
       return ids if klass == IngenicBoard
+      return [] if ids.blank?
 
-      if klass == IngenicDocProduct
-        products = IngenicDocProduct.where(id: ids).to_a
-        loop do
-          children = IngenicDocProduct.where(parent_id: products.map(&:id)).to_a
-          break if children.empty?
-
-          products.concat(children)
+      model =
+        case klass.name
+        when "IngenicDocProduct"
+          IngenicDocProduct
+        when "IngenicDocPage"
+          IngenicDocPage
+        else
+          return ids
         end
-        products.map(&:id).uniq
-      elsif klass == IngenicDocPage
-        pages = IngenicDocPage.where(id: ids).to_a
-        loop do
-          children = IngenicDocPage.where(parent_id: pages.map(&:id)).to_a
-          break if children.empty?
 
-          pages.concat(children)
-        end
-        pages.map(&:id).uniq
-      else
-        ids
+      seen = ids.uniq
+      frontier = seen
+
+      loop do
+        children = model.where(parent_id: frontier).pluck(:id) - seen
+        break if children.empty?
+
+        seen.concat(children)
+        frontier = children
       end
+
+      seen
     end
   end
 end

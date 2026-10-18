@@ -69,6 +69,11 @@ export default {
             currentWhen: "adminPlugins.show.group-permissions",
           },
           {
+            label: "admin.ingenic.category_permissions.title",
+            route: "adminPlugins.show.category-permissions",
+            currentWhen: "adminPlugins.show.category-permissions",
+          },
+          {
             label: "admin.ingenic.tag_colours.title",
             route: "adminPlugins.show.tag-colours",
             currentWhen: "adminPlugins.show.tag-colours",

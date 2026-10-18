@@ -22,12 +22,34 @@ class IngenicPermission < ActiveRecord::Base
   RESOURCE_TYPES = %w[IngenicDocProduct IngenicDocPage IngenicBoard IngenicDownload].freeze
   PERMISSIONS = %w[manage].freeze
 
+  # What a grant is over. A product — a series or a chip — can carry all three,
+  # which is what lets the same chip have a documentation owner, a downloads
+  # owner and a boards owner who are different people. Every other kind of
+  # record belongs to exactly one area.
+  DOCUMENTATION = "documentation"
+  DOWNLOADS = "downloads"
+  BOARDS = "boards"
+  AREAS = [DOCUMENTATION, DOWNLOADS, BOARDS].freeze
+
+  AREA_FOR_RESOURCE_TYPE = {
+    "IngenicDocProduct" => DOCUMENTATION,
+    "IngenicDocPage" => DOCUMENTATION,
+    "IngenicBoard" => BOARDS,
+    "IngenicDownload" => DOWNLOADS,
+  }.freeze
+
+  before_validation :take_default_area
+
+  validates :area, inclusion: { in: AREAS }
   validates :resource_type, inclusion: { in: RESOURCE_TYPES }
   validates :permission, inclusion: { in: PERMISSIONS }
   validates :user, presence: true, unless: :group
   validates :group, presence: true, unless: :user
   validates :resource_id, presence: true
   validate :resource_must_exist
+  validate :area_matches_resource
+
+  scope :in_area, ->(area) { where(area: area) }
 
   def resource
     resource_type.constantize.find_by(id: resource_id) if RESOURCE_TYPES.include?(resource_type)
@@ -35,10 +57,25 @@ class IngenicPermission < ActiveRecord::Base
 
   private
 
+  # Callers that predate the column, and a console grant typed without one,
+  # keep the meaning the old interface had rather than becoming invalid.
+  def take_default_area
+    self.area = AREA_FOR_RESOURCE_TYPE[resource_type] if area.blank?
+  end
+
   def resource_must_exist
     return if resource_type.blank? || resource_id.blank?
     return errors.add(:resource_type, :inclusion) unless RESOURCE_TYPES.include?(resource_type)
 
     errors.add(:resource_id, :invalid) if resource.nil?
+  end
+
+  def area_matches_resource
+    return if area.blank? || resource_type.blank?
+    # A product node is the one thing worth granting that is shared by all
+    # three jobs; everything else names the area it belongs to.
+    return if resource_type == "IngenicDocProduct"
+
+    errors.add(:area, :invalid) unless AREA_FOR_RESOURCE_TYPE[resource_type] == area
   end
 end

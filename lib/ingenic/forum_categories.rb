@@ -48,6 +48,7 @@ module Ingenic
         permissions: {
           everyone: :full,
         },
+        solved: true,
       },
       {
         slug: "open-source",
@@ -73,6 +74,7 @@ module Ingenic
         permissions: {
           everyone: :full,
         },
+        solved: true,
       },
       {
         slug: "official",
@@ -89,6 +91,24 @@ module Ingenic
         },
       },
     ].freeze
+
+    # How the Open Source section draws itself. Two sub-forums and a merged
+    # topic list: the cards at the top are the way into each sub-forum, and
+    # below them every topic from both, so a reader who does not care which one
+    # a project belongs to can read the section as one place. Discourse builds
+    # this natively — `show_subcategory_list` plus a category-scoped list with
+    # `default_list_filter` of "all" — which is why there is no custom page for
+    # it here.
+    #
+    # The About topic stays as the category definition (it is what the section
+    # description is read from) but is unpinned: a definition is not an
+    # announcement, and a pinned one pushes the first real topic down.
+    OPEN_SOURCE = "open-source"
+    OPEN_SOURCE_LAYOUT = {
+      show_subcategory_list: true,
+      subcategory_list_style: "boxes",
+      default_list_filter: "all",
+    }.freeze
 
     module_function
 
@@ -113,7 +133,40 @@ module Ingenic
     # and the difference is invisible until somebody cannot post where they
     # should be able to.
     def seed!(permissions: false)
-      SPECS.filter_map { |spec| seed_one(spec, permissions: permissions) }
+      rows = SPECS.filter_map { |spec| seed_one(spec, permissions: permissions) }
+      ensure_layout!
+      rows
+    end
+
+    # Applies the section's display settings to a category that already exists.
+    # Safe to run on every boot-time setup: it writes only what differs, and
+    # returns the list of what changed so a task can print it.
+    def ensure_layout!
+      category = Category.find_by(slug: OPEN_SOURCE)
+      return [] if category.nil?
+
+      changes = []
+      OPEN_SOURCE_LAYOUT.each do |attribute, wanted|
+        next if category.public_send(attribute) == wanted
+
+        changes << "#{attribute}=#{wanted.inspect}"
+        category.public_send("#{attribute}=", wanted)
+      end
+
+      category.save! if changes.any?
+      unpin_about(category)
+
+      changes
+    end
+
+    def unpin_about(category)
+      topic = Topic.find_by(id: category.topic_id)
+      return if topic.nil?
+
+      attributes = {}
+      attributes[:pinned_at] = nil if topic.pinned_at
+      attributes[:pinned_globally] = false if topic.pinned_globally
+      topic.update_columns(attributes) if attributes.any?
     end
 
     def seed_one(spec, permissions:)
@@ -140,6 +193,7 @@ module Ingenic
 
       if permissions
         category.set_permissions(spec[:permissions])
+        apply_flags(category, spec)
         category.save!
         return {
           slug: spec[:slug],
@@ -148,13 +202,20 @@ module Ingenic
         }
       end
 
-      current = category.permissions_params
+      solved_changed = apply_flags(category, spec)
+      category.save! if solved_changed
+
+      current = normalized(category.permissions_params)
+      # An empty set is not "nobody": Discourse stores everyone-full by storing
+      # no rows at all.
+      current = { "everyone" => "full" } if current.empty?
       wanted = normalized(spec[:permissions])
 
       {
         slug: spec[:slug],
         action: :kept,
-        detail: current == wanted ? nil : "permissions are #{permission_words(current)}, not #{permission_words(wanted)}",
+        detail:
+          current == wanted ? nil : "permissions are #{permission_words(current)}, not #{permission_words(wanted)}",
       }
     end
 
@@ -177,9 +238,22 @@ module Ingenic
       # setting and because a sub-forum's permissions are validated against its
       # section's on the way in.
       category.set_permissions(spec[:permissions])
+      apply_flags(category, spec)
       localize(category, spec)
       category.save!
       category
+    end
+
+    # Accepted answers are a discourse-solved column. A forum without the
+    # plugin simply has nowhere to put the flag, which is not an error: the
+    # status tag then only ever appears where staff put it by hand.
+    def apply_flags(category, spec)
+      return false unless spec[:solved]
+      return false unless category.respond_to?(:enable_accepted_answers=)
+      return false if category.respond_to?(:enable_accepted_answers?) && category.enable_accepted_answers?
+
+      category.enable_accepted_answers = true
+      true
     end
 
     # Discourse keeps a category's name per language in its own table and reads

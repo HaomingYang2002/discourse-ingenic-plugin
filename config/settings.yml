@@ -222,3 +222,21 @@ plugins:
   ingenic_bounty_expiry_days:
     default: 14
     client: false
+
+  # 高赞 — the status tag that says a topic's posts have collected enough likes
+  # to be worth a reader's time. The tag is applied by a scheduled pass, not by
+  # the like event: the count is a total across the topic, and only a pass over
+  # the totals can both add and take the tag back.
+  #
+  # The threshold is the number of likes across every live, regular post in the
+  # topic. Twenty is the forum's default. A topic that falls back below it loses
+  # the tag only if the pass put it there — a 高赞 a moderator applied by hand is
+  # theirs to remove.
+  ingenic_high_like_enabled:
+    default: true
+    client: false
+
+  ingenic_high_like_threshold:
+    default: 20
+    min: 1
+    client: false

@@ -40,6 +40,27 @@ module Admin
         raise Discourse::NotFound unless allowed
       end
 
+      # A record that is about to be filed under a chip, in one named domain.
+      # The whole-screen grant still counts; the chip grant is what lets one
+      # person look after T33's downloads without being able to touch T32 or
+      # T33's documentation.
+      def authorize_area_create!(record, area)
+        resolver = ::Ingenic::PermissionResolver.new(current_user)
+        allowed = resolver.can_manage_feature?(area)
+
+        unless allowed
+          product =
+            if record.respond_to?(:product_slug) && record.product_slug.present?
+              IngenicDocProduct.find_by(slug: record.product_slug)
+            elsif record.respond_to?(:product)
+              record.product
+            end
+          allowed = product.present? && resolver.can_manage_area?(product, area)
+        end
+
+        raise Discourse::NotFound unless allowed
+      end
+
       # Site-wide content — the homepage slots, the footer, the classification
       # list, the download record — is not filed under a product or a board, so
       # there is no scope for a content manager to be granted over it. It is an

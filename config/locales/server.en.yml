@@ -15,6 +15,8 @@ en:
     ingenic_bounty_min_points: "The smallest offer a bounty may be."
     ingenic_bounty_max_points: "The largest offer a bounty may be."
     ingenic_bounty_expiry_days: "Days an offer stands before it is closed and the points are returned to the asker."
+    ingenic_high_like_enabled: "Tag topics the community liked enough with 高赞, and take the tag back when the likes are gone. A tag a moderator applied by hand is never removed by this pass."
+    ingenic_high_like_threshold: "How many likes across a topic's live posts earn the 高赞 tag. Twenty is the forum's default; a topic that falls below the threshold loses the tag at the next pass."
 
   ingenic:
     errors:
@@ -31,6 +33,8 @@ en:
       points_amount_blank: "Enter a number of points to add or deduct."
       applicant_deleted: "The account that applied has been deleted, so there is no one to grant access to."
       invalid_homepage_blocks: "The homepage layout could not be read. Nothing was saved."
+      category_needs_grant: "%{category} would be left with no group, and a category with no group is open to everyone. Give at least one group a permission."
+      missing_resource: "Deleted record"
     developer_form:
       missing: "%{field} is required."
     downloads:

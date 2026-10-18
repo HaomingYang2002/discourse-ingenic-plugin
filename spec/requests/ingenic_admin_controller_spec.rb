@@ -601,4 +601,136 @@ describe Admin::IngenicController do
       expect(IngenicGroupPermission.count).to eq(0)
     end
   end
+
+  describe "GET /admin/plugins/discourse-ingenic/permission-principals" do
+    it "finds accounts and custom groups by name" do
+      user = Fabricate(:user, username: "t33_owner")
+      group = Fabricate(:group, name: "t33-owners")
+
+      get "/admin/plugins/discourse-ingenic/permission-principals.json", params: { q: "t33" }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["users"].map { |row| row["id"] }).to include(user.id)
+      expect(response.parsed_body["groups"].map { |row| row["id"] }).to include(group.id)
+    end
+  end
+
+  describe "GET /admin/plugins/discourse-ingenic/category-permissions" do
+    it "lists sections with their current group permissions and the custom groups" do
+      custom = Fabricate(:group, name: "tech-writers")
+      category = Fabricate(:category, name: "Technical Discussions")
+      CategoryGroup.create!(category: category, group: custom, permission_type: 3)
+
+      get "/admin/plugins/discourse-ingenic/category-permissions.json"
+
+      expect(response.status).to eq(200)
+      row = response.parsed_body["categories"].find { |c| c["id"] == category.id }
+      expect(row["permissions"]).to eq("tech-writers" => 3)
+      expect(response.parsed_body["groups"].map { |g| g["name"] }).to include("tech-writers")
+      expect(response.parsed_body["groups"].map { |g| g["name"] }).not_to include("everyone")
+      expect(response.parsed_body["permission_types"]).to eq(
+        "full" => 1, "create_post" => 2, "readonly" => 3,
+      )
+    end
+
+    it "is not offered to a member" do
+      sign_in(Fabricate(:user))
+
+      get "/admin/plugins/discourse-ingenic/category-permissions.json"
+
+      expect(response.status).to eq(404)
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/category-permissions" do
+    it "writes and clears group rows" do
+      grants = Fabricate(:group, name: "official")
+      readers = Fabricate(:group, name: "readers")
+      category = Fabricate(:category, name: "Official Open Source")
+      CategoryGroup.create!(category: category, group: readers, permission_type: 3)
+
+      put "/admin/plugins/discourse-ingenic/category-permissions.json",
+          params: {
+            changes: JSON.generate(
+              [
+                { category_id: category.id, group_id: grants.id, permission: "full" },
+                { category_id: category.id, group_id: readers.id, permission: "none" },
+              ],
+            ),
+          }
+
+      expect(response.status).to eq(204)
+      expect(CategoryGroup.where(category: category).pluck(:group_id, :permission_type)).to eq(
+        [[grants.id, 1]],
+      )
+    end
+
+    it "refuses to leave a section with no group at all" do
+      only = Fabricate(:group)
+      category = Fabricate(:category, name: "News")
+      CategoryGroup.create!(category: category, group: only, permission_type: 1)
+
+      put "/admin/plugins/discourse-ingenic/category-permissions.json",
+          params: {
+            changes: JSON.generate(
+              [{ category_id: category.id, group_id: only.id, permission: "none" }],
+            ),
+          }
+
+      expect(response.status).to eq(400)
+      expect(response.parsed_body["errors"].join).to include("News")
+      expect(CategoryGroup.where(category: category).count).to eq(1)
+    end
+
+    it "leaves a section that never had rows at none without refusing the save" do
+      group = Fabricate(:group)
+      untouched = Fabricate(:category, name: "Third-Party Open Source")
+      changed = Fabricate(:category, name: "News")
+      CategoryGroup.create!(category: changed, group: group, permission_type: 1)
+
+      put "/admin/plugins/discourse-ingenic/category-permissions.json",
+          params: {
+            changes: JSON.generate(
+              [
+                { category_id: untouched.id, group_id: group.id, permission: "none" },
+                { category_id: changed.id, group_id: group.id, permission: "readonly" },
+              ],
+            ),
+          }
+
+      expect(response.status).to eq(204)
+      expect(CategoryGroup.where(category: untouched).count).to eq(0)
+      expect(CategoryGroup.where(category: changed).pluck(:permission_type)).to eq([3])
+    end
+
+    it "ignores automatic groups" do
+      category = Fabricate(:category)
+      CategoryGroup.create!(
+        category: category,
+        group_id: Group::AUTO_GROUPS[:everyone],
+        permission_type: 3,
+      )
+
+      put "/admin/plugins/discourse-ingenic/category-permissions.json",
+          params: {
+            changes: JSON.generate(
+              [
+                {
+                  category_id: category.id,
+                  group_id: Group::AUTO_GROUPS[:registered],
+                  permission: "full",
+                },
+              ],
+            ),
+          }
+
+      expect(response.status).to eq(204)
+      expect(
+        CategoryGroup.where(category: category, group_id: Group::AUTO_GROUPS[:registered]).count,
+      ).to eq(0)
+      expect(
+        CategoryGroup.where(category: category, group_id: Group::AUTO_GROUPS[:everyone]).count,
+      ).to eq(1)
+    end
+  end
 end

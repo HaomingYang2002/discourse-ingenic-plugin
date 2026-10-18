@@ -95,4 +95,97 @@ describe Ingenic::PermissionResolver do
       expect(described_class.new(user).can_manage_any_content?).to eq(true)
     end
   end
+
+  describe "areas" do
+    fab!(:board) do
+      IngenicBoard.create!(slug: "t33-board", name: "T33 Board", kind: "board", product: child, locale: "en")
+    end
+    fab!(:download) do
+      IngenicDownload.create!(
+        name: "T33 SDK",
+        family: IngenicDownload::FAMILY_CHIP,
+        product_slug: child.slug,
+        access_level: IngenicDownload::LOGIN_ONLY,
+        file_url: "https://example.com/sdk.zip",
+        locale: "en",
+      )
+    end
+
+    it "keeps a documentation grant out of the chip's boards and downloads" do
+      IngenicPermission.create!(
+        user: user,
+        resource_type: "IngenicDocProduct",
+        resource_id: family.id,
+        area: "documentation",
+      )
+      resolver = described_class.new(user)
+
+      expect(resolver.can_manage?(child)).to eq(true)
+      expect(resolver.can_manage?(board)).to eq(false)
+      expect(resolver.can_manage?(download)).to eq(false)
+    end
+
+    it "lets a downloads grant reach the resources filed under the chip" do
+      IngenicPermission.create!(
+        user: user,
+        resource_type: "IngenicDocProduct",
+        resource_id: family.id,
+        area: "downloads",
+      )
+      resolver = described_class.new(user)
+
+      expect(resolver.can_manage?(download)).to eq(true)
+      expect(resolver.can_manage?(board)).to eq(false)
+      expect(resolver.can_manage?(version)).to eq(false)
+    end
+
+    it "lets a boards grant reach the boards filed under the chip" do
+      IngenicPermission.create!(
+        user: user,
+        resource_type: "IngenicDocProduct",
+        resource_id: family.id,
+        area: "boards",
+      )
+      resolver = described_class.new(user)
+
+      expect(resolver.can_manage?(board)).to eq(true)
+      expect(resolver.can_manage?(download)).to eq(false)
+      expect(resolver.can_manage?(version)).to eq(false)
+    end
+
+    it "lists only the downloads and boards the grant covers" do
+      other_chip =
+        IngenicDocProduct.create!(
+          slug: "c100",
+          name: "C100",
+          kind: IngenicDocProduct::CHIP,
+          locale: "en",
+          parent: other_family,
+        )
+      other_board =
+        IngenicBoard.create!(slug: "c-series-board", name: "C Board", kind: "board", product: other_chip, locale: "en")
+      other_download =
+        IngenicDownload.create!(
+          name: "C SDK",
+          family: IngenicDownload::FAMILY_CHIP,
+          product_slug: other_chip.slug,
+          access_level: IngenicDownload::LOGIN_ONLY,
+          file_url: "https://example.com/c-sdk.zip",
+          locale: "en",
+        )
+      IngenicPermission.create!(
+        user: user,
+        resource_type: "IngenicDocProduct",
+        resource_id: family.id,
+        area: "downloads",
+      )
+
+      expect(described_class.new(user).visible_ids(IngenicDownload)).to contain_exactly(download)
+      expect(described_class.new(user).visible_ids(IngenicDownload)).not_to include(other_download)
+      # The same grant says nothing about boards, so that screen stays empty
+      # rather than borrowing the downloads list.
+      expect(described_class.new(user).visible_ids(IngenicBoard)).to be_empty
+      expect(described_class.new(user).visible_ids(IngenicBoard)).not_to include(other_board, board)
+    end
+  end
 end

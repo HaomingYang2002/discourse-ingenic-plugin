@@ -144,6 +144,16 @@ namespace :ingenic do
       SiteSetting.default_homepage = "ingenic-home"
     end
 
+    # Tags are the forum's vocabulary, not a free-for-all: the three state tags
+    # exist in a staff-only group, only administrators create new tags, and any
+    # logged-in account may use one that exists. Solved is switched on so the
+    # 已解决 tag has something to follow. The method is idempotent and skips the
+    # parts that need a plugin this forum does not have.
+    Ingenic::TagPolicy.apply!
+
+    layout = Ingenic::ForumCategories.ensure_layout!
+    changes << "Open Source section: #{layout.join(", ")}" if layout.any?
+
     # Both footer lists are content, and the theme hides the footer until there
     # is some: a fresh install would reach the bottom of the page with nothing
     # there. Two destinations every Ingenic deployment has, plus the sections a
@@ -364,6 +374,13 @@ namespace :ingenic do
       line = "  #{row[:slug].ljust(width)}  #{row[:action]}"
       line += "  — #{row[:detail]}" if row[:detail]
       puts line
+    end
+
+    layout = Ingenic::ForumCategories.ensure_layout!
+    unless layout.empty?
+      puts
+      puts "  open-source layout: #{layout.join(", ")}"
+      puts "  (sub-forum cards on top, both sub-forums' topics below, About unpinned)"
     end
 
     created = report.count { |row| row[:action] == :created }

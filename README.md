@@ -199,8 +199,9 @@ development boards, downloads, the application queue, grants, points, site
 content and permissions. Documentation and boards can also be opened by a member
 who was given either the screen's feature on the Permission matrix or a grant on
 one product or board. Downloads, points and site content are reachable through a
-feature grant too. The Permissions, Permission matrix and Tag colours screens
-stay administrator-only, because each of them decides who may do something else.
+feature grant too. The Permissions, Permission matrix, Section permissions and
+Tag colours screens stay administrator-only, because each of them decides who
+may do something else.
 
 The Permission matrix grants a whole management screen to a custom group:
 documentation, development boards, downloads, points or site content. It is the
@@ -211,12 +212,26 @@ Automatic groups (staff, trust levels, everyone) are not listed: a tick on
 `everyone` would hand a management screen to every visitor, which is not a
 decision a checkbox should make by accident.
 
-Tag colours assigns each tag one of four colour families: sky for general
+Tag colours assigns each tag one of five colour families: sky for general
 discussion, tech for platforms, tools and hardware, resolved for answered
-questions, and announcement for official notices. The families are fixed so the
-forum keeps one visual language, while the tag list is the site's own — a tag
-created this morning appears on the screen without a release. A tag with no
-assignment keeps the family its name suggests, and then sky.
+questions, announcement for official notices, and hot for topics the community
+liked. The families are fixed so the forum keeps one visual language, while the
+tag list is the site's own — a tag created this morning appears on the screen
+without a release. A tag with no assignment keeps the family its name suggests,
+and then sky.
+
+The Section permissions screen is the forum-side counterpart: for each category,
+it writes the `category_groups` rows that say what each custom group may do —
+read, reply, or post. A category with no rows is open to everyone, so a save
+that would empty a category that had rows is refused rather than silently
+opening it. Automatic groups are left alone; only custom groups are edited.
+
+The tag vocabulary is policy, not convention. Creating a tag is administrator
+work; choosing an existing one while posting is not. 公告, 已解决 and 高赞 form
+a staff-only tag group. 已解决 follows discourse-solved's accepted answer, and a
+scheduled pass adds 高赞 at `ingenic_high_like_threshold` likes (20 by default)
+and removes it when the count falls, without touching a tag a moderator applied
+by hand.
 
 Bounties have no screen of their own, because nothing about them is an
 administrator's decision: members open them on their own topics and settle them
@@ -332,6 +347,8 @@ copy of the category list.
 | `ingenic_bounty_min_points` | The smallest offer a bounty may be |
 | `ingenic_bounty_max_points` | The largest offer a bounty may be |
 | `ingenic_bounty_expiry_days` | Days an offer stands before it is closed and refunded |
+| `ingenic_high_like_enabled` | Whether the scheduled pass maintains 高赞 |
+| `ingenic_high_like_threshold` | Likes across a topic's live posts that earn 高赞 (20 by default) |
 
 The three JSON settings accept the shapes documented inline in
 `config/settings.yml`. The locale setting offers only the languages this

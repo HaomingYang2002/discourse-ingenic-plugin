@@ -15,6 +15,8 @@ zh_CN:
     ingenic_bounty_min_points: "悬赏可设置的最小积分。"
     ingenic_bounty_max_points: "悬赏可设置的最大积分。"
     ingenic_bounty_expiry_days: "悬赏的挂出天数，到期后自动结束并将积分退回给提问者。"
+    ingenic_high_like_enabled: "为社区点赞足够多的帖子打上「高赞」标签，点赞数回落后再撤回。管理员手动打的「高赞」不会被此任务移除。"
+    ingenic_high_like_threshold: "帖子所有正常回复的点赞数达到多少时获得「高赞」标签。默认 20；低于阈值的帖子会在下次执行时失去由系统打上的标签。"
 
   ingenic:
     errors:
@@ -31,6 +33,8 @@ zh_CN:
       points_amount_blank: "请输入要增加或扣除的积分数。"
       applicant_deleted: "申请人的账号已被删除，没有账号可以授予访问权限。"
       invalid_homepage_blocks: "无法读取首页布局，未保存任何内容。"
+      category_needs_grant: "%{category} 将没有任何用户组，而没有任何用户组的分类会对所有人开放。请至少给一个组设置权限。"
+      missing_resource: "记录已删除"
     developer_form:
       missing: "%{field}为必填项。"
     downloads:

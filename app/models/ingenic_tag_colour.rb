@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# One tag's place in the theme's four colour families.
+# One tag's place in the theme's five colour families.
 #
 # Only tags an administrator has changed have a row. The built-in list below is
 # what the theme shipped with, so a site that never opens the screen keeps the
@@ -9,7 +9,7 @@
 class IngenicTagColour < ActiveRecord::Base
   self.table_name = "ingenic_tag_colours"
 
-  FAMILIES = %w[sky tech resolved announcement].freeze
+  FAMILIES = %w[sky tech resolved announcement hot].freeze
 
   # The names the theme classifies out of the box. Keys are lower-cased because
   # Discourse writes a Latin tag's `data-tag-name` in lower case; Chinese names
@@ -32,6 +32,8 @@ class IngenicTagColour < ActiveRecord::Base
     "已解决" => "resolved",
     "announcement" => "announcement",
     "公告" => "announcement",
+    "hot" => "hot",
+    "高赞" => "hot",
   }.freeze
 
   validates :tag_name, presence: true, uniqueness: true

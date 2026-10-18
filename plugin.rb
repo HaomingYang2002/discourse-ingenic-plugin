@@ -31,6 +31,8 @@ require_relative "lib/ingenic/forum_categories"
 require_relative "lib/ingenic/official_flair"
 require_relative "lib/ingenic/points"
 require_relative "lib/ingenic/point_events"
+require_relative "lib/ingenic/status_tags"
+require_relative "lib/ingenic/tag_policy"
 require_relative "lib/ingenic/bounties"
 require_relative "lib/ingenic/config_export"
 
@@ -81,6 +83,7 @@ require_relative "app/jobs/regular/ingenic_download_request_email"
 require_relative "app/jobs/regular/ingenic_download_decision_email"
 require_relative "app/jobs/regular/ingenic_official_flair_sync"
 require_relative "app/jobs/scheduled/ingenic_bounty_expiry"
+require_relative "app/jobs/scheduled/ingenic_high_like_tag"
 
 require_relative "app/controllers/admin/ingenic/base_controller"
 require_relative "app/controllers/admin/ingenic_controller"
@@ -171,6 +174,19 @@ after_initialize do
   on(:like_destroyed) { |post_action, _creator| Ingenic::PointEvents.like_destroyed(post_action) }
   on(:accepted_solution) { |post| Ingenic::PointEvents.solution_accepted(post) }
   on(:unaccepted_solution) { |post| Ingenic::PointEvents.solution_unaccepted(post) }
+
+  # The visible half of the same two events: 已解决 is put on the topic when an
+  # answer is accepted and taken off when it is not. Guarded on the plugin's
+  # switch for the same reason as the handlers above — these outlive the
+  # setting, and a forum that has switched the plugin off should not go on
+  # editing topics in the background.
+  on(:accepted_solution) do |post|
+    Ingenic::StatusTags.solved!(post.topic, solved: true) if SiteSetting.ingenic_enabled
+  end
+
+  on(:unaccepted_solution) do |post|
+    Ingenic::StatusTags.solved!(post.topic, solved: false) if SiteSetting.ingenic_enabled
+  end
 
   # Deleting a topic takes its 高分悬赏 with it, and the points behind a standing
   # one come back on the way out.
@@ -366,10 +382,13 @@ after_initialize do
       put "/boards/:id" => "admin/ingenic#update_board"
       delete "/boards/:id" => "admin/ingenic#destroy_board"
       get "/permissions" => "admin/ingenic#permissions"
+      get "/permission-principals" => "admin/ingenic#permission_principals"
       post "/permissions" => "admin/ingenic#create_permission"
       delete "/permissions/:id" => "admin/ingenic#destroy_permission"
       get "/group-permissions" => "admin/ingenic#group_permissions"
       put "/group-permissions" => "admin/ingenic#update_group_permissions"
+      get "/category-permissions" => "admin/ingenic#category_permissions"
+      put "/category-permissions" => "admin/ingenic#update_category_permissions"
       get "/tag-colours" => "admin/ingenic#tag_colours"
       put "/tag-colours" => "admin/ingenic#update_tag_colours"
 

@@ -576,6 +576,42 @@
   }
 }
 
+// Section permissions. Sections down the side, groups across the top. The
+// select carries the whole meaning of a cell, so it is wide enough to read at a
+// glance rather than as a truncated word.
+.ingenic-category-matrix {
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  &__group {
+    font-weight: 600;
+  }
+
+  &__section {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__child {
+    color: var(--primary-medium);
+  }
+
+  &__swatch {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 3px;
+    flex: 0 0 auto;
+  }
+
+  &__select {
+    min-width: 8.5rem;
+  }
+}
+
 // Tag colours. The tag name is the subject of the row, so it takes the width
 // and the family selection sits beside it rather than stretching.
 .ingenic-tag-colours {
@@ -585,5 +621,180 @@
 
   &__select {
     min-width: 16rem;
+  }
+}
+
+// Per-chip permissions. The tree is the subject and the panel is what the
+// chosen chip's three jobs look like; a two-column layout says that without a
+// label, and collapses to one column when there is no room for both.
+.ingenic-perm {
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+
+    @media (max-width: 800px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__tree {
+    padding: 0.75rem;
+    border: 1px solid var(--primary-low);
+    border-radius: 8px;
+    background: var(--secondary);
+  }
+
+  &__tree-title,
+  &__section-title {
+    margin: 0 0 0.6rem;
+    font-size: var(--font-up-1);
+  }
+
+  &__series + &__series {
+    margin-top: 0.75rem;
+  }
+
+  &__node {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.55rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--primary);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      background: var(--primary-very-low);
+    }
+
+    &.is-selected {
+      background: var(--tertiary-low);
+      color: var(--tertiary);
+      font-weight: 600;
+    }
+
+    &--series {
+      font-weight: 600;
+    }
+
+    &--chip {
+      padding-left: 1.4rem;
+      font-weight: 400;
+    }
+  }
+
+  &__panel {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--primary-low);
+    border-radius: 8px;
+    background: var(--secondary);
+  }
+
+  &__header h3 {
+    margin: 0;
+  }
+
+  &__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 1rem 0;
+    border-bottom: 1px solid var(--primary-low);
+  }
+
+  &__tab {
+    padding: 0.45rem 0.8rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--primary-medium);
+    cursor: pointer;
+
+    &.is-active {
+      border-bottom-color: var(--tertiary);
+      color: var(--tertiary);
+      font-weight: 600;
+    }
+  }
+
+  &__picker {
+    padding: 0.85rem;
+    border: 1px solid var(--primary-low);
+    border-radius: 8px;
+    background: var(--primary-very-low);
+  }
+
+  &__search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    span {
+      font-size: var(--font-down-1);
+      color: var(--primary-medium);
+    }
+
+    input {
+      width: 100%;
+    }
+  }
+
+  &__results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  &__result {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--primary-low);
+    border-radius: 6px;
+    background: var(--secondary);
+    color: var(--primary);
+    cursor: pointer;
+
+    span {
+      font-size: var(--font-down-1);
+      color: var(--primary-medium);
+    }
+
+    &:hover,
+    &:focus {
+      border-color: var(--tertiary);
+    }
+
+    &--group strong {
+      color: var(--tertiary);
+    }
+  }
+
+  &__chosen {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+  }
+
+  &__section-title {
+    margin-top: 1.25rem;
+  }
+
+  &__other {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--primary-low);
+    border-radius: 8px;
   }
 }
