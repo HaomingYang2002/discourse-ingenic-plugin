@@ -45,6 +45,12 @@ class IngenicSiteController < ::ApplicationController
         "button_href" => promotion.button_href,
         "external" => promotion.external?,
         "image_url" => promotion.image_url,
+        # The card shows when the campaign runs. `created_at` is sent as the
+        # fallback so a slot with no window still carries the date it went up
+        # rather than looking undated beside the others.
+        "starts_at" => promotion.starts_at&.iso8601,
+        "ends_at" => promotion.ends_at&.iso8601,
+        "created_at" => promotion.created_at.iso8601,
       }
     end
   end
