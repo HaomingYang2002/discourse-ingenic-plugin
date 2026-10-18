@@ -2,7 +2,7 @@
 
 # name: discourse-ingenic
 # about: Ingenic community extension. Chip-scoped documentation with version selection, download center, and development board links.
-# version: 0.1.0
+# version: 1.0.0
 # authors: Ingenic
 # url: https://forum.ingenic.com
 
