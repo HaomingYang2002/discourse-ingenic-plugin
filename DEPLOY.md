@@ -705,7 +705,7 @@ a release.
 
 | What | Where |
 | --- | --- |
-| Wordmark, small and mobile logo, favicon | **Admin → Site settings → Branding** (`logo`, `logo_small`, `mobile_logo`, `favicon`) |
+| Wordmark, small and mobile logo, favicon and large icon | **Admin → Site settings → Branding** (`logo`, `logo_small`, `mobile_logo`, `favicon`, `large_icon`) |
 | Front page blocks — add, remove, reorder, heading, width, count | **Ingenic → Site content → Home page** |
 | The cards under Popular sections, including one for the docs reader | **Ingenic → Site content → Home cards** |
 | Header buttons — name, icon or image, destination, icon-only | **Ingenic → Site content → Header buttons** |
@@ -720,12 +720,17 @@ a release.
 | Sidebar width, side, order and heading; languages offered | theme settings |
 | Download storage path, application email, developer form, points values, bounty limits | plugin site settings |
 
-Two details worth knowing about the images:
+Three details worth knowing about the images:
 
 - The wordmark shipped in the plugin (`assets/images/ingenic-logo.png`) is a
   **stand-in drawn for testing**, not an Ingenic brand file. Replace it under
   Branding. `rake ingenic:setup` fills the logo only when it is empty, so it
   will not put the stand-in back over an upload of your own.
+- A favicon is a square. Upload `assets/images/ingenic-favicon.png` (512 × 512)
+  to **both** `favicon` and `large_icon`. The horizontal wordmark must not go
+  there: Discourse crops it to a square from the center, so the browser tab
+  shows a fragment of the letters rather than the mark. `large_icon` is what the
+  phone's home-screen icon and the installed app's icon are made from.
 - Pictures inside promotions, partner platforms, header buttons, home cards and
   boards are **URLs**, not uploads. Upload the image to the forum first (or host
   it on a CDN) and paste its address. The logo and favicon are the two places

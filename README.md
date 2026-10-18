@@ -28,6 +28,8 @@ and adds a developer area below them:
 It intentionally does **not** touch authentication. Google, GitHub and email
 login stay exactly as configured in Discourse core.
 
+中文说明：[README.zh-CN.md](README.zh-CN.md).
+
 ## Documentation
 
 - [`docs/usage.md`](docs/usage.md) — what the forum does and how to use it, for
