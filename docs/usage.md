@@ -284,13 +284,22 @@ forum reports the resource as unavailable and does not charge points.
 ### 7.1 The catalogue
 
 **Development Boards** lists two kinds of item: **development boards** and
-**sample chips**. Two filter rows match the download centre's style:
+**sample chips**. Three filter rows match the download centre's style:
 
 1. **Type** — Development boards or Sample chips.
-2. **Chip** — All chips, or one chip from the product tree.
+2. **Series** — All series, or one series of the chosen type.
+3. **Chip** — All chips, or one chip inside the chosen series.
 
-The chip list comes from the product tree, not from the cards currently shown,
-so choosing a chip does not remove the control that undoes the choice.
+Every option is a button; the current choice is filled in the accent colour and
+the others keep a visible border. The chip row offers only the chips that belong
+to the chosen type and series, so every option leads somewhere. Choosing a new
+type clears both rows below it, because they describe the kind of item that was
+just left.
+
+The rows narrow the list in the browser: the catalogue is fetched once and the
+cards are filtered without asking the server again. While it arrives, the grid
+draws placeholder cards at their final size, so the page does not jump when the
+real cards appear.
 
 ### 7.2 Cards and the detail dialog
 
@@ -308,12 +317,12 @@ The bottom of the card and the dialog always show both buttons:
 
 - **Apply** — opens the application page for the board.
 - **Buy now** — opens the purchase page.
-- A button whose link is empty is grey and disabled; the other stays active.
-  Two empty links therefore give two grey buttons, and the board is not sold
-  out.
+- Both buttons are drawn in the accent colour. A button whose link is empty is
+  faded and disabled; the other stays active. Two empty links therefore give
+  two faded buttons, and the board is not sold out.
 - **Sold out** is a separate switch. When it is on, the card and the dialog
   carry a grey-black sold-out stamp in the top-left corner and both buttons are
-  grey and disabled. The links are kept, so switching it off restores the board
+  faded and disabled. The links are kept, so switching it off restores the board
   as it was.
 
 Links open in a new tab. An administrator can change either link at any time,
