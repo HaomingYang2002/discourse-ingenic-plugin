@@ -441,9 +441,12 @@ The button only appears while the AI bot is enabled for the site.
 
 ### 11.1 Where the screens are
 
-Everything the plugin owns is under **Admin → Plugins → Ingenic**. The admin
-sidebar opens the **Documentation** screen; the other screens have their own
-addresses:
+Everything the plugin owns is under **Admin → Plugins → Ingenic**. Opening any
+one of them draws the plugin's tab bar under the page heading — **Documentation**,
+**Downloads**, **Development boards**, **Permissions**, **Points** and **Site
+content** — so the screens can be reached by clicking a tab. The admin sidebar's
+single **Ingenic** entry opens **Documentation** first. Each screen also has its
+own address, which is what to bookmark or link to:
 
 | Screen | Address | What it manages |
 | --- | --- | --- |
