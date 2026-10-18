@@ -547,3 +547,43 @@
   font-size: var(--font-down-1);
   color: var(--primary-medium);
 }
+
+// The permission matrix. Groups down the side, screens across the top. The
+// feature columns are narrow and the tick sits in the middle of its cell, so a
+// row reads as one line of ticks rather than as a table of labels.
+.ingenic-matrix-wrap {
+  overflow-x: auto;
+}
+
+.ingenic-matrix {
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  &__feature {
+    text-align: center;
+  }
+
+  &__cell {
+    text-align: center;
+    vertical-align: middle;
+
+    input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+}
+
+// Tag colours. The tag name is the subject of the row, so it takes the width
+// and the family selection sits beside it rather than stretching.
+.ingenic-tag-colours {
+  &__name {
+    font-weight: 600;
+  }
+
+  &__select {
+    min-width: 16rem;
+  }
+}

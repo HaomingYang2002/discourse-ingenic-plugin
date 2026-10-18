@@ -74,6 +74,36 @@ en:
           title: "Permissions"
           description: "Assign product or page management scopes to users and groups."
           empty: "No scoped permissions have been assigned."
+        group_permissions:
+          title: "Permission matrix"
+          description: "Choose, for each group, which management screens its members may use."
+          hint: "A tick gives every member of the group management of that screen. The per-record grants on the Permissions screen sit underneath and stay narrower: a group ticked for documentation can manage every product, while a single product can still be lent to one member without giving them the screen. Automatic groups (staff, trust levels, everyone) are not listed — only custom groups are."
+          group: "Group"
+          members:
+            one: "%{count} member"
+            other: "%{count} members"
+          features:
+            documentation: "Documentation"
+            boards: "Development boards"
+            downloads: "Downloads"
+            points: "Points"
+            site: "Site content"
+          save: "Save matrix"
+          empty: "There are no custom groups yet. Create one first."
+          groups_link: "Manage groups"
+        tag_colours:
+          title: "Tag colours"
+          description: "Choose the colour family each tag is drawn in across the forum."
+          hint: "Families are a fixed set so the forum keeps one visual language: sky for general discussion, tech for platforms, tools and hardware, resolved for answered questions, announcement for official notices. A tag with no explicit choice falls back to the family its name suggests, and then to sky."
+          tag: "Tag"
+          family: "Colour family"
+          save: "Save colours"
+          empty: "There are no tags yet."
+          families:
+            sky: "Sky — general discussion"
+            tech: "Tech — platforms, tools, hardware"
+            resolved: "Resolved — answered or solved"
+            announcement: "Announcement — official notices"
         downloads:
           title: "Downloads"
           description: "Upload SDKs and firmware, set who may download them, and review access applications."

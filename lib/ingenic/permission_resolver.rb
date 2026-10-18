@@ -2,6 +2,19 @@
 
 module Ingenic
   class PermissionResolver
+    # The management screen a class belongs to. A class that is not here — a
+    # download, say — is still reachable through a per-record grant, but has no
+    # feature that says "all of them"; `IngenicDownload` is in the map because a
+    # group trusted with the download screen is trusted with every resource on
+    # it, and the listing has to agree.
+    FEATURE_FOR_CLASS = {
+      "IngenicDocProduct" => "documentation",
+      "IngenicDocVersion" => "documentation",
+      "IngenicDocPage" => "documentation",
+      "IngenicBoard" => "boards",
+      "IngenicDownload" => "downloads",
+    }.freeze
+
     def initialize(user)
       @user = user
     end
@@ -10,9 +23,22 @@ module Ingenic
       @user&.admin?
     end
 
+    # Whether a group this account belongs to was given the whole screen. The
+    # `everyone` auto-group is included for the same reason it is in `group_ids`
+    # below: an administrator who grants it to everyone means it.
+    def can_manage_feature?(feature)
+      return true if admin?
+      return false unless @user
+
+      IngenicGroupPermission.where(group_id: group_ids, feature: feature).exists?
+    end
+
     def can_manage?(record)
       return true if admin?
       return false unless @user
+
+      feature = FEATURE_FOR_CLASS[record.class.name]
+      return true if feature && can_manage_feature?(feature)
 
       scopes = permission_scopes(record)
       scopes.any? do |resource_type, resource_ids|
@@ -30,6 +56,9 @@ module Ingenic
 
     def visible_ids(klass)
       return klass.all if admin?
+
+      feature = FEATURE_FOR_CLASS[klass.name]
+      return klass.all if feature && can_manage_feature?(feature)
 
       direct_ids = grants_for(klass.name).pluck(:resource_id)
       if klass == IngenicDocVersion
@@ -60,6 +89,8 @@ module Ingenic
     def can_manage_any_content?
       return true if admin?
       return false unless @user
+
+      return true if IngenicGroupPermission.where(group_id: group_ids).exists?
 
       IngenicPermission.where(permission: "manage")
         .where("user_id = :user_id OR group_id IN (:group_ids)", user_id: @user.id, group_ids: group_ids)

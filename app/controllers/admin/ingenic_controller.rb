@@ -20,7 +20,7 @@ module Admin
 
     def create_product
       record = IngenicDocProduct.new(product_params)
-      authorize_create!(record.parent)
+      authorize_create!(record.parent, feature: "documentation")
       save_or_error(record) { render_json_dump(product: product_json(record)) }
     end
 
@@ -139,9 +139,10 @@ module Admin
     end
 
     def create_board
-      # A board has no parent scope to inherit from, so only an administrator can
-      # create one. Scoped managers edit the boards they were granted.
-      authorize_create!
+      # A board has no parent scope to inherit from: it is created by whoever
+      # holds the boards feature, or by an administrator. Scoped managers edit
+      # the boards they were granted.
+      authorize_create!(feature: "boards")
       record = IngenicBoard.new(board_params)
       save_or_error(record) { render_json_dump(board: board_json(record)) }
     end
@@ -184,22 +185,23 @@ module Admin
         categories: download_categories_json,
         storage_writable: ::Ingenic::DownloadStorage.writable?,
         # The log names accounts, so a scoped content manager is not offered the
-        # tab. Sent as a flag rather than letting the page ask and be refused,
-        # because a refused request per page load is a worse way to say no.
-        can_read_log: current_user.admin?,
+        # tab; someone holding the downloads feature is. Sent as a flag rather
+        # than letting the page ask and be refused, because a refused request
+        # per page load is a worse way to say no.
+        can_read_log: ::Ingenic::PermissionResolver.new(current_user).can_manage_feature?("downloads"),
       )
     end
 
     # Categories ------------------------------------------------------------
 
     def create_download_category
-      authorize_admin_only!
+      authorize_ingenic_feature!("downloads")
       record = IngenicDownloadCategory.new(download_category_params)
       save_or_error(record) { render_json_dump(category: category_json(record)) }
     end
 
     def update_download_category
-      authorize_admin_only!
+      authorize_ingenic_feature!("downloads")
       record = IngenicDownloadCategory.find(params[:id])
       record.assign_attributes(download_category_params)
       save_or_error(record) { render_json_dump(category: category_json(record)) }
@@ -208,7 +210,7 @@ module Admin
     # The resources filed under it survive as unfiled. Retiring a label is not a
     # reason to lose the files someone spent a week uploading and classifying.
     def destroy_download_category
-      authorize_admin_only!
+      authorize_ingenic_feature!("downloads")
       IngenicDownloadCategory.find(params[:id]).destroy!
       head :no_content
     end
@@ -216,7 +218,7 @@ module Admin
     # The record of what was actually taken. Read-only: this is evidence, and an
     # edit surface over it would be one more thing to trust.
     def download_logs
-      authorize_admin_only!
+      authorize_ingenic_feature!("downloads")
 
       logs = IngenicDownloadLog.includes(:user, :download).recent
       logs = logs.where(download_id: params[:download_id]) if params[:download_id].present?
@@ -229,9 +231,10 @@ module Admin
     end
 
     def create_download
-      # A resource with no parent scope to inherit from is created by an
-      # administrator; a scoped manager edits the resources they were granted.
-      authorize_create!
+      # A resource with no parent scope to inherit from is created by whoever
+      # holds the downloads feature; a scoped manager edits the resources they
+      # were granted.
+      authorize_create!(feature: "downloads")
       record = IngenicDownload.new(download_params)
       uploaded = apply_upload(record)
 
@@ -293,10 +296,10 @@ module Admin
     end
 
     def download_requests
-      # Deciding an application is an administrative act rather than a content
-      # edit: it hands a named account access to a file, so it is not delegated
-      # to a scoped content manager.
-      authorize_ingenic!(permissions: true)
+      # Deciding an application is not a content edit: it hands a named account
+      # access to a file. It belongs to the downloads feature rather than to a
+      # single resource's manager.
+      authorize_ingenic_feature!("downloads")
       requests = IngenicDownloadRequest.includes(:user, :download).recent.limit(200)
 
       render_json_dump(
@@ -306,7 +309,7 @@ module Admin
     end
 
     def approve_request
-      authorize_ingenic!(permissions: true)
+      authorize_ingenic_feature!("downloads")
       request = IngenicDownloadRequest.find(params[:id])
 
       # The applicant's account can have been deleted while the application sat
@@ -327,7 +330,7 @@ module Admin
     end
 
     def reject_request
-      authorize_ingenic!(permissions: true)
+      authorize_ingenic_feature!("downloads")
       request = IngenicDownloadRequest.find(params[:id])
       request.reject!(current_user, note: params[:note].to_s.strip.presence)
       Jobs.enqueue(:ingenic_download_decision_email, request_id: request.id)
@@ -335,13 +338,13 @@ module Admin
     end
 
     def download_grants
-      authorize_ingenic!(permissions: true)
+      authorize_ingenic_feature!("downloads")
       grants = IngenicDownloadGrant.includes(:user, :download).order(created_at: :desc).limit(200)
       render_json_dump(grants: grants.map { |grant| download_grant_json(grant) })
     end
 
     def revoke_grant
-      authorize_ingenic!(permissions: true)
+      authorize_ingenic_feature!("downloads")
       grant = IngenicDownloadGrant.find(params[:id])
       grant.revoke!(current_user)
       render_json_dump(grant: download_grant_json(grant))
@@ -357,7 +360,7 @@ module Admin
     # is the same kind of act as deciding an access request — and that is not
     # delegated to a scoped content manager either.
     def points
-      authorize_admin_only!
+      authorize_ingenic_feature!("points")
 
       render_json_dump(
         rules: IngenicPointRule.ordered.map { |rule| point_rule_json(rule) },
@@ -374,7 +377,7 @@ module Admin
     # change. The event itself is the ledger's vocabulary, and a rule for an
     # event nothing fires would award points for something that never happens.
     def update_point_rule
-      authorize_admin_only!
+      authorize_ingenic_feature!("points")
       record = IngenicPointRule.find(params[:id])
       record.assign_attributes(point_rule_params)
       save_or_error(record) { render_json_dump(rule: point_rule_json(record)) }
@@ -385,7 +388,7 @@ module Admin
     # Works while points are switched off, on purpose: the switch stops the
     # forum handing points out on its own, and this is somebody deciding.
     def adjust_points
-      authorize_admin_only!
+      authorize_ingenic_feature!("points")
 
       # By username, because that is what the account picker on the screen hands
       # back and what an administrator already knows. It is also the value the
@@ -416,14 +419,14 @@ module Admin
     # Recomputes every balance from the ledger. The repair for the day the
     # numbers and the rows behind them disagree.
     def rebuild_points
-      authorize_admin_only!
+      authorize_ingenic_feature!("points")
       render_json_dump(::Ingenic::Points.rebuild!)
     end
 
     # The ledger, one account at a time. The screen shows the recent movements
     # already; this is for when somebody asks why their number is what it is.
     def point_entries
-      authorize_admin_only!
+      authorize_ingenic_feature!("points")
 
       scope = IngenicPointEntry.recent
       scope = scope.where(user_id: params[:user_id]) if params[:user_id].present?
@@ -442,7 +445,7 @@ module Admin
     # together, so fetching them separately would only add round trips to a
     # screen whose entire content is what comes back.
     def site
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
 
       render_json_dump(
         homepage_blocks: DiscourseIngenic::ConfigParser.homepage_blocks,
@@ -463,7 +466,7 @@ module Admin
     # know is refused rather than dropped: saved-and-invisible is the one
     # outcome an editor could not see anywhere.
     def update_homepage_blocks
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
 
       blocks = params[:blocks]
       blocks = JSON.parse(blocks) if blocks.is_a?(String)
@@ -507,13 +510,13 @@ module Admin
     # Promotions ------------------------------------------------------------
 
     def create_promotion
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicPromotion.new(promotion_params)
       save_or_error(record) { render_json_dump(promotion: promotion_json(record)) }
     end
 
     def update_promotion
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicPromotion.find(params[:id])
       record.assign_attributes(promotion_params)
       save_or_error(record) { render_json_dump(promotion: promotion_json(record)) }
@@ -524,7 +527,7 @@ module Admin
     # says "remove this" means remove it. Unpublishing is the way to take one
     # down without losing the wording.
     def destroy_promotion
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicPromotion.find(params[:id]).destroy!
       head :no_content
     end
@@ -532,20 +535,20 @@ module Admin
     # Header buttons --------------------------------------------------------
 
     def create_header_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicHeaderLink.new(header_link_params)
       save_or_error(record) { render_json_dump(header_link: header_link_json(record)) }
     end
 
     def update_header_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicHeaderLink.find(params[:id])
       record.assign_attributes(header_link_params)
       save_or_error(record) { render_json_dump(header_link: header_link_json(record)) }
     end
 
     def destroy_header_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicHeaderLink.find(params[:id]).destroy!
       head :no_content
     end
@@ -553,20 +556,20 @@ module Admin
     # Section cards ---------------------------------------------------------
 
     def create_section_card
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicSectionCard.new(section_card_params)
       save_or_error(record) { render_json_dump(section_card: section_card_json(record)) }
     end
 
     def update_section_card
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicSectionCard.find(params[:id])
       record.assign_attributes(section_card_params)
       save_or_error(record) { render_json_dump(section_card: section_card_json(record)) }
     end
 
     def destroy_section_card
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicSectionCard.find(params[:id]).destroy!
       head :no_content
     end
@@ -574,20 +577,20 @@ module Admin
     # Partner platforms -----------------------------------------------------
 
     def create_social_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicSocialLink.new(social_link_params)
       save_or_error(record) { render_json_dump(social_link: social_link_json(record)) }
     end
 
     def update_social_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicSocialLink.find(params[:id])
       record.assign_attributes(social_link_params)
       save_or_error(record) { render_json_dump(social_link: social_link_json(record)) }
     end
 
     def destroy_social_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicSocialLink.find(params[:id]).destroy!
       head :no_content
     end
@@ -595,13 +598,13 @@ module Admin
     # Footer columns --------------------------------------------------------
 
     def create_footer_column
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicFooterColumn.new(footer_column_params)
       save_or_error(record) { render_json_dump(footer_column: footer_column_json(record)) }
     end
 
     def update_footer_column
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicFooterColumn.find(params[:id])
       record.assign_attributes(footer_column_params)
       save_or_error(record) { render_json_dump(footer_column: footer_column_json(record)) }
@@ -610,7 +613,7 @@ module Admin
     # Takes its links with it. They have no meaning apart from the heading, and
     # leaving them behind would make them unreachable rather than preserved.
     def destroy_footer_column
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicFooterColumn.find(params[:id]).destroy!
       head :no_content
     end
@@ -618,20 +621,20 @@ module Admin
     # Footer links ----------------------------------------------------------
 
     def create_footer_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicFooterLink.new(footer_link_params)
       save_or_error(record) { render_json_dump(footer_link: footer_link_json(record)) }
     end
 
     def update_footer_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       record = IngenicFooterLink.find(params[:id])
       record.assign_attributes(footer_link_params)
       save_or_error(record) { render_json_dump(footer_link: footer_link_json(record)) }
     end
 
     def destroy_footer_link
-      authorize_admin_only!
+      authorize_ingenic_feature!("site")
       IngenicFooterLink.find(params[:id]).destroy!
       head :no_content
     end
@@ -661,7 +664,103 @@ module Admin
       head :no_content
     end
 
+    # Tag colours ------------------------------------------------------------
+
+    # Every tag the forum knows, with the family it currently draws in. The
+    # effective family — override, built-in default, or sky — is what the
+    # select shows, so an administrator sees the colour that is actually on the
+    # page rather than only the rows they happened to save.
+    def tag_colours
+      authorize_admin_only!
+      render_json_dump(
+        tags:
+          Tag
+            .order(:name)
+            .pluck(:name)
+            .map { |name| { name: name, family: IngenicTagColour.family_for(name) } },
+        families: IngenicTagColour::FAMILIES,
+      )
+    end
+
+    def update_tag_colours
+      authorize_admin_only!
+      payload = parse_json_param(:colours)
+      raise Discourse::InvalidParameters.new(:colours) unless payload.is_a?(Hash)
+
+      IngenicTagColour.transaction do
+        payload.each do |name, family|
+          name = name.to_s.strip
+          next if name.blank? || !IngenicTagColour::FAMILIES.include?(family.to_s)
+
+          IngenicTagColour.find_or_initialize_by(tag_name: name).update!(family: family.to_s)
+        end
+      end
+
+      head :no_content
+    end
+
+    # Permissions matrix -----------------------------------------------------
+
+    # The coarse half of permissions: which group may reach which screen. The
+    # per-record grants on the `permissions` endpoint stay separate and narrower.
+    def group_permissions
+      authorize_admin_only!
+      grants = IngenicGroupPermission.all.group_by(&:group_id)
+
+      render_json_dump(
+        groups:
+          IngenicGroupPermission.assignable_groups.map do |group|
+            {
+              id: group.id,
+              name: group.name,
+              full_name: group.full_name,
+              members: group.users.count,
+              features: Array(grants[group.id]).map(&:feature),
+            }
+          end,
+        features: IngenicGroupPermission::FEATURES,
+      )
+    end
+
+    def update_group_permissions
+      authorize_admin_only!
+      payload = parse_json_param(:grants)
+      raise Discourse::InvalidParameters.new(:grants) unless payload.is_a?(Hash)
+
+      valid_group_ids = IngenicGroupPermission.assignable_groups.pluck(:id).to_set
+
+      IngenicGroupPermission.transaction do
+        IngenicGroupPermission.delete_all
+
+        payload.each do |group_id, features|
+          group_id = group_id.to_i
+          next unless valid_group_ids.include?(group_id)
+
+          Array(features).each do |feature|
+            next unless IngenicGroupPermission::FEATURES.include?(feature.to_s)
+
+            IngenicGroupPermission.create!(group_id: group_id, feature: feature.to_s)
+          end
+        end
+      end
+
+      head :no_content
+    end
+
     private
+
+    # A matrix arrives as one nested object, which a form encoding turns into
+    # strings; accepting either shape keeps the endpoint usable from both the
+    # page and a console.
+    def parse_json_param(key)
+      value = params[key]
+      return value if value.is_a?(ActionController::Parameters) || value.is_a?(Hash)
+      return {} if value.blank?
+
+      JSON.parse(value)
+    rescue JSON::ParserError
+      raise Discourse::InvalidParameters.new(key)
+    end
 
     # Saves and renders, or reports why not.
     #

@@ -17,12 +17,26 @@ module Admin
         raise Discourse::NotFound unless allowed
       end
 
-      def authorize_create!(parent = nil)
+      # A record with a parent is created under the scope that has to permit it.
+      # A record without one has no scope of its own, so it belongs to whoever
+      # holds the screen-wide feature — or to an administrator.
+      def authorize_create!(parent = nil, feature: nil)
+        resolver = ::Ingenic::PermissionResolver.new(current_user)
         allowed = if parent
-          ::Ingenic::PermissionResolver.new(current_user).can_manage?(parent)
+          resolver.can_manage?(parent)
+        elsif feature
+          resolver.can_manage_feature?(feature)
         else
           current_user.admin?
         end
+        raise Discourse::NotFound unless allowed
+      end
+
+      # A coarse check for screens whose records are not filed under a product
+      # or a board: the download queue, the points ledger, the site blocks. The
+      # feature is one of `IngenicGroupPermission::FEATURES`.
+      def authorize_ingenic_feature!(feature)
+        allowed = ::Ingenic::PermissionResolver.new(current_user).can_manage_feature?(feature)
         raise Discourse::NotFound unless allowed
       end
 

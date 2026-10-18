@@ -498,4 +498,107 @@ describe Admin::IngenicController do
       expect(response.parsed_body["can_read_log"]).to eq(false)
     end
   end
+
+  # The two new screens. Both decide who may do something, so both stay
+  # administrator-only: delegating either would let its holder widen their own
+  # grant.
+  describe "GET /admin/plugins/discourse-ingenic/tag-colours" do
+    it "lists every tag with the family it currently draws in" do
+      Fabricate(:tag, name: "camera")
+
+      get "/admin/plugins/discourse-ingenic/tag-colours.json"
+
+      expect(response.status).to eq(200)
+      row = response.parsed_body["tags"].find { |tag| tag["name"] == "camera" }
+      expect(row["family"]).to eq("tech")
+      expect(response.parsed_body["families"]).to eq(IngenicTagColour::FAMILIES)
+    end
+
+    it "is not offered to a member" do
+      sign_in(Fabricate(:user))
+
+      get "/admin/plugins/discourse-ingenic/tag-colours.json"
+
+      expect(response.status).to eq(404)
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/tag-colours" do
+    it "stores the assignment and ignores a family the theme cannot draw" do
+      put "/admin/plugins/discourse-ingenic/tag-colours.json",
+          params: { colours: JSON.generate("linux" => "announcement", "sdk" => "orange") }
+
+      expect(response.status).to eq(204)
+      expect(IngenicTagColour.family_for("linux")).to eq("announcement")
+      expect(IngenicTagColour.where(tag_name: "sdk")).not_to exist
+    end
+
+    it "replaces an earlier assignment to the same tag" do
+      IngenicTagColour.create!(tag_name: "linux", family: "tech")
+
+      put "/admin/plugins/discourse-ingenic/tag-colours.json",
+          params: { colours: JSON.generate("linux" => "resolved") }
+
+      expect(IngenicTagColour.find_by(tag_name: "linux").family).to eq("resolved")
+    end
+  end
+
+  describe "GET /admin/plugins/discourse-ingenic/group-permissions" do
+    it "lists the custom groups and the screens" do
+      custom = Fabricate(:group)
+      IngenicGroupPermission.create!(group: custom, feature: "downloads")
+
+      get "/admin/plugins/discourse-ingenic/group-permissions.json"
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["features"]).to eq(IngenicGroupPermission::FEATURES)
+      row = response.parsed_body["groups"].find { |group| group["id"] == custom.id }
+      expect(row["features"]).to eq(["downloads"])
+      expect(response.parsed_body["groups"].map { |group| group["name"] }).not_to include("everyone")
+    end
+
+    it "is not offered to a member" do
+      sign_in(Fabricate(:user))
+
+      get "/admin/plugins/discourse-ingenic/group-permissions.json"
+
+      expect(response.status).to eq(404)
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/group-permissions" do
+    it "replaces the matrix in one write" do
+      docs = Fabricate(:group)
+      downloads = Fabricate(:group)
+      IngenicGroupPermission.create!(group: docs, feature: "documentation")
+
+      put "/admin/plugins/discourse-ingenic/group-permissions.json",
+          params: {
+            grants: JSON.generate(
+              docs.id => ["documentation"],
+              downloads.id => ["downloads", "points"],
+            ),
+          }
+
+      expect(response.status).to eq(204)
+      expect(IngenicGroupPermission.where(group: docs).pluck(:feature)).to eq(["documentation"])
+      expect(IngenicGroupPermission.where(group: downloads).pluck(:feature))
+        .to contain_exactly("downloads", "points")
+    end
+
+    it "refuses an automatic group and an unknown feature" do
+      custom = Fabricate(:group)
+
+      put "/admin/plugins/discourse-ingenic/group-permissions.json",
+          params: {
+            grants: JSON.generate(
+              Group::AUTO_GROUPS[:everyone] => ["downloads"],
+              custom.id => ["everything"],
+            ),
+          }
+
+      expect(response.status).to eq(204)
+      expect(IngenicGroupPermission.count).to eq(0)
+    end
+  end
 end

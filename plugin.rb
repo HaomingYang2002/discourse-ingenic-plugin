@@ -52,6 +52,8 @@ require_relative "app/models/ingenic_download_log"
 require_relative "app/models/ingenic_developer_profile"
 require_relative "app/models/ingenic_board"
 require_relative "app/models/ingenic_permission"
+require_relative "app/models/ingenic_tag_colour"
+require_relative "app/models/ingenic_group_permission"
 require_relative "app/models/ingenic_promotion"
 require_relative "app/models/ingenic_social_link"
 require_relative "app/models/ingenic_header_link"
@@ -229,6 +231,14 @@ after_initialize do
     end
   end
 
+  # Tag colours changed in the admin screen. Only the overrides travel: the
+  # theme already knows the built-in families, and the client turns this map
+  # into a stylesheet after boot. Sending it with `site` means the first paint
+  # of a topic list is already coloured rather than flashing the fallback.
+  add_to_serializer(:site, :ingenic_tag_colours, include_condition: -> { SiteSetting.ingenic_enabled }) do
+    IngenicTagColour.override_map
+  end
+
   add_to_serializer(:site, :ingenic_section_cards, include_condition: -> { SiteSetting.ingenic_enabled }) do
     IngenicSectionCard.published.ordered.map do |card|
       {
@@ -246,6 +256,17 @@ after_initialize do
 
   add_to_serializer(:current_user, :can_manage_ingenic_content) do
     scope.can_manage_ingenic_content?
+  end
+
+  # Which management screens this account may reach in full, so the plugin's
+  # admin navigation offers exactly those. Without it the navigation would have
+  # to guess, and the guess that shipped before was "administrator", which left
+  # a group granted the download screen with no link to it.
+  add_to_serializer(:current_user, :ingenic_features) do
+    resolver = ::Ingenic::PermissionResolver.new(object)
+    ::IngenicGroupPermission::FEATURES.index_with do |feature|
+      resolver.can_manage_feature?(feature)
+    end
   end
 
   # The 高分悬赏 on this topic — standing or settled — so the topic page can
@@ -347,6 +368,10 @@ after_initialize do
       get "/permissions" => "admin/ingenic#permissions"
       post "/permissions" => "admin/ingenic#create_permission"
       delete "/permissions/:id" => "admin/ingenic#destroy_permission"
+      get "/group-permissions" => "admin/ingenic#group_permissions"
+      put "/group-permissions" => "admin/ingenic#update_group_permissions"
+      get "/tag-colours" => "admin/ingenic#tag_colours"
+      put "/tag-colours" => "admin/ingenic#update_tag_colours"
 
       get "/downloads" => "admin/ingenic#download_list"
       post "/downloads" => "admin/ingenic#create_download"

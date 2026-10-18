@@ -5,6 +5,8 @@ export default {
     this.route("documentation", { path: "documentation" });
     this.route("boards", { path: "boards" });
     this.route("permissions", { path: "permissions" });
+    this.route("group-permissions", { path: "group-permissions" });
+    this.route("tag-colours", { path: "tag-colours" });
     this.route("downloads", { path: "downloads" });
     this.route("points", { path: "points" });
     this.route("site", { path: "site" });

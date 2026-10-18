@@ -195,12 +195,28 @@ rebuild. See the theme repository's README for the exact steps.
 ## Management
 
 Administrators can open **Admin → Plugins → Ingenic** to manage documentation,
-development boards, downloads, the application queue, grants, points and
-permissions. Everything but documentation and boards is administrator-only,
-reading included: the download queue decides who may have a file, the points
-screen names accounts and moves their standing, and permissions decides who else
-may edit content — none of which is filed under a product or a board, so there is
-no scope an administrator could grant over it even if they wanted to.
+development boards, downloads, the application queue, grants, points, site
+content and permissions. Documentation and boards can also be opened by a member
+who was given either the screen's feature on the Permission matrix or a grant on
+one product or board. Downloads, points and site content are reachable through a
+feature grant too. The Permissions, Permission matrix and Tag colours screens
+stay administrator-only, because each of them decides who may do something else.
+
+The Permission matrix grants a whole management screen to a custom group:
+documentation, development boards, downloads, points or site content. It is the
+coarse layer — a tick says "every product", not "this product". The per-record
+grants on the Permissions screen sit underneath it and stay narrower, so one
+product can still be lent to a single member without giving them the screen.
+Automatic groups (staff, trust levels, everyone) are not listed: a tick on
+`everyone` would hand a management screen to every visitor, which is not a
+decision a checkbox should make by accident.
+
+Tag colours assigns each tag one of four colour families: sky for general
+discussion, tech for platforms, tools and hardware, resolved for answered
+questions, and announcement for official notices. The families are fixed so the
+forum keeps one visual language, while the tag list is the site's own — a tag
+created this morning appears on the screen without a release. A tag with no
+assignment keeps the family its name suggests, and then sky.
 
 Bounties have no screen of their own, because nothing about them is an
 administrator's decision: members open them on their own topics and settle them
@@ -335,6 +351,8 @@ ingenic_download_requests   applications, with their review state
 ingenic_download_grants     approvals, per account and per resource
 ingenic_boards            development boards, filed against a chip
 ingenic_permissions       scoped grants to a user or group
+ingenic_group_permissions a whole management screen, granted to a group
+ingenic_tag_colours       explicit colour-family assignments per tag name
 ingenic_point_rules       what each action is worth, and what to call it
 ingenic_point_entries     the ledger: one append-only row per movement
 ingenic_point_balances    a running total per account, derived from the entries

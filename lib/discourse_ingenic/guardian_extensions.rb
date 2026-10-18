@@ -10,6 +10,10 @@ module DiscourseIngenic
       Ingenic::PermissionResolver.new(user).can_manage_any_content?
     end
 
+    def can_manage_ingenic_feature?(feature)
+      Ingenic::PermissionResolver.new(user).can_manage_feature?(feature)
+    end
+
     def can_manage_ingenic_doc_product?(product)
       Ingenic::PermissionResolver.new(user).can_manage?(product)
     end

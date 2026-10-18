@@ -57,4 +57,42 @@ describe Ingenic::PermissionResolver do
     expect(described_class.new(user).can_manage?(other_family)).to eq(true)
     expect(described_class.new(user).can_manage_permissions?).to eq(true)
   end
+
+  describe "group feature grants" do
+    it "lets a group manage every record on the screen it was given" do
+      group.add(user)
+      IngenicGroupPermission.create!(group: group, feature: "documentation")
+
+      resolver = described_class.new(user)
+
+      expect(resolver.can_manage_feature?("documentation")).to eq(true)
+      expect(resolver.can_manage?(family)).to eq(true)
+      expect(resolver.can_manage?(other_family)).to eq(true)
+      expect(resolver.visible_ids(IngenicDocProduct)).to contain_exactly(family, other_family, child)
+    end
+
+    it "keeps the other screens out of the grant" do
+      group.add(user)
+      IngenicGroupPermission.create!(group: group, feature: "documentation")
+
+      resolver = described_class.new(user)
+
+      expect(resolver.can_manage_feature?("boards")).to eq(false)
+      expect(resolver.can_manage_feature?("downloads")).to eq(false)
+    end
+
+    it "leaves a user outside the group with nothing" do
+      other = Fabricate(:user)
+      IngenicGroupPermission.create!(group: group, feature: "documentation")
+
+      expect(described_class.new(other).can_manage?(family)).to eq(false)
+    end
+
+    it "counts as content management for the navigation" do
+      group.add(user)
+      IngenicGroupPermission.create!(group: group, feature: "points")
+
+      expect(described_class.new(user).can_manage_any_content?).to eq(true)
+    end
+  end
 end
