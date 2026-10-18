@@ -718,9 +718,9 @@ module Admin
           :details,
           :specs,
           :image_url,
-          :documentation_url,
           :application_url,
           :purchase_url,
+          :sold_out,
           :published,
           :position,
         )
@@ -1247,9 +1247,9 @@ module Admin
           "details",
           "specs",
           "image_url",
-          "documentation_url",
           "application_url",
           "purchase_url",
+          "sold_out",
           "published",
           "position",
         )

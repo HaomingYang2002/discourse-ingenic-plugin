@@ -272,20 +272,22 @@ IngenicBoard.create!(
   product: chip,
   locale: "en",
   description: "Evaluation kit for the T32Pro series.",
+  details: "参见 [T32Pro 文档](/ingenic/docs/t-series/t32pro)。",
   specs: "2 GB DDR3 · dual Gigabit Ethernet · camera interface",
   image_url: "https://download.ingenic.com/boards/t32pro-evk.png",
-  documentation_url: "/ingenic/docs/t-series/t32pro",
   application_url: "https://www.ingenic.com.cn/apply?board=t32pro-evk",
   purchase_url: "https://www.ingenic.com.cn/buy?board=t32pro-evk",
+  sold_out: false,
   position: 0,
 )
 ```
 
 `chip` 会从关联的产品自动填入，不需要手工设置；它仍然是一个字段，是为了支持
 "开发板先上线、型号稍后再建"的情况。`application_url` 和 `purchase_url` 都是
-站外链接，渲染时会带上 `rel="noopener noreferrer"` 并在新标签页打开。
-`application_url` 必填，对应"申请"按钮；`purchase_url` 选填，对应 **Buy now**
-按钮——不是每块板子都对外销售，只做申请发放的板子没有购买地址可填。
+站外链接，渲染时会带上 `rel="noopener noreferrer"` 并在新标签页打开。两个链接
+都不是必填：卡片始终显示**申请**和**立即购买**，缺链接的按钮置灰。`sold_out`
+是独立的售罄开关，打开后卡片盖印章、两个按钮都禁用，链接仍然保留。`details`
+使用 Markdown，显示在弹窗里。
 
 ## 积分
 

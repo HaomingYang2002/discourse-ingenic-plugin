@@ -152,11 +152,26 @@ describe IngenicBoard do
       expect(unsaved_board(application_url: nil, purchase_url: "https://example.com/buy")).to be_valid
     end
 
-    it "accepts a board with neither link, which the catalogue shows as sold out" do
+    # Missing links and being sold out are two different things: the buttons are
+    # grayed one at a time, and only the switch marks the board itself.
+    it "accepts a board with neither link without calling it sold out" do
       record = board(application_url: nil, purchase_url: nil)
 
       expect(record.reload.application_url).to be_nil
       expect(record.purchase_url).to be_nil
+      expect(record.sold_out).to eq(false)
+    end
+
+    it "keeps its links when marked sold out" do
+      record = board(purchase_url: "https://example.com/buy", sold_out: true)
+
+      expect(record.reload.sold_out).to eq(true)
+      expect(record.application_url).to eq("https://example.com/apply")
+      expect(record.purchase_url).to eq("https://example.com/buy")
+    end
+
+    it "starts unsold" do
+      expect(board.sold_out).to eq(false)
     end
   end
 

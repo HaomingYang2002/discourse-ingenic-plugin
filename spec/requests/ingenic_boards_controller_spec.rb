@@ -73,6 +73,21 @@ describe IngenicBoardsController do
       expect(entry["specs"]).to eq("DDR3 1GB")
     end
 
+    it "sends the sold-out switch and the Markdown description cooked" do
+      board(
+        product: chip,
+        sold_out: true,
+        details: "**Halley5** ships with [the docs](/ingenic/docs) and a photo.",
+      )
+
+      get "/ingenic/boards.json"
+
+      entry = response.parsed_body["boards"].first
+      expect(entry["sold_out"]).to eq(true)
+      expect(entry["details_html"]).to include("<strong>Halley5</strong>")
+      expect(entry["details_html"]).to include('href="/ingenic/docs"')
+    end
+
     it "offers both kinds and every chip, each naming the series it belongs to" do
       get "/ingenic/boards.json"
 

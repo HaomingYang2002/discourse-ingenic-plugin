@@ -23,9 +23,9 @@ class IngenicBoard < ActiveRecord::Base
   validates :slug, presence: true, uniqueness: { scope: :locale }
   validates :name, presence: true
   validates :kind, presence: true, inclusion: { in: KINDS }
-  # Neither link is required: a card draws the buttons whose links are set, and
-  # a board with neither is sold out. The card is what tells the visitor, so
-  # there is nothing here to validate.
+  # Neither link is required: the card always draws both buttons and grays the
+  # one without an address. Being sold out is a separate decision stored in
+  # `sold_out`, so a restocked board keeps the links it had.
   validate :product_is_a_chip
   validate :purchase_link_is_usable
 
@@ -62,13 +62,6 @@ class IngenicBoard < ActiveRecord::Base
 
   def series_name
     series&.name
-  end
-
-  # The card draws a Buy button only when there is somewhere to buy. Not every
-  # board is sold — some are lent to developers on application — so an absent
-  # link is a normal state rather than an unfinished record.
-  def purchase?
-    purchase_url.present?
   end
 
   private

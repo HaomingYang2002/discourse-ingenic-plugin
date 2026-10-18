@@ -192,9 +192,9 @@ module Ingenic
           "details" => board.details,
           "specs" => board.specs,
           "image_url" => board.image_url,
-          "documentation_url" => board.documentation_url,
           "application_url" => board.application_url,
           "purchase_url" => board.purchase_url,
+          "sold_out" => board.sold_out,
           "product_slug" => board.product&.slug,
           "product_locale" => board.product&.locale,
           "published" => board.published,
@@ -515,9 +515,9 @@ module Ingenic
           board.details = row["details"]
           board.specs = row["specs"]
           board.image_url = row["image_url"]
-          board.documentation_url = row["documentation_url"]
           board.application_url = row["application_url"]
           board.purchase_url = row["purchase_url"]
+          board.sold_out = row.fetch("sold_out", false)
           board.product = product
           board.published = row.fetch("published", true)
           board.position = row["position"].to_i

@@ -90,6 +90,18 @@ describe Admin::IngenicController do
       expect(board.reload.name).to eq("Updated Board")
     end
 
+    it "turns the sold-out switch on without touching the links" do
+      put "/admin/plugins/discourse-ingenic/boards/#{board.id}.json",
+          params: {
+            sold_out: "true",
+          }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["board"]["sold_out"]).to eq(true)
+      expect(board.reload.sold_out).to eq(true)
+      expect(board.reload.application_url).to eq("https://example.com")
+    end
+
     it "files the board against a chip and reads the name back from the tree" do
       chip =
         IngenicDocProduct.create!(

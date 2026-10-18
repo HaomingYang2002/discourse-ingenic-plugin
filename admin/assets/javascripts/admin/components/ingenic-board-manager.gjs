@@ -23,9 +23,9 @@ const BLANK = {
   details: "",
   specs: "",
   image_url: "",
-  documentation_url: "",
   application_url: "",
   purchase_url: "",
+  sold_out: false,
   published: false,
   position: 0,
 };
@@ -137,6 +137,7 @@ export default class IngenicBoardManager extends Component {
     // An unchecked box is absent from FormData, which the server reads as
     // "leave it alone" — the opposite of what unchecking means here.
     form.set("published", String(event.target.elements.published.checked));
+    form.set("sold_out", String(event.target.elements.sold_out.checked));
 
     const id = this.draft.id;
 
@@ -275,11 +276,6 @@ export default class IngenicBoardManager extends Component {
           </p>
 
           <label>
-            <span>{{i18n "admin.ingenic.boards.fields.documentation_url"}}</span>
-            <input name="documentation_url" value={{this.draft.documentation_url}} />
-          </label>
-
-          <label>
             <span>{{i18n "admin.ingenic.boards.fields.purchase_url"}}</span>
             <input name="purchase_url" value={{this.draft.purchase_url}} />
           </label>
@@ -319,6 +315,15 @@ export default class IngenicBoardManager extends Component {
 
           <p class="ingenic-admin-form__hint">
             {{i18n "admin.ingenic.boards.fields.specs_hint"}}
+          </p>
+
+          <label class="checkbox-label">
+            <input type="checkbox" name="sold_out" checked={{this.draft.sold_out}} />
+            <span>{{i18n "admin.ingenic.boards.fields.sold_out"}}</span>
+          </label>
+
+          <p class="ingenic-admin-form__hint">
+            {{i18n "admin.ingenic.boards.fields.sold_out_hint"}}
           </p>
 
           <label class="checkbox-label">

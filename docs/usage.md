@@ -68,7 +68,7 @@ was built for it, and where a reader can see it.
 | 5 | SDK/firmware downloads with three access levels | Sign-in, developer information, and application plus approval; files stored outside the web root and streamed after a check | `/ingenic/downloads` |
 | 6 | Application workflow with email and per-account grants | Application queue, email to the team address, approve/decline, revocable grants with optional expiry | Admin → Downloads → Applications / Access |
 | 7 | Development board catalogue | Boards and samples filed against chips, filters, cards and a detail dialog | `/ingenic/boards` |
-| 8 | Application and purchase are separate actions | Apply and Buy buttons drawn side by side, each shown only when its link is configured; neither link means Sold out | Board card and dialog |
+| 8 | Application and purchase are separate actions | Apply and Buy drawn side by side; a button without a link is grey, and the separate Sold out switch stamps the board and disables both | Board card and dialog |
 | 9 | Scoped management | A user or group can be granted management of a product, page, board or download; enforced on the server | Admin → Permissions |
 | 10 | Points for contribution | Rules table, append-only ledger, balances, member history, spending on downloads | `/ingenic/points`; Admin → Points |
 | 11 | High-value bounties on questions | Points escrowed on the asker's topic, paid on accepted answer, refunded on withdrawal, expiry or topic deletion | `/ingenic/bounties`; topic banner |
@@ -93,7 +93,7 @@ These were considered and deliberately left out of this version:
 | Forum | Read, post, reply, like, flag, bookmark, message, search | Categories, groups, trust levels, site settings — all core Discourse |
 | Documentation | Pick a series and chip, switch version, search, read, follow previous/next, open the forum discussion | Create the product tree, versions and pages; control publishing; grant scoped edit rights |
 | Downloads | Filter the catalogue; download, fill in developer details, apply for access, unlock with points | Upload files, set access and price, review applications, grant or revoke access, read the download record |
-| Boards | Filter by type and chip, read the dialog, follow Apply, Buy or documentation links | Create cards, set type, chip, links, specifications, publication and order |
+| Boards | Filter by type and chip, read the dialog, follow Apply or Buy | Create cards, set type, chip, links, sold-out switch, specifications, publication and order |
 | Points | See their balance, the price list and their own history | Edit rules, adjust an account, inspect balances and movements, recompute balances |
 | Bounties | Put points on their own question, withdraw, accept an answer | Nothing specific: settle by accepting; repair mistakes through points adjustments |
 | Site content | See the home page, promotions and footer the team configured | Edit home blocks, home cards, promotions, header buttons, partner platforms and footer columns |
@@ -295,29 +295,29 @@ so choosing a chip does not remove the control that undoes the choice.
 ### 7.2 Cards and the detail dialog
 
 Each card shows an image, name, chip, short introduction and a short
-specification list. Selecting a card opens a dialog with the longer details,
-the full specification list, the documentation link and the same actions.
+specification list. Selecting a card opens a dialog with the longer
+description, the full specification list and the same two actions.
 
-### 7.3 Apply, Buy and Sold out
+The description in the dialog is written in Markdown: links, images, lists and
+tables all render, so a documentation link or a diagram belongs in the
+description itself rather than in a field of its own.
 
-The bottom of the card and the dialog carry the actions the team configured:
+### 7.3 Apply, Buy now and Sold out
+
+The bottom of the card and the dialog always show both buttons:
 
 - **Apply** — opens the application page for the board.
 - **Buy now** — opens the purchase page.
-- Both buttons sit side by side when both links are configured.
-- Only one button is shown when only one link is configured; it takes the full
-  width of the action row.
-- When **neither** link is configured, the item is still listed but there is
-  nothing to click: a single grey **Sold out** button is shown and is disabled.
+- A button whose link is empty is grey and disabled; the other stays active.
+  Two empty links therefore give two grey buttons, and the board is not sold
+  out.
+- **Sold out** is a separate switch. When it is on, the card and the dialog
+  carry a grey-black sold-out stamp in the top-left corner and both buttons are
+  grey and disabled. The links are kept, so switching it off restores the board
+  as it was.
 
 Links open in a new tab. An administrator can change either link at any time,
 and the card follows on the next page load.
-
-### 7.4 Documentation link
-
-A board may also carry a documentation link, shown in the dialog separately from
-Apply and Buy. It stays available when the item is sold out, because the
-documentation is still useful.
 
 ## 8. Points
 
@@ -527,12 +527,13 @@ Add a card, then set:
 - **Chip** — a chip in the product tree. This files the card under its series,
   keeps the chip name in step with the documentation, and is what the Chip
   filter uses. A card whose chip is not in the tree yet can keep a typed name.
-- **Application URL** and **Purchase URL** — each button appears only when its
-  link is filled in. Leave one empty to hide that button; leave both empty to
-  show the grey, disabled **Sold out** state.
-- **Documentation URL** — shown in the card's dialog.
+- **Application URL** and **Purchase URL** — each button is disabled when its
+  link is empty. The board is not sold out just because a link is missing.
+- **Sold out** — the switch that stamps the card and the dialog and disables
+  both buttons. The links are kept for when the board is restocked.
 - **Introduction**, **Details**, **Specifications** (one per line), **Image
-  URL**, **Order** and **Published**.
+  URL**, **Order** and **Published**. **Details** is Markdown and is what the
+  dialog shows; links and images can be inserted there.
 
 Withdrawing a card removes it from the public catalogue without deleting it.
 

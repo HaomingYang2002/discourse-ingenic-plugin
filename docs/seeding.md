@@ -285,11 +285,12 @@ IngenicBoard.create!(
   product: chip,
   locale: "en",
   description: "Evaluation kit for the T32Pro series.",
+  details: "See the [T32Pro documentation](/ingenic/docs/t-series/t32pro).",
   specs: "2 GB DDR3 · dual Gigabit Ethernet · camera interface",
   image_url: "https://download.ingenic.com/boards/t32pro-evk.png",
-  documentation_url: "/ingenic/docs/t-series/t32pro",
   application_url: "https://www.ingenic.com.cn/apply?board=t32pro-evk",
   purchase_url: "https://www.ingenic.com.cn/buy?board=t32pro-evk",
+  sold_out: false,
   position: 0,
 )
 ```
@@ -297,9 +298,10 @@ IngenicBoard.create!(
 `chip` is filled in from the linked product, so it does not need setting — it
 stays a column because a board can be listed before its chip exists. Both
 `application_url` and `purchase_url` are outbound links, rendered with
-`rel="noopener noreferrer"` in a new tab. `application_url` is required and
-draws the apply button; `purchase_url` is optional and draws **Buy now** — not
-every board is sold, and a board that is lent on application has nowhere to buy.
+`rel="noopener noreferrer"` in a new tab. Neither is required: the card always
+draws **Apply** and **Buy now** and grays the one without an address.
+`sold_out` is a separate switch — it stamps the card and disables both buttons
+while leaving the links in place. `details` is Markdown shown in the dialog.
 
 ## Points
 
