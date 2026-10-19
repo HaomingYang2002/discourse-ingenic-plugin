@@ -112,6 +112,17 @@ module Admin
       )
     end
 
+    # Renders the body being typed with the same pipeline the public page uses,
+    # so the preview in the editor and the article a reader sees cannot drift
+    # apart. Scoped to the version because that is what authorization already
+    # knows how to check.
+    def preview_page
+      version = IngenicDocVersion.find(params[:version_id])
+      authorize_ingenic!(version)
+
+      render_json_dump(html: PrettyText.cook(params[:body].to_s, features: { Onebox: false }))
+    end
+
     # One uploaded document per page: Markdown as written, Word converted to
     # Markdown first. Partial success is the useful outcome here — one bad file
     # should not discard the pages that were fine — so the response carries both

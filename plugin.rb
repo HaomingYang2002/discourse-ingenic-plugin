@@ -396,6 +396,7 @@ after_initialize do
       delete "/documentation/versions/:id" => "admin/ingenic#destroy_version"
       get "/documentation/versions/:id/tree" => "admin/ingenic#version_tree"
       post "/documentation/versions/:id/import" => "admin/ingenic#import_pages"
+      post "/documentation/preview" => "admin/ingenic#preview_page"
       post "/documentation/versions/:version_id/pages/:slug/override" => "admin/ingenic#override_page"
       delete "/documentation/versions/:version_id/pages/:slug" => "admin/ingenic#revert_page"
       post "/documentation/pages" => "admin/ingenic#create_page"

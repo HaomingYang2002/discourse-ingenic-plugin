@@ -194,6 +194,34 @@ describe Admin::IngenicController do
     end
   end
 
+  # The preview has to be the server's own rendering, not the browser's: a page
+  # previewed by a different Markdown implementation would agree with the
+  # editor and disagree with the published article.
+  describe "POST /admin/plugins/discourse-ingenic/documentation/preview" do
+    fab!(:chip) do
+      IngenicDocProduct.create!(
+        slug: "t33",
+        name: "T33",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "en",
+      )
+    end
+    fab!(:version) do
+      IngenicDocVersion.create!(product: chip, slug: "v1", label: "v1.0", locale: "en", position: 0)
+    end
+
+    it "cooks the body with the public page pipeline" do
+      post "/admin/plugins/discourse-ingenic/documentation/preview.json",
+           params: { version_id: version.id, body: "# Title\n\n**bold**" }
+
+      expect(response.status).to eq(200)
+      html = response.parsed_body["html"]
+      expect(html).to include("<h1")
+      expect(html).to include("<strong>bold</strong>")
+    end
+  end
+
   # Importing turns a manual a team already has as files into pages. One file is
   # one page — a heading is not a reliable unit, and neither is a Word section —
   # so what is pinned down here is that shape, the heading becoming the title,
