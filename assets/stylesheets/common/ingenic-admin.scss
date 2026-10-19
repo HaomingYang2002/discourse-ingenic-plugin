@@ -113,6 +113,14 @@
   border: 1px solid var(--primary-low);
 }
 
+.ingenic-doc-manager__latest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  color: var(--primary-high);
+}
+
 .ingenic-doc-manager__columns {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);

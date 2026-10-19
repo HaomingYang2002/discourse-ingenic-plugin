@@ -20,6 +20,7 @@ module Admin
 
     def create_product
       record = IngenicDocProduct.new(product_params)
+      record.locale = default_documentation_locale(record) if params[:locale].blank?
       authorize_create!(record.parent, feature: "documentation")
       save_or_error(record) { render_json_dump(product: product_json(record)) }
     end
@@ -42,6 +43,7 @@ module Admin
 
     def create_version
       record = IngenicDocVersion.new(version_params)
+      record.locale = default_documentation_locale(record) if params[:locale].blank?
       authorize_ingenic!(record.product)
       save_or_error(record) { render_json_dump(version: version_json(record)) }
     end
@@ -106,6 +108,7 @@ module Admin
 
     def create_page
       record = IngenicDocPage.new(page_params)
+      record.locale = default_documentation_locale(record) if params[:locale].blank?
       authorize_ingenic!(record.version)
       save_or_error(record) { render_json_dump(page: page_json(record)) }
     end
@@ -967,6 +970,26 @@ module Admin
       ids = ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicDocProduct).pluck(:id)
       parent_ids = IngenicDocProduct.where(id: ids).where.not(parent_id: nil).distinct.pluck(:parent_id)
       IngenicDocProduct.series.where(id: ids + parent_ids).ordered
+    end
+
+    # The administration screen has no language picker for the documentation
+    # tree, and the column default is English. A row written there should be in
+    # the language of the row it hangs under — a chip in its series, a version in
+    # its chip, a page in its version — and a new series in the language this
+    # site serves documentation in. Filing a Chinese manual under "en" is not a
+    # visible error: the reader simply gets an empty page.
+    def default_documentation_locale(record)
+      inherited =
+        case record
+        when IngenicDocProduct
+          record.parent&.locale
+        when IngenicDocVersion
+          record.product&.locale
+        when IngenicDocPage
+          record.version&.locale
+        end
+
+      inherited.presence || SiteSetting.ingenic_default_locale.presence || "en"
     end
 
     def product_params

@@ -121,6 +121,42 @@ export default class IngenicDocManager extends Component {
     await this.#create(event, "documentation/versions", { product_id: this.selectedChipId });
   }
 
+  // Which version a reader lands on when the URL names none. The imported and
+  // hand-written rows both start with no flag, so without this control a chip
+  // with two versions would land on whichever the database happened to return
+  // first. Flagging one clears the flag on its siblings: two "latest" versions
+  // is not a state the reader can interpret.
+  @action
+  async toggleLatest(event) {
+    const latest = event.target.checked;
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await Promise.all(
+        this.versions
+          .filter((version) => version.id !== this.selectedVersionId && version.latest)
+          .map((version) =>
+            ajax(`${BASE}/documentation/versions/${version.id}`, {
+              type: "PUT",
+              data: { latest: false },
+            })
+          )
+      );
+
+      await ajax(`${BASE}/documentation/versions/${this.selectedVersionId}`, {
+        type: "PUT",
+        data: { latest },
+      });
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   @action
   async createPage(event) {
     const values = Object.fromEntries(new FormData(event.target));
@@ -440,6 +476,16 @@ export default class IngenicDocManager extends Component {
           </div>
 
           {{#if this.selectedVersion}}
+            <label class="ingenic-doc-manager__latest">
+              <input
+                type="checkbox"
+                checked={{this.selectedVersion.latest}}
+                disabled={{this.busy}}
+                {{on "change" this.toggleLatest}}
+              />
+              <span>{{i18n "admin.ingenic.documentation.latest"}}</span>
+            </label>
+
             <form class="ingenic-admin-form ingenic-admin-form--inline" {{on "submit" this.importPages}}>
               <input type="file" name="files[]" accept=".md,.markdown,.txt,.docx" multiple required />
               <button type="submit" disabled={{this.busy}}>
