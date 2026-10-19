@@ -562,6 +562,20 @@ category seeding task — see [`DEPLOY.md`](../DEPLOY.md) and
    page becomes editable in this version. **Restore inheritance** deletes the
    copy in this version and returns to the earlier source.
 
+An article's body is written in Markdown with a toolbar above it: bold, italic,
+heading, quote, list, code and link. Select text and press a tool to wrap it;
+with nothing selected the tool inserts placeholder text already selected, so
+typing replaces it. A selection that spans lines becomes a fenced code block
+rather than inline code, and **Link** leaves the caret where the address goes.
+Images enter the page three ways — the toolbar's image button, pasting into the
+body, or dropping a file onto it. They are uploaded through Discourse's own
+`/uploads.json` and inserted as `![name](upload://…)`, so the reader and the
+preview resolve them exactly as they resolve images in a post; nothing extra
+has to be configured. Saving stays disabled while an upload is running, and a
+refused upload (wrong format or over the size limit) says why under the body.
+Several images can be chosen or dropped at once; they are inserted one after
+another, separated by a blank line.
+
 A published page is visible to readers; an unpublished page is absent from the
 tree and returns not-found when requested directly. Unpublishing a folder takes
 its whole section down, articles below it included — it does not move them up to

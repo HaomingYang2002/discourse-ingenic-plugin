@@ -243,7 +243,10 @@ The documentation screen edits the contents tree, decides which node an article
 belongs to, and edits articles under any version. A version that has not edited
 a page inherits it from the version before, and the screen says so: each page
 shows the version it currently comes from, with controls to override it in this
-version or drop the override and go back to inheriting.
+version or drop the override and go back to inheriting. The article body has a
+Markdown toolbar (bold, italic, heading, quote, list, code, link) and accepts
+images by button, paste or drop; they are uploaded through Discourse and
+inserted as `upload://` Markdown, so they render as they would in a post.
 
 A permission can be granted to a user or a group. A product permission is
 inherited by its versions and pages; a page permission is inherited only by that
