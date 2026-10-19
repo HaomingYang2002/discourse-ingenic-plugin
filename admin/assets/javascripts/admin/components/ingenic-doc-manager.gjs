@@ -107,10 +107,10 @@ export default class IngenicDocManager extends Component {
 
   @action
   async createChip(event) {
-    await this.#create(event, "documentation/products", {
-      kind: "chip",
-      parent_id: this.#seriesIdForSelectedChip(),
-    });
+    // The series is carried by the form itself: a new series has no chip to
+    // select, so deriving the parent from the selection left an empty series
+    // impossible to fill.
+    await this.#create(event, "documentation/products", { kind: "chip" });
   }
 
   @action
@@ -292,6 +292,9 @@ export default class IngenicDocManager extends Component {
   }
 
   async #create(event, endpoint, extra) {
+    // Without this the browser also performs the form's own GET, throwing away
+    // the admin screen and its selection just after the record is saved.
+    event.preventDefault();
     this.busy = true;
     this.error = null;
 
@@ -311,10 +314,6 @@ export default class IngenicDocManager extends Component {
     } finally {
       this.busy = false;
     }
-  }
-
-  #seriesIdForSelectedChip() {
-    return this.series.find((entry) => (entry.chips ?? []).some((chip) => chip.id === this.selectedChipId))?.id;
   }
 
   #idForSlug(slug) {
@@ -366,18 +365,17 @@ export default class IngenicDocManager extends Component {
                 </li>
               {{/each}}
             </ul>
+
+            <form class="ingenic-admin-form ingenic-admin-form--inline" {{on "submit" this.createChip}}>
+              <input type="hidden" name="parent_id" value={{entry.id}} />
+              <input name="name" placeholder={{i18n "admin.ingenic.documentation.chip_name"}} required />
+              <input name="slug" placeholder={{i18n "admin.ingenic.documentation.chip_slug"}} required />
+              <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.documentation.add_chip"}}</button>
+            </form>
           </section>
         {{else}}
           <p>{{i18n "admin.ingenic.documentation.empty"}}</p>
         {{/each}}
-
-        {{#if this.selectedChip}}
-          <form class="ingenic-admin-form ingenic-admin-form--inline" {{on "submit" this.createChip}}>
-            <input name="name" placeholder={{i18n "admin.ingenic.documentation.chip_name"}} required />
-            <input name="slug" placeholder={{i18n "admin.ingenic.documentation.chip_slug"}} required />
-            <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.documentation.add_chip"}}</button>
-          </form>
-        {{/if}}
       </aside>
 
       <section class="ingenic-doc-manager__workspace">
