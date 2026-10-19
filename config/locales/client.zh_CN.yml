@@ -87,6 +87,21 @@ zh_CN:
             body_placeholder: "在这里写文章正文（Markdown）…"
             preview_loading: "正在渲染…"
             preview_failed: "预览渲染失败，请检查正文内容。"
+            toolbar:
+              bold: "加粗"
+              italic: "斜体"
+              heading: "标题"
+              quote: "引用"
+              list: "无序列表"
+              code: "代码"
+              link: "链接"
+              image: "插入图片"
+              uploading: "正在上传…"
+              upload_failed: "图片上传失败，请换一个更小的文件。"
+              placeholder_bold: "加粗文字"
+              placeholder_italic: "斜体文字"
+              placeholder_code: "代码"
+              placeholder_link: "链接文字"
         boards:
           title: "开发板"
           description: "管理开发板目录，将每块开发板关联到型号，并管理发布状态。"
@@ -406,11 +421,11 @@ zh_CN:
           rebuild: "重新计算所有余额"
           rebuilt: "已检查 %{checked} 个账号，修正 %{corrected} 个。"
         header_links:
-          intro: "显示在页头 Logo 旁边的按钮。可以指向官网、GitHub，或论坛之外的任何地址；按钮只显示图标时，名称仍会作为无障碍标签被朗读。"
+          intro: "显示在 Logo 旁边和页脚“关注我们”一栏的按钮。可以指向官网、GitHub，或论坛之外的任何地址；按钮只显示图标时，名称仍会作为无障碍标签被朗读。"
           add: "添加按钮"
           new_title: "新建按钮"
           edit_title: "编辑按钮"
-          empty: "页头尚未添加自定义按钮。"
+          empty: "页头和页脚尚未添加外链按钮。"
           unpublished: "已隐藏"
           icon_only: "仅显示图标"
           fields:
@@ -444,11 +459,11 @@ zh_CN:
             published: "显示"
         site:
           title: "站点内容"
-          description: "首页布局与卡片、页头按钮、首页推广位、页脚合作平台以及页脚的链接栏目。"
+          description: "首页布局与卡片、页头与页脚的外链按钮、首页推广位、页脚合作平台以及页脚的链接栏目。"
           tab_homepage: "首页"
           tab_section_cards: "首页卡片"
           tab_promotions: "推广位"
-          tab_header_links: "页头按钮"
+          tab_header_links: "外链按钮"
           tab_social_links: "合作平台"
           tab_footer: "页脚栏目"
           homepage:
@@ -475,7 +490,7 @@ zh_CN:
               category_hint: "公告、活动与讨论区块读取该分类下的主题。"
               categories: "版块"
               categories_hint: "分类标识，用逗号分隔，按书写顺序显示。留空则显示最活跃的版块。"
-              show_all: "显示「所有分区」链接"
+              show_all: "显示「全部分类」链接"
             types:
               categories: "热门分区"
               promotions: "推广位"

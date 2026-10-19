@@ -20,11 +20,12 @@ module DiscourseIngenic
       []
     end
 
-    # The three groups the sidebar draws, in the order it draws them. The theme
-    # reads an entry's section to decide which list it goes in, so the set is
-    # fixed here: an entry naming something else is read as the first group
-    # rather than dropped, because a navigation row that vanishes is harder to
-    # account for than one that appears in the wrong list.
+    # The three blocks the navigation recognises, in the order it draws them.
+    # The theme reads an entry's section to decide which block it goes in, so the
+    # set is fixed here: an entry naming something else is read as the first
+    # block rather than dropped, because a navigation row that vanishes is
+    # harder to account for than one that appears in the wrong list. `member`
+    # entries are drawn as rows of core's community section, below Topics.
     NAV_SECTIONS = %w[forum resources member].freeze
 
     def nav_items

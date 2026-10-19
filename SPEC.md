@@ -30,7 +30,7 @@ Three, because the navigation is three things, and the heading is what says so:
 | Group (`section`) | Drawn as | Entries |
 | --- | --- | --- |
 | `forum` | a plain list at the top, no heading | New Post (`/new-topic`), Home, Official Announcements, Technical Discussions |
-| `resources` | under the heading *Developer Resources* | Online Documentation, Open Source, SDK & Firmware Downloads, Development Boards |
+| `resources` | under the heading *Developer Resources* | Online Documentation, SDK & Firmware Downloads, Development Boards |
 | `member` | a plain list at the bottom, no heading | Bounties, Points |
 
 Only the middle group is drawn with a heading. A heading over the topic list
@@ -62,7 +62,10 @@ rather than stores a URL.
 The three categories the shipped navigation points at are created by the plugin
 rather than by hand, because a fresh Discourse install has none and a category
 entry pointing at a missing category is a dead link on a page that otherwise
-looks finished:
+looks finished. Open Source is a top-level section in its own right, directly
+after Technical Discussions in the navigation; the rest of the tree hangs beneath
+them — the series and their chips under Technical Discussions, and the two
+sub-forums under Open Source:
 
 | Section | Parent | Who may start a topic |
 | --- | --- | --- |
@@ -71,26 +74,43 @@ looks finished:
 | Open Source (`open-source`) | — | Nobody: it is a container |
 | Third-Party Open Source (`third-party`) | `open-source` | Everyone |
 | Official Open Source (`official`) | `open-source` | Administrators only |
+| T Series (`t-series`) | `technical-discussions` | Nobody: it is a container |
+| T33 (`t33`), T32Pro (`t32pro`), T41 (`t41`) | `t-series` | Everyone |
+| C Series (`c-series`) | `technical-discussions` | Nobody: it is a container |
+| CW020 (`cw020`), CW080 (`cw080`) | `c-series` | Everyone |
+| X Series (`x-series`) | `technical-discussions` | Nobody: it is a container |
+| X2600 (`x2600`) | `x-series` | Everyone |
+| MCU Series (`mcu-series`) | `technical-discussions` | Nobody: it is a container |
+| G32S10 (`g32s10`) | `mcu-series` | Everyone |
+
+The tree is three levels deep, so `seed!` sets `max_category_nesting` to 3
+before creating anything; Discourse's default of 2 refuses the chip level and
+the setting is hidden from the admin screens.
 
 `rake ingenic:seed_categories` creates what is absent and reports one row per
-category (`created`, `kept` or `skipped`); a second run leaves an existing
-category exactly as the forum has it, renaming and re-colouring included.
+category (`created`, `kept`, `moved` or `skipped`); a second run leaves an
+existing category's name and colour exactly as the forum has them. Parentage is
+the list's: a category whose slug is in the list but whose parent is not the one
+above is re-parented, so an Open Source that an earlier version of the list
+placed under Technical Discussions moves back to the top level rather than being
+left behind as a second page.
 `rake ingenic:seed_categories[permissions]` is the only thing that writes
-permissions back, and `rake ingenic:doctor` reports any of the five that is
-missing. The parent is read-only so that its two sub-forums can carry different
+permissions back, and `rake ingenic:doctor` reports any of the sixteen that is
+missing. The containers are read-only so that their children can carry different
 permissions at all: Discourse validates a sub-category's permissions against its
 parent's, and a parent with `everyone` at any level is what lets a child be
 anything.
 
 Because core renders its own sections around the API-registered ones, "above
 Discourse's own sections" is a stylesheet decision rather than an order of
-registration: `ingenic_nav_order` puts the three groups at the top of the flex
-column (with the sidebar's filter box above them) or leaves them where they
-land.
+registration: `ingenic_nav_order` puts the two Ingenic sections at the top of the
+flex column (with the sidebar's filter box above them) or leaves them where they
+land. The third block is core's community section, which closes the column
+either way.
 
 Theme settings control the sidebar's width and which side it renders on, whether
-the three groups sit above or below Discourse's own sections, and the heading
-over the middle group (`ingenic_nav_title`, default *Developer Resources* /
+the Ingenic sections sit above or below Discourse's own sections, and the heading
+over the resources block (`ingenic_nav_title`, default *Developer Resources* /
 「开发者资源」). The position flip re-points the container grid's areas and is
 scoped to the `md` breakpoint and up, because below that core takes the sidebar
 out of the grid entirely and shows it as a drawer — there is no column to move.
@@ -370,13 +390,18 @@ are what still has to be run on a real instance.
 - [ ] a priced resource is never charged when the file turns out to be missing
 - [ ] `/ingenic/points` shows the reader their own history and nobody else's
 - [ ] `Ingenic::Points.rebuild!` corrects a balance that has been edited by hand
-- [x] `rake ingenic:seed_categories` creates all five sections and reports them as
-      `created`; a second run reports `kept`
+- [x] `rake ingenic:seed_categories` creates the section tree and reports each row
+      as `created`; a second run reports `kept`
+- [x] the tree is three levels deep: a chip is under its series, which is under
+      Technical Discussions, and `max_category_nesting` is 3
+- [x] a section still at an old address is reported as `moved` and re-parented
+      rather than duplicated
 - [x] the two sub-forums are filed under `open-source`, which reports
       `has_children` and a subcategory count of 2 in `/categories.json`
 - [x] a member POSTs a topic into `third-party` and gets 200, and into `official`
       and gets 403 — readable but refused, not 404
-- [x] `GET /c/open-source/<id>` serves the section and `GET /c/open-source` is 404
+- [x] `GET /c/open-source/<id>` serves the section, and the full-chain
+      `/c/technical-discussions/<series>/<chip>/<id>` address serves a chip
 - [ ] malformed `ingenic_nav_items` / `ingenic_homepage_blocks` /
       `ingenic_developer_form_fields` degrade to an empty list instead of raising
 - [x] `bundle exec rspec plugins/discourse-ingenic/spec` passes
@@ -384,19 +409,19 @@ are what still has to be run on a real instance.
 ### Theme
 
 - [ ] theme installs from git and compiles without JS or SCSS errors
-- [ ] the sidebar shows New Post, Home, Official Announcements and Technical
-      Discussions; then **Developer Resources** over Online Documentation, Open
-      Source, SDK & Firmware Downloads and Development Boards; then Bounties and
-      Points with no heading of their own
-- [ ] only the Developer Resources group is drawn with a heading — the forum list
-      above it and Bounties/Points below it are plain lists
+- [ ] the sidebar shows New Post, Home, Official Announcements, Technical
+      Discussions and Open Source; then **Developer Resources** over Online
+      Documentation, SDK & Firmware Downloads, Development Boards and MCP; then
+      Site Feedback, Topics, Bounties, Points, All Categories and More
+- [ ] only the Developer Resources block is drawn with a heading — the forum
+      block above it and the member block below it are plain lists
 - [ ] the Development Boards row draws a chip icon and the Official Announcements
       row draws a megaphone (both need `register_svg_icon` in the plugin)
 - [ ] New Post opens the composer, and asks a signed-out visitor to sign in
-- [ ] all three groups appear in the mobile drawer
+- [ ] all three blocks appear in the mobile drawer
 - [ ] `ingenic_sidebar_position=right` moves the sidebar, above `md` only
 - [ ] `ingenic_sidebar_width` changes the column width
-- [ ] `ingenic_nav_order=first` puts the three groups above Discourse's own
+- [ ] `ingenic_nav_order=first` puts the Ingenic sections above Discourse's own
       sections, with the sidebar's filter box above them all
 - [ ] reordering `ingenic_nav_items` reorders the sidebar after a reload, within
       the group each entry names
@@ -404,8 +429,15 @@ are what still has to be run on a real instance.
       disappearing
 - [ ] an external nav entry is never highlighted; a docs entry stays highlighted
       on nested documentation pages
-- [x] the Open Source row opens the section's own page, at the address carrying
-      the id, and every category row's link answers 200
+- [x] the Technical Discussions row opens the section's own page, at the address
+      carrying the id, and every category row's link answers 200
+- [x] only Technical Discussions and Open Source draw a chevron and open a hover
+      panel; the resources rows carry none
+- [x] the Technical Discussions panel lists each series, and pointing at a
+      series opens its chips in a second panel beside the first, so a long chip
+      list never lengthens the series panel; the Open Source row below it opens
+      its own panel with its two sub-forums, and is not a row inside the
+      Technical Discussions panel
 - [x] `/` is the native latest topic list, with the Topic / Replies / Views /
       Activity columns
 - [x] the page title is **Ingenic**, and no `powered-by-discourse` element is

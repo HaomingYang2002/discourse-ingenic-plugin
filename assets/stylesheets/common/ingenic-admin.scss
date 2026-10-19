@@ -251,6 +251,73 @@
   color: var(--primary-high);
 }
 
+// Markdown tools. A quiet strip above the writing surface: the buttons are
+// glyphs only, so they take one row even in the narrow pane, and they sit
+// against the textarea's own border rather than in a box of their own.
+.ingenic-doc-editor__tools {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem;
+  margin-bottom: 0.4rem;
+  padding: 0.2rem;
+  border: 1px solid var(--primary-low);
+  border-radius: 6px;
+  background: var(--primary-very-low);
+}
+
+.ingenic-doc-editor__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--primary-high);
+  cursor: pointer;
+
+  .d-icon {
+    font-size: var(--font-down-1);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--secondary);
+    color: var(--tertiary-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tertiary-medium);
+    outline-offset: -1px;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.ingenic-doc-editor__tool-divider {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.25rem;
+  background: var(--primary-low);
+}
+
+.ingenic-doc-editor__tool-status {
+  margin-left: 0.4rem;
+  color: var(--primary-medium);
+  font-size: var(--font-down-2);
+}
+
+// The picker is opened by the image button; the field itself is never shown.
+.ingenic-doc-editor__file-input {
+  display: none;
+}
+
 .ingenic-doc-editor__body {
   flex: 1 1 auto;
   width: 100%;
@@ -560,9 +627,10 @@
   flex: 1 1 0;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: flex-start;
+  gap: 0.1rem 0.5rem;
   padding: 0.3rem 0.4rem;
   border: 0;
   background: transparent;
@@ -669,7 +737,12 @@
 
 // The row is a title beside a badge, and a page title can be a whole sentence,
 // so the title gives way rather than pushing the badge out of the row.
+// The title takes the whole first line, so the inherited-from badge moves to
+// a line of its own instead of squeezing the name down to a few letters in the
+// narrow tree column.
 .ingenic-admin-tree__title {
+  flex: 1 1 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -689,6 +762,7 @@
 
 .ingenic-admin-tree__badge {
   flex: 0 0 auto;
+  margin-left: 1.4rem;
   font-size: var(--font-down-2);
   color: var(--primary-medium);
   border: 1px solid var(--primary-low);

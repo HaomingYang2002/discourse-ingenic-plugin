@@ -251,7 +251,7 @@ after_initialize do
     DiscourseIngenic::ConfigParser.homepage_blocks
   end
 
-  # The header buttons and the section cards are content, and both are drawn
+  # The external buttons and the section cards are content, and both are drawn
   # before anything can be fetched: the header is the first thing on every page
   # and the cards sit above the fold. They come in the site payload so the
   # first paint already has them, rather than showing an empty header and

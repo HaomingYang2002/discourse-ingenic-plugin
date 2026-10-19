@@ -3,6 +3,7 @@ import { action } from "@ember/object";
 import { on } from "@ember/modifier";
 import { fn } from "@ember/helper";
 import { tracked } from "@glimmer/tracking";
+import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { eq } from "discourse/truth-helpers";
 import { ajax } from "discourse/lib/ajax";
 import { i18n } from "discourse-i18n";
@@ -49,9 +50,16 @@ export default class IngenicDocManager extends Component {
   // and the buttons under the tree start the same draft a row's + does.
   treeApi = null;
 
-  constructor(owner, args) {
-    super(owner, args);
-    this.#selectFirst();
+  // The first series/chip/version is picked after the first paint rather than
+  // in the constructor: `selectChip` reads `selectedLocale` to decide the next
+  // one and then writes it back, and doing that while the component is still
+  // being rendered is a read followed by a write in the same computation —
+  // which Glimmer refuses, aborting the whole screen.
+  @action
+  startUp() {
+    if (this.selectedSeriesId === null) {
+      this.#selectFirst();
+    }
   }
 
   get selectedSeries() {
@@ -989,7 +997,7 @@ export default class IngenicDocManager extends Component {
       <p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>
     {{/if}}
 
-    <div class="ingenic-doc-workbench">
+    <div class="ingenic-doc-workbench" {{didInsert this.startUp}}>
       <header class="ingenic-doc-workbench__bar">
         <div class="ingenic-doc-workbench__field">
           <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>

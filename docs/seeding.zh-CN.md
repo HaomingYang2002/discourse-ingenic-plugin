@@ -24,7 +24,9 @@ cd /var/discourse
 rake ingenic:seed_categories
 ```
 
-开源版块是一个装着两个子版块的版块，本身不是发帖的地方：
+技术讨论这棵树有三层，和在线文档的产品选择器、下载筛选是同一个形状：技术讨论
+下面是各系列，系列下面是型号。开源版块与它平级，在导航里紧跟其后，下面是两个
+子版块。
 
 | 版块 | 上级 | 谁可以发帖 |
 | --- | --- | --- |
@@ -33,8 +35,39 @@ rake ingenic:seed_categories
 | 开源版块（`open-source`） | — | 无人：它只是容器 |
 | 三方开源（`third-party`） | `open-source` | 所有人 |
 | 官方开源（`official`） | `open-source` | 只有管理员 |
+| T 系列（`t-series`） | `technical-discussions` | 无人：它只是容器 |
+| T33（`t33`）、T32Pro（`t32pro`）、T41（`t41`） | `t-series` | 所有人 |
+| C 系列（`c-series`） | `technical-discussions` | 无人：它只是容器 |
+| CW020（`cw020`）、CW080（`cw080`） | `c-series` | 所有人 |
+| X 系列（`x-series`） | `technical-discussions` | 无人：它只是容器 |
+| X2600（`x2600`） | `x-series` | 所有人 |
+| MCU 系列（`mcu-series`） | `technical-discussions` | 无人：它只是容器 |
+| G32S10（`g32s10`） | `mcu-series` | 所有人 |
 
-再跑一次，已经存在的分类会原样保留 —— 改名、换颜色、改上级都随你。唯一会在被
+第三层要求 `max_category_nesting` 为 3；Discourse 默认的 2 会拒绝型号这一层。
+这个设置不在后台界面上，所以任务会在创建之前自己设好：
+
+```ruby
+SiteSetting.max_category_nesting = 3
+```
+
+每个分类还带一个中文名和中文简介（`官方公告`、`技术讨论`……）。只有开启内容
+本地化、并把 `zh_CN` 加进支持语言之后，Discourse 才会显示它们，所以首次运行前
+先把两者打开：
+
+```ruby
+SiteSetting.content_localization_enabled = true
+SiteSetting.content_localization_supported_locales = "zh_CN"
+```
+
+如果分类是在这两个设置打开之前建的，再跑一次任务：它会为已存在的分类补上
+缺失的 `locale` 和 `zh_CN` 名称，不会第二次改英文名，也不会多出一行。本地化
+关闭时不会写入任何翻译行 —— 写了也没有地方读。
+
+再跑一次，已经存在的分类会原样保留 —— 改名、换颜色都随你。唯一由这张表决定的
+是归属：slug 在表里、但上级不是表里写的那个，就会被改挂过去，因为树就是这张表
+的形状。早先版本放到技术讨论下面的开源版块，就是这样被挪回顶层，而不是再复制
+一份。slug 在全站唯一，所以按旧地址找到的那一行就是同一个版块。另一个会在被
 要求时重新写回的，是上面这张表里的权限：
 
 ```bash
@@ -42,7 +75,7 @@ rake ingenic:seed_categories[permissions]
 ```
 
 改动上面这张表之后、或者有人能在"官方开源"里发帖需要修回来时，跑这一条。
-`rake ingenic:doctor` 会报出五个里缺了哪一个（在控制台里调
+`rake ingenic:doctor` 会报出十六个里缺了哪一个（在控制台里调
 `Ingenic::ForumCategories.missing` 得到的是同一份名单）。
 
 ## 产品树

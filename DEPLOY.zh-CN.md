@@ -230,28 +230,30 @@ https://github.com/aishangletaohua/discourse-ingenic-theme.git
 
 `ingenic_nav_items` 和 `ingenic_homepage_blocks` 都是 JSON 配置，可选填。
 如果 `ingenic_nav_items` 留空，主题会使用自带的默认导航 —— 与下面的 JSON 完全
-相同的三个分组、相同的顺序。
+相同的三块、相同的顺序。
 
 **一旦配置了 `ingenic_nav_items`，它会整体替换主题自带的列表**，而不是与之合并。
 因此在悬赏功能上线之前就已经配置过导航的站点，不会有"高分悬赏"入口，也不会自动
 多出一个：需要自己在 JSON 里补上，或者清空这个设置、以上面的列表为起点重新配置。
 
-导航分为三组，用 `section` 指定某一项属于哪一组：
+导航分为三块，用 `section` 指定某一项属于哪一块：
 
 | `section` | 呈现方式 | 内容 |
 | --- | --- | --- |
 | `forum` | 最上方的一段列表，不带标题 | 发帖入口、首页、论坛自己的版块 |
-| `resources` | 带独立标题的一组 | 开发者页面及其对应的论坛版块 |
-| `member` | 最下方的一段列表，不带标题 | 会员自己的悬赏与积分 |
+| `resources` | 带独立标题的一组 | 开发者页面、对应的论坛版块和 MCP |
+| `member` | 会员块中的行，排在话题下面，不带标题 | 会员自己的悬赏与积分 |
 
-中间那组的标题取自主题设置 `ingenic_nav_title`，默认是 **Developer Resources**
-（中文界面显示"开发者资源"）。上下两组刻意不带标题：给主题列表加标题等于给论坛
-贴标签，而给"高分悬赏 / 积分"加标题会把它们并到上面的开发者资源里去，那恰恰是
-它们不该在的位置。
+中间那块的标题取自主题设置 `ingenic_nav_title`，默认是 **Developer Resources**
+（中文界面显示"开发者资源"）。上面的论坛块和下面的会员块刻意不带标题：给主题
+列表加标题等于给论坛贴标签，而给"高分悬赏 / 积分"加标题会把它们并到上面的开发者
+资源里去。会员块本身就是 Discourse 的社区分区，话题和"更多"由核心提供；主题在
+话题上面补站点反馈，在话题下面补高分悬赏、积分和全部分类。
 
-`position` 决定**组内**的先后顺序；三个分组本身永远按上表的顺序出现。`section`
+`position` 决定**块内**的先后顺序；三块本身永远按上表的顺序出现。`section`
 写了不存在的分组名时，这一项会被当作 `forum`，而不是被丢掉 —— 写错分组只会让
-一行换位置，不会让一行消失。
+一行换位置，不会让一行消失。站点反馈和全部分类不可配置：它们是论坛里的位置，
+会员块始终带着它们。
 
 一个可直接修改的 `ingenic_nav_items` 示例：
 
@@ -261,12 +263,13 @@ https://github.com/aishangletaohua/discourse-ingenic-theme.git
   { "key": "home",        "label": "Home",                     "icon": "house",     "href": "/",                         "section": "forum",     "position": 1,  "enabled": true },
   { "key": "announce",    "label": "Official Announcements",   "icon": "bullhorn",  "category": "official-announcements", "section": "forum",    "position": 2,  "enabled": true },
   { "key": "discuss",     "label": "Technical Discussions",    "icon": "comments",  "category": "technical-discussions",  "section": "forum",    "position": 3,  "enabled": true },
-  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 4,  "enabled": true },
-  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",           "section": "resources", "position": 5,  "enabled": true },
+  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",            "section": "forum",    "position": 4,  "enabled": true },
+  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 5,  "enabled": true },
   { "key": "downloads",   "label": "SDK & Firmware Downloads", "icon": "download",  "href": "/ingenic/downloads",        "section": "resources", "position": 6,  "enabled": true },
   { "key": "boards",      "label": "Development Boards",       "icon": "microchip", "href": "/ingenic/boards",           "section": "resources", "position": 7,  "enabled": true },
-  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 8,  "enabled": true },
-  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 9,  "enabled": true }
+  { "key": "mcp",         "label": "MCP",                      "icon": "robot",     "href": "/ingenic/mcp",              "section": "resources", "position": 8,  "enabled": true },
+  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 9,  "enabled": true },
+  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 10, "enabled": true }
 ]
 ```
 
@@ -282,7 +285,7 @@ Discourse 的分类地址必须带 id，只写 `/c/<slug>` 会 404。每个芯�
 
 上面那份列表里有三个 slug 指的是论坛分类，而全新的 Discourse 一个都没有 ——
 `category` 项指向不存在的分类，点进去是一个"页面不存在"，而侧边栏其他部分看着
-一切正常。所以由插件负责创建：
+一切正常。所以由插件负责创建，连同它们下面的整棵树：
 
 ```bash
 ./launcher enter app
@@ -293,19 +296,49 @@ rake ingenic:seed_categories
 | --- | --- | --- |
 | 官方公告（`official-announcements`） | — | 站务组 |
 | 技术讨论（`technical-discussions`） | — | 所有人 |
-| 开源版块（`open-source`）*（侧边栏那一项指向的板块）* | — | 无人：它只是容器 |
+| 开源版块（`open-source`） | — | 无人：它只是容器 |
 | 三方开源（`third-party`） | `open-source` | 所有人 |
 | 官方开源（`official`） | `open-source` | 只有管理员 |
+| T 系列（`t-series`） | `technical-discussions` | 无人：它只是容器 |
+| T33（`t33`）、T32Pro（`t32pro`）、T41（`t41`） | `t-series` | 所有人 |
+| C 系列（`c-series`） | `technical-discussions` | 无人：它只是容器 |
+| CW020（`cw020`）、CW080（`cw080`） | `c-series` | 所有人 |
+| X 系列（`x-series`） | `technical-discussions` | 无人：它只是容器 |
+| X2600（`x2600`） | `x-series` | 所有人 |
+| MCU 系列（`mcu-series`） | `technical-discussions` | 无人：它只是容器 |
+| G32S10（`g32s10`） | `mcu-series` | 所有人 |
 
-`open-source` 就是侧边栏"Open Source / 开源版块"打开的地方，两个子版块是访客
-进去后的选择：放自己的开源项目，还是看君正官方的开源发布。"只有管理员"就是
-Discourse 普通的分类权限：编辑该分类，在 **Security（安全）** 里给 `everyone`
-只保留 *See（查看）*、不勾 *Create / Reply（发帖/回复）*，再把 *Create / Reply*
-给 `admins`。
+技术讨论就是侧边栏那一行打开的地方；鼠标停上去，面板里是各系列，鼠标再停在
+某个系列上，该系列下的型号在旁边的第二个面板里展开。开源版块是导航里紧挨着它
+下面的那一行 —— 自己是顶层的一个版块，不是技术讨论面板里的一行 —— 悬停面板里
+是它的两个子版块：放自己的开源项目，还是看君正官方的开源发布。技术讨论这棵树
+有三层，所以任务在创建之前会把
+`max_category_nesting` 设为 3 —— Discourse 默认的 2 会拒绝型号这一层，而这个
+设置不在后台界面上。
 
-这个任务只创建缺失的分类，其余一律保留论坛现状 —— 建好之后改名、换颜色、改上级
-都随你，再跑一次不会把它们改回去。唯一会在被要求时重新写回的，是上面这张表里的
-权限：
+"只有管理员"就是 Discourse 普通的分类权限：编辑该分类，在 **Security（安全）**
+里给 `everyone` 只保留 *See（查看）*、不勾 *Create / Reply（发帖/回复）*，再把
+*Create / Reply* 给 `admins`。
+
+每个分类还带一个中文名和中文简介，所以中文界面的首页卡片显示的是 `技术讨论`，
+而不是 `Technical Discussions`，下面那段说明也是中文。只有开启内容本地化、并把
+`zh_CN` 列入支持语言之后，Discourse 才会读取分类的翻译，所以首次建分类前先打开
+两者：
+
+```ruby
+SiteSetting.content_localization_enabled = true
+SiteSetting.content_localization_supported_locales = "zh_CN"
+```
+
+如果分类是在这两个设置打开之前建的，再跑一次 `rake ingenic:seed_categories`。
+它会为已有的行补上缺失的 `locale`、中文名和中文简介，其他一律不动；跑两次也
+不会多出第二条翻译。本地化关闭时不会写入翻译行，因为写了也没有地方读。
+
+这个任务只创建缺失的分类，其余保留论坛现状 —— 建好之后改名、换颜色都随你，再跑
+一次不会把它们改回去。归属是这张表唯一决定的事：slug 在表里、上级却不是表里
+写的那个，就会被改挂过去，因为树就是这张表的形状。所以早先版本放到技术讨论下面
+的开源版块会被挪回顶层，而不是变成第二个开源版块。另一个会在被要求时重新写回的，
+是上面这张表里的权限：
 
 ```bash
 rake ingenic:seed_categories[permissions]
@@ -335,7 +368,7 @@ rake ingenic:seed_categories[permissions]
 `leaderboard` 补到列表末尾，并把右侧四个卡片调整为「活动位 → 热门 → 悬赏 → 每周贡献」
 的顺序；其他区块的位置不动。留空（默认值）的站点始终跟随上面的默认布局。
 
-可用类型：`categories`（版块卡片，并带「所有分区」入口）、`latest`（最新讨论）、
+可用类型：`categories`（版块卡片，并带「全部分类」入口）、`latest`（最新讨论）、
 `hot`（本周热门）、`bounties`（积分最高的进行中悬赏）、`promotions`（在
 **Ingenic → 站点内容 → 推广位** 中维护的活动位）、`leaderboard`（本周获得积分的
 成员排行）、`announcements` 与 `discussions`
@@ -346,7 +379,7 @@ rake ingenic:seed_categories[permissions]
 `categories` 加
 `"categories": ["official-announcements", "technical-discussions"]` 可以指定显示哪些
 版块及其顺序；不加则按主题数取最活跃的一级版块，数量由 `limit` 决定。
-`"show_all": false` 会去掉标题末尾的 **所有分区** 链接。
+`"show_all": false` 会去掉标题末尾的 **全部分类** 链接。
 
 ### 首页
 
@@ -463,7 +496,7 @@ Code 和 VS Code 的现成配置。服务本身在 `/mcp`，只接受 `POST`，`
 
 这个页面**连查看也是仅限管理员**的，不只是修改：流水账里会出现账号名，而一次调整会改变某个成员在站内的状态。产品或开发板的范围权限到不了这里——积分余额不属于任何产品或开发板。
 
-**Site（站点内容）**：站点中属于"内容"而不是"论坛"的部分，分六个标签页。*Home page* 是首页布局：决定首页绘制哪些区块、顺序，以及每个区块的标题、宽度和显示数量。区块在这里新增、用箭头上下移动、删除或就地编辑，整份列表一次保存。*Home cards* 是"热门分区"下面的卡片：填写分类即可沿用该分类的地址、颜色、图标和主题数，也可以只填链接——在线文档的卡片就是这样来的，不必为它凭空建一个分类。*Promotions* 是首页的活动推广位，每项包含图片、标题和跳转地址。*Header buttons* 是页头中间、Logo 与搜索之间的那排按钮：每项有名称、内置图标或图片地址、跳转地址，也可以只显示图标。*Partner platforms* 是页脚的第三方平台区，每一项可以是跳转链接，也可以是二维码图片——网页类平台用链接，App 类平台用二维码让访客扫码；也可以只显示图标。*Footer columns* 是页脚链接列与页面底部的分区跳转链接，列数不限，每列有自己的标题和按顺序排列的链接。
+**Site（站点内容）**：站点中属于"内容"而不是"论坛"的部分，分六个标签页。*Home page* 是首页布局：决定首页绘制哪些区块、顺序，以及每个区块的标题、宽度和显示数量。区块在这里新增、用箭头上下移动、删除或就地编辑，整份列表一次保存。*Home cards* 是"热门分区"下面的卡片：填写分类即可沿用该分类的地址、颜色、图标和主题数，也可以只填链接——在线文档的卡片就是这样来的，不必为它凭空建一个分类。*Promotions* 是首页的活动推广位，每项包含图片、标题和跳转地址。*External buttons* 是 Logo 旁边和页脚“关注我们”一栏的按钮：每项有名称、内置图标或图片地址、跳转地址，也可以只显示图标。*Partner platforms* 是页脚的第三方平台区，每一项可以是跳转链接，也可以是二维码图片——网页类平台用链接，App 类平台用二维码让访客扫码；也可以只显示图标。*Footer columns* 是页脚链接列与页面底部的分区跳转链接，列数不限，每列有自己的标题和按顺序排列的链接。
 
 ### 下载访问级别
 
@@ -569,7 +602,7 @@ rails c
 | 站点 Logo（桌面、小尺寸、移动端）、favicon、大图标 | **管理后台 → 设置 → 品牌**（`logo`、`logo_small`、`mobile_logo`、`favicon`、`large_icon`） |
 | 首页区块——增删、排序、标题、宽度、显示数量 | **Ingenic → 站点内容 → 首页** |
 | 「热门分区」下的卡片，包括指向在线文档的那张 | **Ingenic → 站点内容 → 首页卡片** |
-| 页头按钮——名称、图标或图片、跳转、是否只显示图标 | **Ingenic → 站点内容 → 页头按钮** |
+| 外链按钮——名称、图标或图片、跳转、是否只显示图标 | **Ingenic → 站点内容 → 外链按钮** |
 | 推广位的图片、标题、按钮和跳转 | **Ingenic → 站点内容 → 推广位** |
 | 合作平台的图标或二维码、名称、跳转、是否只显示图标 | **Ingenic → 站点内容 → 合作平台** |
 | 页脚链接栏目，以及每个页面右下方的板块跳转 | **Ingenic → 站点内容 → 页脚栏目** |
@@ -585,7 +618,7 @@ rails c
 
 - 插件里带的 `assets/images/ingenic-logo.png` 是**测试用占位图**，是我自己画的，不是君正的品牌文件。请到「品牌」里换成正式 Logo。`rake ingenic:setup` 只在 Logo 为空时填入，不会覆盖你上传的正式 Logo。
 - favicon 必须是正方形。把 `assets/images/ingenic-favicon.png`（512 × 512）**同时**上传到 `favicon` 和 `large_icon`。横版字标不能放这里：Discourse 会从中间裁成正方形，标签页里只剩一小段笔画。`large_icon` 是手机主屏图标和安装版应用图标的来源。
-- 推广位、合作平台、页头按钮、首页卡片、开发板里的图片填的是 **URL**，不是上传。先把图片上传到论坛（或放到 CDN），再把地址粘贴进去。只有 Logo 和 favicon 是直接上传。
+- 推广位、合作平台、外链按钮、首页卡片、开发板里的图片填的是 **URL**，不是上传。先把图片上传到论坛（或放到 CDN），再把地址粘贴进去。只有 Logo 和 favicon 是直接上传。
 
 **固定在代码里，改这些等于改代码、需要重新部署：**
 
@@ -593,7 +626,7 @@ rails c
 - 尚未创建任何卡片时首页绘制的三张默认卡片：技术讨论、在线文档、官方公告。
 - 渲染器认识的九种区块类型和三种宽度（整行、主栏、侧栏）。不认识的类型会被拒绝，不会只画一半。
 - 界面文案及其中英文翻译。
-- 侧边栏的图标和三个分组（论坛 / 开发者资源 / 成员自己）。
+- 侧边栏的图标和三个块（论坛 / 开发者资源 / 会员块）。
 - 占位 Logo 文件本身。
 
 ---
@@ -630,7 +663,7 @@ rails c
 - [ ] 页头最右侧出现语言切换器——未登录时在 **登录** 按钮旁，已登录时在头像旁；选 **中文** 后页面以中文重新加载，选 **English** 能切回
 - [ ] 登录状态下的切换同样有效——该选择在退出再登录后依然保留
 - [ ] Ingenic 导航出现在 Discourse 侧边栏中，移动端抽屉中也能看到
-- [ ] 侧边栏顺序为 话题 · MCP · 站点反馈 · 所有分区 · 更多；点击 **MCP** 进入 `/ingenic/mcp`，该行高亮
+- [ ] 侧边栏分为三块——论坛、开发者资源、会员块；MCP 紧跟开发板商店下面，最后一块的顺序为 站点反馈 · 话题 · 高分悬赏 · 积分 · 全部分类 · 更多；点击 **MCP** 进入 `/ingenic/mcp`，该行高亮
 - [ ] `/ingenic/mcp` 显示 `https://<你的论坛>/mcp`、可用的 **复制** 按钮、接入步骤和客户端配置；切换到中文后整页都是中文
 - [ ] 关闭 `mcp_server_enabled` 后，侧边栏不再出现 **MCP**，`/ingenic/mcp` 提示服务尚未启用
 - [ ] 右下角出现机器人按钮，点击打开面板，按 **Esc** 可关闭；按钮进入 AI 机器人对话页（未登录时先登录再返回）
@@ -640,7 +673,7 @@ rails c
 - [ ] 在导航里选 **最新** 会进入论坛原生的主题列表，返回首页时首页仍然在
 - [ ] 版块模块默认显示三张卡片：技术讨论、在线文档、官方公告；标题末尾的 **所有版块** 链接进入 `/categories`
 - [ ] 点击版块卡片会进入对应分类；在 **Ingenic → 站点内容 → 首页卡片** 新建的卡片会替换默认三张，选中分类的卡片沿用该分类的颜色和主题数
-- [ ] 页头中间显示 **Ingenic → 站点内容 → 页头按钮** 中配置的按钮；只显示图标的按钮仍有可供朗读的名称；勾选“跳转到论坛外部”的按钮在新标签页打开
+- [ ] **Ingenic → 站点内容 → 外链按钮** 中配置的按钮显示在 Logo 旁边和页脚“关注我们”一栏；只显示图标的按钮仍有可供朗读的名称；勾选“跳转到论坛外部”的按钮在新标签页打开
 - [ ] 右侧栏自上而下是最新活动、高分悬赏、热门主题，且三者都出现在首屏，无需滚动
 - [ ] 如果配置了 `promotions` 模块，**Ingenic → 站点内容** 中配置的活动推广位出现在右侧栏
 - [ ] 页脚显示第三方平台区（网页类为链接、App 类为可扫描的二维码）以及配置好的链接列
@@ -752,11 +785,11 @@ rake ingenic:doctor
 
 - migration 已在开发库和测试库中真正执行，建出了数据表、外键，以及积分账本依赖的
   那条部分唯一索引；
-- 插件 RSpec 测试实际运行通过：423 个用例，0 失败；
-- `rake ingenic:seed_categories` 已在真实实例上跑过，五个版块的权限就是它说会设成的
-  样子；`rake ingenic:doctor` 报告无失败项；
-- 主题已作为站点默认主题安装，其导航按浏览器加载的方式检查过：27 项，覆盖三个分组、
-  顺序、图标，以及哪个页面点亮哪个链接；
+- 插件 RSpec 测试实际运行通过：548 个用例，0 失败；
+- `rake ingenic:seed_categories` 已在真实实例上跑过，三层分类树和它说会设成的权限一致 ——
+  包括把早先版本放到技术讨论下面的开源版块挪回顶层；`rake ingenic:doctor` 报告无失败项；
+- 主题已作为站点默认主题安装，其导航已在浏览器中检查：三块、顺序、图标，以及
+  哪个页面点亮哪个链接；
 - 44 项检查跑在真实 PostgreSQL 和真实的删除路径上（`PostDestroyer` 的
   `force_destroy`、`UserDestroyer`）：托管积分从余额中扣除、永久删除主题时退回、
   已支付的悬赏不退回、仅移入回收站则分文不动、绕过回调直接删行时由数据库级联清理、
@@ -764,7 +797,7 @@ rake ingenic:doctor
 - 86 项检查通过 HTTP 打在服务器上：登录、悬赏榜、成员自己的页面、通过插件接口挂出与
   撤回悬赏、两种拒绝（同一主题的第二笔悬赏、超过上限的悬赏），以及由两位管理员完成的
   永久删除——论坛不允许把主题移入回收站的人自己清空回收站——删除之后托管积分确实退回。
-  七个页面返回 200 并带应用外壳，五个版块从 `/site.json` 读出，成员可以（200）在
+  七个页面返回 200 并带应用外壳，分类树里的每个版块都从 `/site.json` 读出，成员可以（200）在
   "三方开源"发布自己的项目、在"官方开源"被拒绝（403），导航设置通过管理页面所用的
   同一个接口写入并读回；
 - 另有 89 项检查通过 HTTP 打在管理页面和它背后的写入上，每一项问的不只是"打得开吗"，

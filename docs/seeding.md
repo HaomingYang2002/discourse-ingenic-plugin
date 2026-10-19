@@ -25,7 +25,10 @@ cd /var/discourse
 rake ingenic:seed_categories
 ```
 
-Open Source is a section holding two sub-forums rather than a place to post:
+Technical Discussions is three levels deep, the same shape as the documentation's
+product picker and the download filters: the section holds the series, and a
+series holds its chips. Open Source sits beside it at the top level, directly
+after it in the navigation, and holds its two sub-forums.
 
 | Section | Parent | Who may start a topic |
 | --- | --- | --- |
@@ -34,32 +37,53 @@ Open Source is a section holding two sub-forums rather than a place to post:
 | Open Source (`open-source`) | — | Nobody: it is a container |
 | Third-Party Open Source (`third-party`) | `open-source` | Everyone |
 | Official Open Source (`official`) | `open-source` | Administrators only |
+| T Series (`t-series`) | `technical-discussions` | Nobody: it is a container |
+| T33 (`t33`), T32Pro (`t32pro`), T41 (`t41`) | `t-series` | Everyone |
+| C Series (`c-series`) | `technical-discussions` | Nobody: it is a container |
+| CW020 (`cw020`), CW080 (`cw080`) | `c-series` | Everyone |
+| X Series (`x-series`) | `technical-discussions` | Nobody: it is a container |
+| X2600 (`x2600`) | `x-series` | Everyone |
+| MCU Series (`mcu-series`) | `technical-discussions` | Nobody: it is a container |
+| G32S10 (`g32s10`) | `mcu-series` | Everyone |
 
-Each section also carries a Chinese name (`官方公告`, `技术讨论`, …). Discourse
-serves it only when content localization is on and `zh_CN` is one of its
-languages, so switch both on before the first run:
+A third level needs `max_category_nesting` set to 3; Discourse's default of 2
+refuses the chip. The setting is hidden from the admin screens, so the task
+sets it itself before it creates anything:
+
+```ruby
+SiteSetting.max_category_nesting = 3
+```
+
+Each category also carries a Chinese name and description (`官方公告`,
+`技术讨论`, …). Discourse serves them only when content localization is on and
+`zh_CN` is one of its languages, so switch both on before the first run:
 
 ```ruby
 SiteSetting.content_localization_enabled = true
 SiteSetting.content_localization_supported_locales = "zh_CN"
 ```
 
-Run the task again if the sections were seeded before those settings were
+Run the task again if the categories were seeded before those settings were
 turned on: it writes the missing `locale` and `zh_CN` name to categories that
 already exist, without renaming the English one a second time or duplicating a
 row. With localization off, no translation rows are written — there would be
 nothing to read them.
 
 A second run leaves categories that already exist exactly as the forum has them —
-renaming, re-colouring and re-parenting included. Permissions are the one thing a
-re-run will write, and only when asked:
+renaming and re-colouring included. Parentage is the one thing it owns: a
+category whose slug is in this list but whose parent is not the one above is
+re-parented, because the tree is the list's shape. That is how an Open Source
+seeded under Technical Discussions by an earlier version of this list moves back
+to the top level instead of becoming a second copy of the page. Slugs are unique
+across the forum, so the row found at the old address is the same section.
+Permissions are the other thing a re-run will write, and only when asked:
 
 ```bash
 rake ingenic:seed_categories[permissions]
 ```
 
 Do that after changing the table above, or to repair an Official Open Source that
-somebody can post into. `rake ingenic:doctor` reports any of the five that is
+somebody can post into. `rake ingenic:doctor` reports any of the sixteen that is
 missing (`Ingenic::ForumCategories.missing` from the console gives the same list).
 
 ## The product tree

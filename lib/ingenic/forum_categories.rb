@@ -10,24 +10,35 @@ module Ingenic
   # on a front page that otherwise renders perfectly. The tree is here and
   # `rake ingenic:seed_categories` builds it.
   #
-  # Open Source is a section rather than a place to post. It holds two
-  # sub-forums, and which of them a project belongs in is a question of who is
-  # publishing it: Third-Party Open Source takes anyone's project, Official Open
-  # Source is the company's own and only an administrator can start a topic
-  # there. The parent takes no topics itself, which is what its read-only
-  # permission says — a section with two sub-forums has nowhere of its own for a
-  # topic to be filed.
+  # Technical Discussions is three levels deep: the section holds the series,
+  # and a series holds its chips. It is the same shape the documentation's
+  # product picker and the download filters use, so a reader can go from a chip
+  # to its discussions without meeting a different taxonomy.
+  #
+  # Open Source sits beside Technical Discussions at the top level, after it in
+  # the navigation, and holds two sub-forums. Which of them a project belongs in
+  # is a question of who is publishing it: Third-Party Open Source takes
+  # anyone's project, Official Open Source is the company's own and only an
+  # administrator can start a topic there. The section takes no topics itself,
+  # which is what its read-only permission says.
   #
   # Creating is not the same as owning. A second run leaves a category that is
-  # already there exactly as the forum has it, renaming and re-colouring
-  # included. Permissions are the one thing a re-run will touch, and only when
-  # it is asked to.
+  # already there as the forum has it, renaming and re-colouring included.
+  # Parentage is the part the list owns: a category found at an address other
+  # than the one above is re-parented, because the tree is the list's shape.
+  # Permissions are the other thing a re-run will touch, and only when it is
+  # asked to.
   module ForumCategories
+    # The forum's own tree. Technical Discussions is three levels deep: it holds
+    # a series, and a series holds its chips. `max_category_nesting` has to be 3
+    # for the last level to be allowed, which `seed!` sets. Open Source is a
+    # top-level section beside it.
     SPECS = [
       {
         slug: "official-announcements",
         name: "Official Announcements",
         zh_name: "官方公告",
+        zh_description: "君正团队发布的版本、路线图和公告。",
         position: 0,
         color: "0CBBFF",
         text_color: "FFFFFF",
@@ -41,6 +52,7 @@ module Ingenic
         slug: "technical-discussions",
         name: "Technical Discussions",
         zh_name: "技术讨论",
+        zh_description: "关于君正芯片的问题、解答与实践经验。",
         position: 1,
         color: "1B8FD4",
         text_color: "FFFFFF",
@@ -54,6 +66,7 @@ module Ingenic
         slug: "open-source",
         name: "Open Source",
         zh_name: "开源版块",
+        zh_description: "基于君正芯片的开源项目，包括官方与第三方。",
         position: 2,
         color: "4FC3F7",
         text_color: "0B3C5D",
@@ -67,6 +80,7 @@ module Ingenic
         parent: "open-source",
         name: "Third-Party Open Source",
         zh_name: "三方开源",
+        zh_description: "社区发布的开源项目，注册用户都可以发布。",
         position: 0,
         color: "7ED6F5",
         text_color: "0B3C5D",
@@ -81,6 +95,7 @@ module Ingenic
         parent: "open-source",
         name: "Official Open Source",
         zh_name: "官方开源",
+        zh_description: "君正官方发布的开源项目，只有管理员可以发布。",
         position: 1,
         color: "29A3E0",
         text_color: "FFFFFF",
@@ -89,6 +104,167 @@ module Ingenic
           everyone: :readonly,
           admins: :full,
         },
+      },
+      {
+        slug: "t-series",
+        parent: "technical-discussions",
+        name: "T Series",
+        zh_name: "T 系列",
+        zh_description: "T 系列视觉处理器：按型号提问与交流。",
+        position: 1,
+        color: "1B8FD4",
+        text_color: "FFFFFF",
+        description: "T-series vision processors: questions and experience by chip.",
+        permissions: {
+          everyone: :readonly,
+        },
+      },
+      {
+        slug: "t33",
+        parent: "t-series",
+        name: "T33",
+        zh_name: "T33",
+        zh_description: "关于 T33 的问题与解答。",
+        position: 0,
+        color: "1B8FD4",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the T33.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "t32pro",
+        parent: "t-series",
+        name: "T32Pro",
+        zh_name: "T32Pro",
+        zh_description: "关于 T32Pro 的问题与解答。",
+        position: 1,
+        color: "1B8FD4",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the T32Pro.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "t41",
+        parent: "t-series",
+        name: "T41",
+        zh_name: "T41",
+        zh_description: "关于 T41 的问题与解答。",
+        position: 2,
+        color: "1B8FD4",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the T41.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "c-series",
+        parent: "technical-discussions",
+        name: "C Series",
+        zh_name: "C 系列",
+        zh_description: "C 系列连接芯片：按型号提问与交流。",
+        position: 2,
+        color: "2F9E63",
+        text_color: "FFFFFF",
+        description: "C-series connectivity chips: questions and experience by chip.",
+        permissions: {
+          everyone: :readonly,
+        },
+      },
+      {
+        slug: "cw020",
+        parent: "c-series",
+        name: "CW020",
+        zh_name: "CW020",
+        zh_description: "关于 CW020 的问题与解答。",
+        position: 0,
+        color: "2F9E63",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the CW020.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "cw080",
+        parent: "c-series",
+        name: "CW080",
+        zh_name: "CW080",
+        zh_description: "关于 CW080 的问题与解答。",
+        position: 1,
+        color: "2F9E63",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the CW080.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "x-series",
+        parent: "technical-discussions",
+        name: "X Series",
+        zh_name: "X 系列",
+        zh_description: "X 系列应用处理器：按型号提问与交流。",
+        position: 3,
+        color: "8A5CC2",
+        text_color: "FFFFFF",
+        description: "X-series application processors: questions and experience by chip.",
+        permissions: {
+          everyone: :readonly,
+        },
+      },
+      {
+        slug: "x2600",
+        parent: "x-series",
+        name: "X2600",
+        zh_name: "X2600",
+        zh_description: "关于 X2600 的问题与解答。",
+        position: 0,
+        color: "8A5CC2",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the X2600.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
+      },
+      {
+        slug: "mcu-series",
+        parent: "technical-discussions",
+        name: "MCU Series",
+        zh_name: "MCU 系列",
+        zh_description: "MCU 系列：按型号提问与交流。",
+        position: 4,
+        color: "C2761B",
+        text_color: "FFFFFF",
+        description: "MCU questions and experience by chip.",
+        permissions: {
+          everyone: :readonly,
+        },
+      },
+      {
+        slug: "g32s10",
+        parent: "mcu-series",
+        name: "G32S10",
+        zh_name: "G32S10",
+        zh_description: "关于 G32S10 的问题与解答。",
+        position: 0,
+        color: "C2761B",
+        text_color: "FFFFFF",
+        description: "Questions and answers about the G32S10.",
+        permissions: {
+          everyone: :full,
+        },
+        solved: true,
       },
     ].freeze
 
@@ -116,9 +292,9 @@ module Ingenic
       SPECS.map { |spec| spec[:slug] }
     end
 
-    # Slugs the navigation links to and the forum does not have. Worth asking
-    # about separately from seeding, because the symptom is a working page with
-    # a link on it that goes nowhere.
+    # Slugs this list is responsible for and the forum does not have. Worth
+    # asking about separately from seeding, because the symptom is a
+    # navigation that leads into a tree whose middle or leaf is missing.
     def missing
       slugs - Category.where(slug: slugs).pluck(:slug)
     end
@@ -133,9 +309,21 @@ module Ingenic
     # and the difference is invisible until somebody cannot post where they
     # should be able to.
     def seed!(permissions: false)
+      ensure_nesting!
       rows = SPECS.filter_map { |spec| seed_one(spec, permissions: permissions) }
       ensure_layout!
       rows
+    end
+
+    # The tree has a chip under a series under a section. Discourse refuses to
+    # save the last level while `max_category_nesting` is the default 2, and
+    # the failure arrives as a validation error on a category the task is
+    # halfway through creating. The setting is hidden from the admin UI, so it
+    # is set here rather than left as a step somebody has to know about.
+    def ensure_nesting!
+      return if SiteSetting.max_category_nesting.to_i >= 3
+
+      SiteSetting.max_category_nesting = 3
     end
 
     # Applies the section's display settings to a category that already exists.
@@ -181,6 +369,24 @@ module Ingenic
       end
 
       category = Category.find_by(slug: spec[:slug], parent_category_id: parent&.id)
+      moved = false
+
+      # A section that is already in the forum at another address — including
+      # the top level, which is where an Open Source seeded by an earlier
+      # version of this list may still sit. The tree is this list's shape, and
+      # leaving the row there while creating a second one would give the
+      # navigation two open-source pages. Slugs are unique across the forum, so
+      # the row found here is the same section, not a second one with the same
+      # name.
+      if category.nil?
+        category = Category.find_by(slug: spec[:slug])
+        if category
+          category.parent_category_id = parent&.id
+          category.position = spec[:position] if spec[:position]
+          category.save!
+          moved = true
+        end
+      end
 
       if category.nil?
         create(spec, parent)
@@ -216,11 +422,17 @@ module Ingenic
       current = { "everyone" => "full" } if current.empty?
       wanted = normalized(spec[:permissions])
 
+      detail =
+        if moved
+          parent ? "moved under #{parent.name}" : "moved to the top level"
+        elsif current != wanted
+          "permissions are #{permission_words(current)}, not #{permission_words(wanted)}"
+        end
+
       {
         slug: spec[:slug],
-        action: :kept,
-        detail:
-          current == wanted ? nil : "permissions are #{permission_words(current)}, not #{permission_words(wanted)}",
+        action: moved ? :moved : :kept,
+        detail: detail,
       }
     end
 
@@ -289,13 +501,27 @@ module Ingenic
           category.category_localizations.find_or_initialize_by(locale: "zh_CN")
         end
 
-      # Fill in a name that is not there; do not overwrite one an administrator
-      # has edited. A re-run repairs what is missing, it does not reset the
-      # forum to this list.
+      # Fill in a name or description that is not there; do not overwrite one
+      # an administrator has edited. A re-run repairs what is missing, it does
+      # not reset the forum to this list. The description matters because the
+      # section cards draw it directly under the name: a translated name over an
+      # English description reads as a half-finished page.
       if localization.new_record? || localization.name.blank?
         localization.name = spec[:zh_name]
         changed = true
       end
+
+      if spec[:zh_description].present? &&
+           (localization.new_record? || localization.description.blank?)
+        localization.description = spec[:zh_description]
+        changed = true
+      end
+
+      # A new row is written by the category's own save. An existing one is
+      # not: the association has no autosave, so a translation added to a
+      # category that was seeded before this list carried descriptions would
+      # otherwise be assigned and then dropped.
+      localization.save! if localization.persisted? && localization.changed?
 
       changed
     end

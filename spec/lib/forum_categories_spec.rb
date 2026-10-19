@@ -59,6 +59,52 @@ describe Ingenic::ForumCategories do
     end
   end
 
+  it "leaves Open Source at the top level, after Technical Discussions" do
+    described_class.seed!
+
+    open_source = Category.find_by(slug: "open-source")
+    expect(open_source.parent_category_id).to be_nil
+    expect(open_source.position).to eq(2)
+  end
+
+  it "puts a chip under its series under Technical Discussions" do
+    described_class.seed!
+
+    technical = Category.find_by(slug: "technical-discussions")
+    series = Category.find_by(slug: "t-series")
+    chip = Category.find_by(slug: "t33")
+
+    expect(series.parent_category_id).to eq(technical.id)
+    expect(chip.parent_category_id).to eq(series.id)
+  end
+
+  it "turns on the nesting level the tree needs" do
+    SiteSetting.max_category_nesting = 2
+
+    described_class.seed!
+
+    expect(SiteSetting.max_category_nesting).to eq(3)
+  end
+
+  it "moves a section that is still at the old address instead of copying it" do
+    # The address this section is moving away from was three levels deep.
+    SiteSetting.max_category_nesting = 3
+
+    technical = Fabricate(:category, slug: "technical-discussions")
+    old = Fabricate(:category, slug: "open-source", parent_category: technical)
+    Fabricate(:category, slug: "third-party", parent_category: old)
+
+    report = described_class.seed!
+    row = report.find { |entry| entry[:slug] == "open-source" }
+
+    expect(row[:action]).to eq(:moved)
+    expect(row[:detail]).to include("top level")
+    expect(old.reload.parent_category_id).to be_nil
+    expect(old.position).to eq(2)
+    expect(Category.where(slug: "open-source").count).to eq(1)
+    expect(Category.find_by(slug: "third-party").parent_category_id).to eq(old.id)
+  end
+
   it "takes no topics in the section itself, only in its sub-forums" do
     described_class.seed!
 
@@ -120,8 +166,8 @@ describe Ingenic::ForumCategories do
   it "puts the asked-for permissions back when told to" do
     # Official Open Source is a sub-forum, so the one already on the forum has
     # to be filed under the section too — the seeder looks a sub-forum up inside
-    # its section, and a top-level category of the same slug is a different
-    # category that it would leave alone and create a second one beside.
+    # its section, and a top-level category of the same slug would be moved
+    # under it rather than left beside it.
     section = Fabricate(:category, slug: "open-source", permissions: { everyone: :readonly })
     category =
       Fabricate(
@@ -170,12 +216,15 @@ describe Ingenic::ForumCategories do
       described_class.seed!
       category = Category.find_by(slug: "open-source")
 
+      localization = category.category_localizations.find_by(locale: "zh_CN")
+
       expect(category.locale).to eq("en")
-      expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("开源版块")
-      expect(category.category_localizations.find_by(locale: "zh_CN").name).not_to eq(category.name)
+      expect(localization.name).to eq("开源版块")
+      expect(localization.name).not_to eq(category.name)
+      expect(localization.description).to eq("基于君正芯片的开源项目，包括官方与第三方。")
     end
 
-    it "names every section, not only the one a test happened to open" do
+    it "names and describes every section, not only the one a test happened to open" do
       described_class.seed!
 
       described_class::SPECS.each do |spec|
@@ -183,6 +232,8 @@ describe Ingenic::ForumCategories do
           Category.find_by(slug: spec[:slug]).category_localizations.find_by(locale: "zh_CN")
 
         expect(localization.name).to eq(spec[:zh_name]), "#{spec[:slug]} is still English"
+        expect(localization.description).to eq(spec[:zh_description]),
+                                             "#{spec[:slug]} still describes itself in English"
       end
     end
 
@@ -202,7 +253,9 @@ describe Ingenic::ForumCategories do
       expect(actions(report).uniq).to eq([:kept])
       category = Category.find_by(slug: "technical-discussions")
       expect(category.locale).to eq("en")
-      expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("技术讨论")
+      localization = category.category_localizations.find_by(locale: "zh_CN")
+      expect(localization.name).to eq("技术讨论")
+      expect(localization.description).to eq("关于君正芯片的问题、解答与实践经验。")
     end
 
     it "does not add a second row for a name it has already written" do
@@ -212,6 +265,19 @@ describe Ingenic::ForumCategories do
       category = Category.find_by(slug: "official-announcements")
       expect(category.category_localizations.where(locale: "zh_CN").count).to eq(1)
       expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("官方公告")
+    end
+
+    it "adds a description to a translation row that was seeded without one" do
+      described_class.seed!
+      category = Category.find_by(slug: "open-source")
+      localization = category.category_localizations.find_by(locale: "zh_CN")
+      localization.update_columns(description: nil)
+
+      described_class.seed!
+
+      expect(
+        category.category_localizations.find_by(locale: "zh_CN").description,
+      ).to eq("基于君正芯片的开源项目，包括官方与第三方。")
     end
 
     it "leaves a Chinese name an administrator has changed" do
@@ -224,6 +290,20 @@ describe Ingenic::ForumCategories do
       expect(
         category.category_localizations.find_by(locale: "zh_CN").name,
       ).to eq("站务公告")
+    end
+
+    it "leaves a Chinese description an administrator has changed" do
+      described_class.seed!
+      category = Category.find_by(slug: "official-announcements")
+      category.category_localizations.find_by(locale: "zh_CN").update!(
+        description: "站务组发布的通知。",
+      )
+
+      described_class.seed!
+
+      expect(
+        category.category_localizations.find_by(locale: "zh_CN").description,
+      ).to eq("站务组发布的通知。")
     end
   end
 

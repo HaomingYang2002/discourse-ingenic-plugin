@@ -249,31 +249,34 @@ surprises people the first time.
 
 `ingenic_nav_items` and `ingenic_homepage_blocks` are JSON. Both are optional —
 with `ingenic_nav_items` left empty the theme falls back to its shipped
-navigation, which is the same three groups in the same order as the JSON below.
+navigation, which is the same blocks in the same order as the JSON below.
 
 **A configured `ingenic_nav_items` replaces the shipped list wholesale**, it does
 not merge with it. So a site that configured its navigation before Bounties
 existed has no Bounties entry and will not grow one: add it to the JSON, or clear
 the setting and start from the list below.
 
-The navigation is three groups. `section` says which one an entry is in:
+The navigation is three blocks. `section` says which one an entry belongs to:
 
 | `section` | Drawn as | Holds |
 | --- | --- | --- |
 | `forum` | a plain list at the top, no heading | starting a post, the front page, the forum's own sections |
-| `resources` | a list under its own heading | the developer pages and their forum sections |
-| `member` | a plain list at the bottom, no heading | what a member has earned or set aside |
+| `resources` | a list under its own heading | the developer pages, their forum sections, and MCP |
+| `member` | rows in the member block, below Topics, no heading | what a member has earned or set aside |
 
-The heading over the middle group is the theme's `ingenic_nav_title`, defaulting
-to **Developer Resources**. The outer two are deliberately heading-less: a
-heading over the topic list would be a label on the forum, and one over Bounties
-and Points would file them under the developer resources, which is where they do
-not belong.
+The heading over the middle block is the theme's `ingenic_nav_title`, defaulting
+to **Developer Resources**. The forum block above and the member block below are
+deliberately heading-less: a heading over the topic list would be a label on the
+forum, and one over Bounties and Points would file them under the developer
+resources. The member block itself is Discourse's community section, so its
+Topics and More rows come from core; the theme adds Site Feedback above Topics
+and Bounties, Points and All Categories below it.
 
-`position` orders entries **within** their group; the groups themselves are
+`position` orders entries **within** their block; the blocks themselves are
 always drawn in the order above. An entry naming a group that does not exist is
 read as `forum` rather than dropped, so a mistyped group moves a row instead of
-losing it.
+losing it. Site Feedback and All Categories are not configurable: they are places
+in the forum, and the member block always carries them.
 
 A starting `ingenic_nav_items`:
 
@@ -283,12 +286,13 @@ A starting `ingenic_nav_items`:
   { "key": "home",        "label": "Home",                     "icon": "house",     "href": "/",                         "section": "forum",     "position": 1,  "enabled": true },
   { "key": "announce",    "label": "Official Announcements",   "icon": "bullhorn",  "category": "official-announcements", "section": "forum",    "position": 2,  "enabled": true },
   { "key": "discuss",     "label": "Technical Discussions",    "icon": "comments",  "category": "technical-discussions",  "section": "forum",    "position": 3,  "enabled": true },
-  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 4,  "enabled": true },
-  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",           "section": "resources", "position": 5,  "enabled": true },
+  { "key": "open-source", "label": "Open Source",              "icon": "code",      "category": "open-source",            "section": "forum",    "position": 4,  "enabled": true },
+  { "key": "docs",        "label": "Online Documentation",     "icon": "book",      "href": "/ingenic/docs",             "section": "resources", "position": 5,  "enabled": true },
   { "key": "downloads",   "label": "SDK & Firmware Downloads", "icon": "download",  "href": "/ingenic/downloads",        "section": "resources", "position": 6,  "enabled": true },
   { "key": "boards",      "label": "Development Boards",       "icon": "microchip", "href": "/ingenic/boards",           "section": "resources", "position": 7,  "enabled": true },
-  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 8,  "enabled": true },
-  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 9,  "enabled": true }
+  { "key": "mcp",         "label": "MCP",                      "icon": "robot",     "href": "/ingenic/mcp",              "section": "resources", "position": 8,  "enabled": true },
+  { "key": "bounties",    "label": "Bounties",                 "icon": "gift",      "href": "/ingenic/bounties",         "section": "member",    "position": 9,  "enabled": true },
+  { "key": "points",      "label": "Points",                   "icon": "star",      "href": "/ingenic/points",           "section": "member",    "position": 10, "enabled": true }
 ]
 ```
 
@@ -304,7 +308,7 @@ documentation entry pointing at that chip's `/ingenic/docs/<product>`.
 Three slugs in the list above name a category, and a fresh Discourse install has
 none of them — a `category` entry pointing at a category that does not exist is a
 link to a not-found page on a sidebar that otherwise looks finished. So the
-plugin creates them:
+plugin creates them, and the rest of the tree beneath them:
 
 ```bash
 ./launcher enter app
@@ -315,20 +319,37 @@ rake ingenic:seed_categories
 | --- | --- | --- |
 | Official Announcements (`official-announcements`) | — | staff |
 | Technical Discussions (`technical-discussions`) | — | everyone |
-| Open Source (`open-source`) *(the section the sidebar points at)* | — | nobody: it is a container |
+| Open Source (`open-source`) | — | nobody: it is a container |
 | Third-party Open Source (`third-party`) | `open-source` | everyone |
 | Official Open Source (`official`) | `open-source` | administrators |
+| T Series (`t-series`) | `technical-discussions` | nobody: it is a container |
+| T33 (`t33`), T32Pro (`t32pro`), T41 (`t41`) | `t-series` | everyone |
+| C Series (`c-series`) | `technical-discussions` | nobody: it is a container |
+| CW020 (`cw020`), CW080 (`cw080`) | `c-series` | everyone |
+| X Series (`x-series`) | `technical-discussions` | nobody: it is a container |
+| X2600 (`x2600`) | `x-series` | everyone |
+| MCU Series (`mcu-series`) | `technical-discussions` | nobody: it is a container |
+| G32S10 (`g32s10`) | `mcu-series` | everyone |
 
-`open-source` is what the sidebar's **Open Source** row opens, and the two
-sub-forums are what a visitor chooses between once they are there — a project of
-their own, or Ingenic's own releases. "Administrators" is Discourse's ordinary
-category security: edit the category, and under **Security** give `everyone`
-*See* but not *Create / Reply*, with `admins` holding *Create / Reply*.
+Technical Discussions is what its sidebar row opens, and its hover panel shows
+each series; pointing at a series opens that series' chips in a second panel
+beside the first. Open Source is the row directly below it in
+the navigation — a top-level section of its own, not a row inside that panel —
+and its hover panel shows its two sub-forums: a project of their own, or
+Ingenic's own releases. The Technical Discussions tree is three levels deep, so
+the task sets `max_category_nesting` to 3 before it creates anything —
+Discourse's default of 2 refuses the chip level, and the setting is not on the
+admin screens.
 
-Every section also carries a Chinese name, so a reader whose interface is Chinese
-sees `技术讨论` on the home card rather than `Technical Discussions`. Discourse
-only serves a category's translation when content localization is enabled and
-`zh_CN` is listed as a supported language, so set both before seeding:
+"Administrators" is Discourse's ordinary category security: edit the category,
+and under **Security** give `everyone` *See* but not *Create / Reply*, with
+`admins` holding *Create / Reply*.
+
+Every section also carries a Chinese name and description, so a reader whose
+interface is Chinese sees `技术讨论` on the home card rather than `Technical
+Discussions`, with a matching description under it. Discourse only serves a
+category's translation when content localization is enabled and `zh_CN` is
+listed as a supported language, so set both before seeding:
 
 ```ruby
 SiteSetting.content_localization_enabled = true
@@ -341,10 +362,14 @@ name to the existing rows and leaves everything else untouched; running it twice
 does not create a second translation. With localization switched off it writes
 no translation rows, because nothing would read them.
 
-The task creates what is missing and leaves everything else exactly as the forum
-has it — renaming, re-colouring and re-parenting a category afterwards is
-expected, and a second run will not undo it. The one thing it will put back, when
-asked, is the permissions above:
+The task creates what is missing and leaves everything else as the forum has it —
+renaming and re-colouring a category afterwards is expected, and a second run
+will not undo it. Parentage is the one thing the list owns: a category whose
+slug is in the list but whose parent is not the one above is re-parented, because
+the tree is the list's shape. An Open Source that an earlier version of the list
+filed under Technical Discussions therefore moves back to the top level instead
+of becoming a second open-source page.
+The one thing it will put back, when asked, is the permissions above:
 
 ```bash
 rake ingenic:seed_categories[permissions]
@@ -555,10 +580,10 @@ together. *Home cards* are the cards under Popular sections: each names a
 category to borrow its address, colour, icon and topic count, or carries a link
 of its own — which is how the documentation reader gets a card without the
 forum inventing a category for it. *Promotions* are the homepage activity slots,
-each with a picture, a headline and a destination. *Header buttons* are the
-short row in the middle of the header, between the logo and the search: each is
-a label, a built-in icon or an image URL, and a destination, and can be drawn as
-its icon alone. *Partner platforms* is the strip in the footer, which takes
+each with a picture, a headline and a destination. *External buttons* are drawn
+beside the wordmark and in the footer's partner strip: each is a label, a
+built-in icon or an image URL, and a destination, and can be drawn as its icon
+alone. *Partner platforms* is the strip in the footer, which takes
 either a link or a QR code image — a platform whose home is a web page gets a
 link, one that lives in an app gets a code the visitor scans; a platform can
 also be drawn as its icon alone. *Footer columns* are the footer's link columns
@@ -724,7 +749,7 @@ a release.
 | Wordmark, small and mobile logo, favicon and large icon | **Admin → Site settings → Branding** (`logo`, `logo_small`, `mobile_logo`, `favicon`, `large_icon`) |
 | Front page blocks — add, remove, reorder, heading, width, count | **Ingenic → Site content → Home page** |
 | The cards under Popular sections, including one for the docs reader | **Ingenic → Site content → Home cards** |
-| Header buttons — name, icon or image, destination, icon-only | **Ingenic → Site content → Header buttons** |
+| External buttons — name, icon or image, destination, icon-only | **Ingenic → Site content → External buttons** |
 | Promotion picture, headline, button and destination | **Ingenic → Site content → Promotions** |
 | Partner platform icon or QR image, label, destination | **Ingenic → Site content → Partner platforms** |
 | Footer columns and the section jump links at the bottom of every page | **Ingenic → Site content → Footer columns** |
@@ -747,7 +772,7 @@ Three details worth knowing about the images:
   there: Discourse crops it to a square from the center, so the browser tab
   shows a fragment of the letters rather than the mark. `large_icon` is what the
   phone's home-screen icon and the installed app's icon are made from.
-- Pictures inside promotions, partner platforms, header buttons, home cards and
+- Pictures inside promotions, partner platforms, external buttons, home cards and
   boards are **URLs**, not uploads. Upload the image to the forum first (or host
   it on a CDN) and paste its address. The logo and favicon are the two places
   that take an upload.
@@ -760,8 +785,8 @@ Three details worth knowing about the images:
 - The nine block types and the three widths (full, main, side) the renderer
   understands. A type it does not know is refused rather than half-drawn.
 - Interface labels and their English and Chinese translations.
-- The sidebar's icons and its three groups (forum / developer resources / the
-  member's own).
+- The sidebar's icons and its three blocks (forum / developer resources / the
+  member block).
 - The stand-in wordmark file.
 
 ---
@@ -801,7 +826,7 @@ Open these and check each one:
 - [ ] the header shows a language switcher at its right end — beside **Log in** when signed out, beside the avatar when signed in; its labels are **EN** and **中文**, each language named in its own language; picking 中文 reloads the page in Chinese, and picking EN brings it back
 - [ ] the same switch works when signed in — the choice then survives signing out and back in
 - [ ] the Ingenic navigation appears in the sidebar, and in the mobile drawer on a phone
-- [ ] the sidebar order is Topics · MCP · Site Feedback · All Categories · More, and clicking **MCP** opens `/ingenic/mcp` with that row highlighted
+- [ ] the sidebar reads as three blocks — forum, developer resources, member — with MCP directly below Development Boards, and the last block in the order Site Feedback · Topics · Bounties · Points · All Categories · More; clicking **MCP** opens `/ingenic/mcp` with that row highlighted
 - [ ] `/ingenic/mcp` shows the address `https://<your forum>/mcp`, a **Copy** button that copies it, and the steps and client snippets; the same page in 中文 is fully translated
 - [ ] with `mcp_server_enabled` off, **MCP** disappears from the sidebar and `/ingenic/mcp` says the server is not enabled
 - [ ] the robot launcher sits in the bottom-right corner, opens a panel, closes with **Escape**, and its button leads to the AI bot's conversations (or to sign-in first when signed out)
@@ -810,7 +835,7 @@ Open these and check each one:
 - [ ] `/ingenic/home` opens the same page as `/`
 - [ ] the section block shows three cards out of the box — Technical Discussions, Online Documentation, Official Announcements — and **All sections** opens `/categories`
 - [ ] a card added in **Ingenic → Site content → Home cards** replaces the built-in three, and a card naming a category shows that category's colour and topic count
-- [ ] the middle of the header carries the buttons from **Ingenic → Site content → Header buttons**; an icon-only one still has its name as its accessible label, and both open their destination in a new tab when marked external
+- [ ] the buttons from **Ingenic → Site content → External buttons** appear beside the wordmark and in the footer's partner strip; an icon-only one still has its name as its accessible label, and both open their destination in a new tab when marked external
 - [ ] the right-hand rail reads Latest activity, then the bounty panel, then Hot topics, all on the first screen without scrolling
 - [ ] the promotions you configured in **Ingenic → Site content** appear in that rail if you added a `promotions` block
 - [ ] the footer shows the partner platform strip — a link for one kind, a scannable code for the other — and the link columns you configured
@@ -911,13 +936,14 @@ running server itself, over HTTP, rather than by reading the code:
 
 - the migrations ran, in the development database and in the test one, creating
   the tables, the foreign keys and the partial unique index the ledger relies on
-- the plugin's spec suite passes: 423 examples, 0 failures
-- `rake ingenic:seed_categories` ran against a real installation and left the
-  five sections with the permissions it says they have, and `rake ingenic:doctor`
-  reports no failures
+- the plugin's spec suite passes: 548 examples, 0 failures
+- `rake ingenic:seed_categories` ran against a real installation and built the
+  three-level tree with the permissions it says it has — including moving an
+  Open Source that an earlier version had placed under Technical Discussions
+  back to the top level — and `rake ingenic:doctor` reports no failures
 - the theme was installed as the site's default theme, and its navigation was
-  checked the way a browser loads it: 27 checks on the three groups, their order,
-  their icons, and which link lights up on which page
+  checked in a browser: the three blocks, their order, their icons, and which
+  link lights up on which page
 - 44 checks ran against a real PostgreSQL and the real destruction paths —
   `PostDestroyer` with `force_destroy`, `UserDestroyer` — covering the escrow
   leaving the balance, the refund on a permanently deleted topic, no refund for a
@@ -930,7 +956,8 @@ running server itself, over HTTP, rather than by reading the code:
   both refusals — a second offer on one topic, an offer above the ceiling — and a
   topic permanently deleted by two administrators, because the forum will not let
   the one who trashed it empty the trash. The escrow came back afterwards. Seven
-  pages answered 200 with the application shell, the five sections were read out
+  pages answered 200 with the application shell, every section in the tree was
+  read out
   of `/site.json`, a member published a project in Third-Party Open Source (200)
   and was refused in Official Open Source (403), and the navigation setting was
   written and read back through the endpoint the admin screens write through

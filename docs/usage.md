@@ -72,8 +72,8 @@ was built for it, and where a reader can see it.
 | 9 | Scoped management | A user or group can be granted management of a product, page, board or download; enforced on the server | Admin → Permissions |
 | 10 | Points for contribution | Rules table, append-only ledger, balances, member history, spending on downloads | `/ingenic/points`; Admin → Points |
 | 11 | High-value bounties on questions | Points escrowed on the asker's topic, paid on accepted answer, refunded on withdrawal, expiry or topic deletion | `/ingenic/bounties`; topic banner |
-| 12 | A front page that is a page, not a topic list | Registered homepage, configurable blocks, section cards, promotions, header buttons, partner platforms, footer columns | `/` and `/ingenic/home` |
-| 13 | A forum that reads as Ingenic, in both languages | Sky-blue palette, three-group sidebar, bilingual strings, language switcher, wider layout and clearer borders | Theme |
+| 12 | A front page that is a page, not a topic list | Registered homepage, configurable blocks, section cards, promotions, external buttons, partner platforms, footer columns | `/` and `/ingenic/home` |
+| 13 | A forum that reads as Ingenic, in both languages | Sky-blue palette, three-block sidebar, bilingual strings, language switcher, wider layout and clearer borders | Theme |
 | 14 | Connect the forum to AI clients | MCP landing page with endpoint and client steps; floating assistant into the AI bot | `/ingenic/mcp`; bottom-right robot |
 | 15 | Ship it and explain it | Plugin and theme in separate repositories; deployment, seeding and this usage guide in both languages | Repositories and `docs/` |
 
@@ -97,7 +97,7 @@ These were considered and deliberately left out of this version:
 | Boards | Filter by type and chip, read the dialog, follow Apply or Buy | Create cards, set type, chip, links, sold-out switch, specifications, publication and order |
 | Points | See their balance, the price list and their own history | Edit rules, adjust an account, inspect balances and movements, recompute balances |
 | Bounties | Put points on their own question, withdraw, accept an answer | Nothing specific: settle by accepting; repair mistakes through points adjustments |
-| Site content | See the home page, promotions and footer the team configured | Edit home blocks, home cards, promotions, header buttons, partner platforms and footer columns |
+| Site content | See the home page, promotions and footer the team configured | Edit home blocks, home cards, promotions, external buttons, partner platforms and footer columns |
 | MCP / assistant | Copy the MCP endpoint and connect a client; open the assistant | Enable or disable the core MCP server and the AI bot |
 
 ## 4. Getting started as a member
@@ -113,17 +113,25 @@ documentation and the board catalogue does not.
 
 ### 4.2 Finding your way
 
-The left sidebar has three Ingenic groups, plus Discourse's own sections:
+The left sidebar has three blocks:
 
 - **Forum** (no heading): New Post, Home, Official Announcements, Technical
-  Discussions.
-- **Developer Resources** (under a heading): Online Documentation, Open Source,
-  SDK & Firmware Downloads, Development Boards.
-- **Member** (no heading): Bounties, Points.
+  Discussions, Open Source.
+- **Developer Resources** (under a heading): Online Documentation, SDK &
+  Firmware Downloads, Development Boards, MCP.
+- **Member** (no heading, Discourse's community section): Site Feedback,
+  Topics, Bounties, Points, All Categories, More.
 
-Below that, in Discourse's community section, are **MCP**, **Site Feedback** and
-**All Categories**. The MCP link appears only while the site's MCP server is
-enabled; Site Feedback appears when the site has that category.
+MCP appears below Development Boards, and only while the site's MCP server is
+enabled. Site Feedback appears when the site has that category.
+
+Hovering **Technical Discussions** opens a panel with the chip series (T, C, X,
+MCU). Pointing at a series opens that series' chips in a second panel beside the
+first, so the series list stays one row each however many chips a series holds.
+**Open Source** is the next row of the sidebar, not a row inside that panel: it
+is a top-level section of its own, and hovering it opens its two sub-forums.
+Only those two rows carry a chevron and open on hover; the rest of the sidebar is
+a plain list.
 
 Discourse's own **Tags** and **Chat** sections are not shown. A tag here labels
 or dates a topic; it is not a second way to browse, so the tag list stays out of
@@ -180,6 +188,11 @@ belongs to. The parent itself is read-only and takes no topics: posting happens
 in one of the two sub-sections. By default Official Open Source accepts topics
 from administrators only, while anyone with an account may publish in
 Third-Party Open Source.
+
+**Technical Discussions** goes one level further: each series (T, C, X, MCU) is
+a read-only container, and discussions happen in the chip under it.
+A topic's category line therefore names the chip — T33, T32Pro, T41, CW020,
+CW080, X2600 or G32S10 — and the series page gathers all of its chips' topics.
 
 ### 4.5 Language
 
@@ -508,7 +521,7 @@ screen also has its own address, which is what to bookmark or link to:
 | Tag colours | `/admin/plugins/discourse-ingenic/tag-colours` | The colour family of each tag |
 | Downloads | `/admin/plugins/discourse-ingenic/downloads` | Resources, applications, access, categories, download record |
 | Points | `/admin/plugins/discourse-ingenic/points` | Rules, adjustments, balances, movements |
-| Site content | `/admin/plugins/discourse-ingenic/site` | Home layout, home cards, promotions, header buttons, partner platforms, footer |
+| Site content | `/admin/plugins/discourse-ingenic/site` | Home layout, home cards, promotions, external buttons, partner platforms, footer |
 
 Scoped managers see the documentation, boards and downloads they were granted.
 The application queue, access list, download record, points and site content
@@ -695,8 +708,9 @@ The **Site content** screen has six tabs:
 - **Promotions** — headline, corner label, description, button, background
   image, locale, show-from/show-until window, order and publication. A slot with
   no dates stays until it is unpublished.
-- **Header buttons** — the buttons beside the logo: label, link, built-in icon
-  or image, whether the name is drawn, external flag, order and visibility.
+- **External buttons** — the buttons beside the wordmark and in the footer's
+  partner strip: label, link, built-in icon or image, whether the name is drawn,
+  external flag, order and visibility.
 - **Partner platforms** — the footer's "Find us" strip. Each entry is a link or
   a QR code, with a label, image or QR picture, optional caption and order.
 - **Footer columns** — headings and their links (label, address, external flag,

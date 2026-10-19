@@ -78,7 +78,7 @@ namespace :ingenic do
     end
   end
 
-  desc "Name the site Ingenic, fill an empty logo with a stand-in, choose the Ingenic home page, seed the header buttons and footer links, and drop Discourse's badge"
+  desc "Name the site Ingenic, fill an empty logo with a stand-in, choose the Ingenic home page, seed the external buttons and footer links, and drop Discourse's badge"
   task setup: :environment do
     # Three settings that decide what a visitor sees before they read anything:
     # who the forum says it belongs to, whether the front page is the forum's
@@ -162,8 +162,12 @@ namespace :ingenic do
     # overridden, and both are edited in Admin → Plugins → Ingenic → Site
     # content.
     if IngenicSocialLink.count.zero?
+      # The official site is drawn as the site's own mark beside its name, the
+      # same logo the browser tab carries. GitHub already supplies its mark
+      # as an icon, so the two read as a pair in the footer strip.
+      favicon_url = SiteSetting.favicon&.url
       [
-        { label: "Ingenic", href: "https://www.ingenic.com" },
+        { label: "Ingenic", href: "https://www.ingenic.com", image_url: favicon_url },
         { label: "Ingenic Forum", href: "https://forum.ingenic.com" },
       ].each_with_index do |attrs, index|
         IngenicSocialLink.create!(
@@ -225,16 +229,15 @@ namespace :ingenic do
       changes << "promotion: a welcome slot pointing at /ingenic/docs"
     end
 
-    # Two header buttons, because the empty middle of the header is otherwise
-    # the first thing an editor has to go and find out how to fill. They are
-    # stand-ins: the official site and a code host, one with its name shown and
-    # one as its icon alone, so both shapes of the button are visible. Seeded
-    # only when there are none, and every field is edited — or the row removed —
-    # in Admin → Plugins → Ingenic → Site content → Header buttons.
+    # The two addresses a developer looks for before reading the forum: the
+    # official site and the code host. Both are drawn beside the wordmark, and
+    # GitHub also joins the partner strip in the footer. Seeded only when there
+    # are none, and every field is edited — or the row removed — in Admin →
+    # Plugins → Ingenic → Site content → External buttons.
     if IngenicHeaderLink.count.zero?
       [
         {
-          label: "Ingenic Semiconductor",
+          label: "Official",
           href: "https://www.ingenic.com",
           icon: "globe",
           show_label: true,
@@ -244,12 +247,12 @@ namespace :ingenic do
           label: "GitHub",
           href: "https://github.com",
           icon: "fab-github",
-          show_label: false,
+          show_label: true,
           external: true,
         },
       ].each_with_index do |attrs, index|
         IngenicHeaderLink.create!(position: index, published: true, **attrs)
-        changes << "header button: #{attrs[:label]} → #{attrs[:href]}"
+        changes << "external button: #{attrs[:label]} → #{attrs[:href]}"
       end
     end
 
@@ -330,7 +333,7 @@ namespace :ingenic do
     checks << [
       "forum categories",
       absent_categories.empty?,
-      "the navigation links to #{absent_categories.join(", ")}, which the forum does not have — rake ingenic:seed_categories creates them",
+      "the section tree is missing #{absent_categories.join(", ")} — rake ingenic:seed_categories creates it",
     ]
 
     # Only worth asking when a path is configured: with none, nothing is
@@ -360,13 +363,14 @@ namespace :ingenic do
     end
   end
 
-  desc "Create the forum sections the navigation links to; 'permissions' re-applies their permissions"
+  desc "Create the forum sections and their series/chip tree; 'permissions' re-applies permissions"
   task :seed_categories, [:permissions] => :environment do |_task, args|
-    # Three of the navigation's entries name a category, and Discourse creates
-    # none of its own, so on a fresh install those three are links to a page that
-    # does not exist while everything around them renders. This is what makes
-    # them real — and what makes Official Open Source administrators-only rather
-    # than another place for anyone to post.
+    # The navigation names categories, and Discourse creates none of its own,
+    # so on a fresh install the links point at pages that do not exist while
+    # everything around them renders. This is also what builds the three-level
+    # tree — Technical Discussions, its series, and each series' chips — and
+    # what makes Official Open Source administrators-only rather than another
+    # place for anyone to post.
     report = Ingenic::ForumCategories.seed!(permissions: args[:permissions].present?)
 
     width = report.map { |row| row[:slug].length }.max || 0
@@ -384,14 +388,16 @@ namespace :ingenic do
     end
 
     created = report.count { |row| row[:action] == :created }
+    moved = report.count { |row| row[:action] == :moved }
+
     puts
-    if created.zero?
+    if created.zero? && moved.zero?
       puts "Nothing to create. Categories already in the forum are left as the forum has them:"
       puts "renaming, re-colouring and reordering them here is not this task's business."
     else
-      puts "#{created} created. They are ordinary categories from here on — Admin → Categories"
-      puts "renames, re-colours, re-parents and re-permissions them, and this task will not"
-      puts "undo any of that."
+      puts "#{created} created, #{moved} moved. They are ordinary categories from here on —"
+      puts "Admin → Categories renames, re-colours, re-parents and re-permissions them,"
+      puts "and this task will not undo any of that."
     end
 
     unless args[:permissions].present?
