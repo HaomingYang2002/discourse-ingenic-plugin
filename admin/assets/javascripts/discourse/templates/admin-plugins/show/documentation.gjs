@@ -8,7 +8,11 @@ const Documentation = <template>
       @titleLabel={{i18n "admin.ingenic.documentation.title"}}
       @descriptionLabel={{i18n "admin.ingenic.documentation.description"}}
     />
-    <IngenicDocManager @series={{@model.series}} />
+    <IngenicDocManager
+      @series={{@model.series}}
+      @locales={{@model.locales}}
+      @defaultLocale={{@model.default_locale}}
+    />
   </div>
 </template>;
 

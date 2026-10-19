@@ -523,8 +523,13 @@ category seeding task — see [`DEPLOY.md`](../DEPLOY.md) and
 
 ### 11.2 Documentation
 
-1. **Create a series.** Give it a name, a slug and a locale. A series is one row
-   in the product tree.
+1. **Create a series.** Give it a name, a slug and a locale picked from the
+   list of languages this site actually serves. A series is one row in the
+   product tree. The ✎ control edits the name, slug, locale and published
+   state; an old row stored as `en` can be moved onto the site's language there,
+   without deleting it and writing its content again. Rows below it that still
+   carry the old language follow; one deliberately filed under another language
+   is left alone.
 2. **Add a chip under the series.** A chip must have a series as its parent;
    the admin screen and the database both refuse a chip without one.
 3. **Add a version to the chip.** Give it a version slug (for example `1.1.0`),
@@ -534,17 +539,21 @@ category seeding task — see [`DEPLOY.md`](../DEPLOY.md) and
    parent is picked from a list, so a parent that does not exist can no longer
    be silently dropped to the top level. The published switch decides what a
    reader sees.
-5. **Order and rename** rows with the arrows and the rename control. Pages move
-   within their parent only; version order decides what inherits from what, and
-   page order decides the contents. A row with children cannot be deleted;
-   remove or move the children first.
+5. **Order and edit** rows with the arrows and the ✎ control. Pages move within
+   their parent only; version order decides what inherits from what, and page
+   order decides the contents. The edit form covers a series/chip's name, slug,
+   locale and published state, and a version's label, slug, locale, release date
+   and deprecated flag. A row with children cannot be deleted; remove or move
+   the children first.
 6. **Override an inherited page** by choosing **Override in this version**; the
    page becomes editable in this version. **Restore inheritance** deletes the
    copy in this version and returns to the earlier source.
 
 A published page is visible to readers; an unpublished page is absent from the
-tree and returns not-found when requested directly. A version with no page of
-its own simply inherits the pages of the version before it.
+tree and returns not-found when requested directly. Unpublishing a folder takes
+its whole section down, articles below it included — it does not move them up to
+the top level. A version with no page of its own simply inherits the pages of
+the version before it.
 
 The product tree is shared by three features, so build it before downloads or
 boards: documentation uses it for the picker, downloads for the series/model

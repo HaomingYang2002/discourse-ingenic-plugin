@@ -44,14 +44,38 @@
   }
 
   li {
-    display: flex;
-    align-items: center;
-    gap: 0.15rem;
+    display: block;
   }
 
   li .ingenic-doc-manager__chip {
     flex: 1 1 auto;
     min-width: 0;
+  }
+}
+
+// The chip line and its edit form are stacked: the form is several fields wide
+// and would squeeze the name to nothing beside it.
+.ingenic-doc-manager__chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.ingenic-doc-manager__edit-form {
+  flex: 1 1 100%;
+  margin: 0.35rem 0 0.6rem;
+  padding: 0.5rem;
+  border: 1px solid var(--primary-low);
+  border-radius: 6px;
+  background: var(--primary-very-low);
+
+  label {
+    flex: 0 1 auto;
+  }
+
+  input,
+  select {
+    min-width: 6rem;
   }
 }
 
@@ -117,6 +141,22 @@
   display: inline-flex;
   align-items: center;
   gap: 0.1rem;
+}
+
+.ingenic-doc-manager__version-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.ingenic-doc-manager__badge {
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: var(--primary-low);
+  color: var(--primary-medium);
+  font-size: var(--font-down-2);
 }
 
 .ingenic-doc-manager__latest {

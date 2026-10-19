@@ -35,6 +35,7 @@ en:
       invalid_homepage_blocks: "ingenic_homepage_blocks is not valid JSON: %{message}"
     admin_errors:
       has_children: "This record has child records and cannot be deleted."
+      locale_conflict: "A record with the same slug already exists in the target language; nothing was saved."
       page_not_found: "That page does not exist in this version or any version it inherits from."
       storage_unavailable: "Uploaded files cannot be written. Check the download storage path."
       user_not_found: "No such account."

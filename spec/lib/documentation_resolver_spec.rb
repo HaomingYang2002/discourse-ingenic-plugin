@@ -132,6 +132,39 @@ describe Ingenic::DocumentationResolver do
       expect(folder.reload.body).to be_nil
     end
 
+    it "takes the whole section down when the folder is unpublished" do
+      folder =
+        IngenicDocPage.create!(
+          version: v1,
+          slug: "guide",
+          title: "Guide",
+          kind: "folder",
+          locale: "en",
+        )
+      subfolder =
+        IngenicDocPage.create!(
+          version: v1,
+          slug: "advanced",
+          title: "Advanced",
+          kind: "folder",
+          parent: folder,
+          locale: "en",
+        )
+      page(v1, "setup", parent: folder)
+      page(v1, "tuning", parent: subfolder)
+
+      folder.update!(published: false)
+
+      # Not "re-attached at the top level": a reader sees none of the section.
+      expect(v2.published_pages.map(&:slug)).to be_empty
+
+      # The editor still sees it, folder and children, so it can be put back.
+      admin_slugs = v2.page_tree.map(&:slug)
+      expect(admin_slugs).to eq(%w[guide advanced tuning setup])
+      expect(v2.page_tree.find { |resolved| resolved.slug == "setup" }.depth).to eq(1)
+      expect(v2.page_tree.find { |resolved| resolved.slug == "tuning" }.depth).to eq(2)
+    end
+
     it "refuses a parent chain that loops back on itself" do
       one = page(v1, "one")
       two = page(v1, "two", parent: one)

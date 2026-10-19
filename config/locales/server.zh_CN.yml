@@ -35,6 +35,7 @@ zh_CN:
       invalid_homepage_blocks: "ingenic_homepage_blocks 不是有效的 JSON：%{message}"
     admin_errors:
       has_children: "该记录包含子记录，无法删除。"
+      locale_conflict: "目标语言下已经有相同标识的记录，本次修改未保存。"
       page_not_found: "该页面在此版本及其继承的任何版本中都不存在。"
       storage_unavailable: "无法写入上传的文件。请检查下载存储路径。"
       user_not_found: "账号不存在。"

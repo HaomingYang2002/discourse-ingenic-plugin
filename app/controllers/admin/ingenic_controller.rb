@@ -9,7 +9,14 @@ module Admin
     # Documentation ---------------------------------------------------------
 
     def documentation
-      render_json_dump(series: visible_series.map { |record| product_json(record, include_children: true) })
+      render_json_dump(
+        series: visible_series.map { |record| product_json(record, include_children: true) },
+        # The screen can change a row's language, not only create one in the
+        # right one: rows written before the default was fixed are filed under
+        # "en" and are invisible to a reader of the site's own language.
+        locales: locale_options,
+        default_locale: SiteSetting.ingenic_default_locale.presence || SiteSetting.default_locale,
+      )
     end
 
     def product
@@ -27,9 +34,21 @@ module Admin
 
     def update_product
       record = IngenicDocProduct.find(params[:id])
+      previous_locale = record.locale
       record.assign_attributes(product_params)
       authorize_ingenic!(record)
-      save_or_error(record) { render_json_dump(product: product_json(record, include_versions: true)) }
+
+      # One transaction: if a descendant cannot move to the target language,
+      # the parent's own move is rolled back too instead of leaving a tree
+      # whose top row is Chinese and whose contents are still English.
+      ActiveRecord::Base.transaction do
+        save_or_error(record) do
+          cascade_locale_change(record, previous_locale)
+          render_json_dump(product: product_json(record, include_versions: true))
+        end
+      end
+    rescue ActiveRecord::RecordNotUnique
+      render_json_error(I18n.t("ingenic.admin_errors.locale_conflict"), status: 422)
     end
 
     def destroy_product
@@ -51,9 +70,25 @@ module Admin
 
     def update_version
       record = IngenicDocVersion.find(params[:id])
+      previous_locale = record.locale
       record.assign_attributes(version_params)
       authorize_ingenic!(record)
-      save_or_error(record) { render_json_dump(version: version_json(record)) }
+
+      ActiveRecord::Base.transaction do
+        save_or_error(record) do
+          # A page usually carries the version's language; moving the version
+          # without its pages would leave them invisible to a reader of the
+          # language the editor just chose.
+          if record.locale.present? && previous_locale != record.locale
+            IngenicDocPage
+              .where(version_id: record.id, locale: previous_locale)
+              .update_all(locale: record.locale)
+          end
+          render_json_dump(version: version_json(record))
+        end
+      end
+    rescue ActiveRecord::RecordNotUnique
+      render_json_error(I18n.t("ingenic.admin_errors.locale_conflict"), status: 422)
     end
 
     def destroy_version
@@ -978,12 +1013,12 @@ module Admin
       IngenicDocProduct.series.where(id: ids + parent_ids).ordered
     end
 
-    # The administration screen has no language picker for the documentation
-    # tree, and the column default is English. A row written there should be in
-    # the language of the row it hangs under — a chip in its series, a version in
-    # its chip, a page in its version — and a new series in the language this
-    # site serves documentation in. Filing a Chinese manual under "en" is not a
-    # visible error: the reader simply gets an empty page.
+    # A new series is written in the language this site serves documentation
+    # in, and everything below it inherits the language of the row it hangs
+    # under — a chip in its series, a version in its chip, a page in its
+    # version. The screen can change a row's language afterwards, but the
+    # column default is English, and filing a Chinese manual under "en" is not
+    # a visible error: the reader simply gets an empty page.
     def default_documentation_locale(record)
       inherited =
         case record
@@ -996,6 +1031,30 @@ module Admin
         end
 
       inherited.presence || SiteSetting.ingenic_default_locale.presence || "en"
+    end
+
+    # Moving a series or chip onto another language is how a row filed under
+    # "en" before the default was fixed is repaired. The rows below it are
+    # almost always filed under the same wrong language — a reader filters
+    # pages by locale, not by the chip above them — so leaving them behind
+    # would move the title of an otherwise empty section. Only rows carrying
+    # the old value follow; one deliberately filed under another language is
+    # left where its editor put it.
+    def cascade_locale_change(record, previous_locale)
+      return if record.locale.blank? || previous_locale == record.locale
+
+      chip_ids = record.series? ? record.children.pluck(:id) : [record.id]
+      IngenicDocProduct
+        .where(id: chip_ids, locale: previous_locale)
+        .update_all(locale: record.locale)
+
+      version_ids = IngenicDocVersion.where(product_id: chip_ids).pluck(:id)
+      IngenicDocVersion
+        .where(id: version_ids, locale: previous_locale)
+        .update_all(locale: record.locale)
+      IngenicDocPage
+        .where(version_id: version_ids, locale: previous_locale)
+        .update_all(locale: record.locale)
     end
 
     # Position decides two things a reader can see: the order of the contents

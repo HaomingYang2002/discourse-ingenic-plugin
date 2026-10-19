@@ -18,6 +18,75 @@ describe Admin::IngenicController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["series"].first["slug"]).to eq("t-series")
+      # The screen offers a language picker rather than a text box, so the
+      # list of languages has to travel with the tree.
+      expect(response.parsed_body["locales"]).to be_present
+      expect(response.parsed_body["default_locale"]).to be_present
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/documentation/products/:id" do
+    # Rows written before the default was fixed are filed under "en" and are
+    # invisible to a reader of the site's own language. The screen has to be
+    # able to move such a row, with its versions and pages, without deleting
+    # it and writing its content again.
+    it "changes the language of an existing row" do
+      put "/admin/plugins/discourse-ingenic/documentation/products/#{product.id}.json",
+          params: { name: "C 系列", slug: "c-series", locale: "zh_CN", published: false }
+
+      expect(response.status).to eq(200)
+      expect(product.reload).to have_attributes(
+        name: "C 系列",
+        slug: "c-series",
+        locale: "zh_CN",
+        published: false,
+      )
+    end
+
+    # The reader filters *pages* by locale, so moving only the series would
+    # leave a Chinese title opening onto an empty section. Rows carrying the
+    # old language follow it down the whole tree.
+    it "takes the rows below it along when the language changes" do
+      chip =
+        IngenicDocProduct.create!(
+          slug: "t33",
+          name: "T33",
+          kind: IngenicDocProduct::CHIP,
+          parent: product,
+          locale: "en",
+        )
+      version =
+        IngenicDocVersion.create!(product: chip, slug: "1.0", label: "1.0", locale: "en")
+      page =
+        IngenicDocPage.create!(
+          version: version,
+          slug: "start",
+          title: "Start",
+          locale: "en",
+        )
+
+      put "/admin/plugins/discourse-ingenic/documentation/products/#{product.id}.json",
+          params: { locale: "zh_CN" }
+
+      expect(response.status).to eq(200)
+      expect(chip.reload.locale).to eq("zh_CN")
+      expect(version.reload.locale).to eq("zh_CN")
+      expect(page.reload.locale).to eq("zh_CN")
+    end
+
+    it "leaves a row deliberately filed under another language alone" do
+      IngenicDocProduct.create!(
+        slug: "t33",
+        name: "T33",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "ja",
+      )
+
+      put "/admin/plugins/discourse-ingenic/documentation/products/#{product.id}.json",
+          params: { locale: "zh_CN" }
+
+      expect(IngenicDocProduct.find_by(slug: "t33").locale).to eq("ja")
     end
   end
 

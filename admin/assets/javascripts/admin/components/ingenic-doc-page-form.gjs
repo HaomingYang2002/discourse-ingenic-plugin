@@ -40,6 +40,20 @@ export default class IngenicDocPageForm extends Component {
     return this.kind === "folder";
   }
 
+  // The site's served languages, plus the page's own value when it is not one
+  // of them: a page written before the locale default was fixed is filed under
+  // "en", and a picker without that option would move it on the next save.
+  get localeOptions() {
+    const current = this.args.page.locale;
+    const options = this.args.locales ?? [];
+
+    if (current && !options.some((option) => option.value === current)) {
+      return [{ value: current, name: current }, ...options];
+    }
+
+    return options;
+  }
+
   get parentOptions() {
     const banned = new Set([this.args.page.slug]);
     let changed = true;
@@ -133,7 +147,13 @@ export default class IngenicDocPageForm extends Component {
         </label>
         <label>
           <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-          <input name="locale" value={{@page.locale}} required />
+          <select name="locale" required>
+            {{#each this.localeOptions as |locale|}}
+              <option value={{locale.value}} selected={{eq locale.value @page.locale}}>
+                {{locale.name}}
+              </option>
+            {{/each}}
+          </select>
         </label>
         <label class="checkbox-label">
           <input type="checkbox" name="published" checked={{@page.published}} />

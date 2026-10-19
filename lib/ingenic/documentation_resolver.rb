@@ -73,15 +73,61 @@ module Ingenic
       rows_by_id = pages_by_version.values.flatten.index_by(&:id)
       target_id = version.id
 
-      chain.each_with_object({}) do |source, result|
-        pages_by_version[source].each do |page|
-          result[page.slug] = ResolvedPage.new(
-            page,
-            inherited_from: (source.id == target_id ? nil : source),
-            parent_slug: parent_slug_for(page, rows_by_id),
-          )
+      resolved =
+        chain.each_with_object({}) do |source, result|
+          pages_by_version[source].each do |page|
+            result[page.slug] = ResolvedPage.new(
+              page,
+              inherited_from: (source.id == target_id ? nil : source),
+              parent_slug: parent_slug_for(page, rows_by_id),
+            )
+          end
+        end
+
+      # A folder taken down takes its section with it. Without this, its
+      # published children lost their parent from the resolved set and
+      # build_tree re-attached them at the top level — taking a folder down
+      # published its articles, one level up.
+      prune_taken_down_subtrees!(resolved) if published_only
+
+      resolved
+    end
+
+    # A parent that exists but is not published is a section that was
+    # withdrawn, not a missing row: readers see none of it. The management page
+    # asks for drafts as well (published_only: false), so this only runs for a
+    # reader.
+    def prune_taken_down_subtrees!(rows)
+      parent_ids = rows.each_value.filter_map { |resolved| resolved.page.parent_id }.uniq
+      return if parent_ids.empty?
+
+      published_parent_ids =
+        IngenicDocPage.where(id: parent_ids, published: true).pluck(:id).to_set
+
+      hidden =
+        rows.each_value.filter_map do |resolved|
+          parent_id = resolved.page.parent_id
+          resolved.slug if parent_id && !published_parent_ids.include?(parent_id)
+        end.to_set
+
+      return if hidden.empty?
+
+      # The children of a hidden row are hidden too, down the whole chain: it
+      # is the section that was withdrawn, not one row of it.
+      changed = true
+      while changed
+        changed = false
+
+        rows.each_value do |resolved|
+          next if hidden.include?(resolved.slug)
+          next unless resolved.parent_slug && hidden.include?(resolved.parent_slug)
+
+          hidden << resolved.slug
+          changed = true
         end
       end
+
+      hidden.each { |slug| rows.delete(slug) }
     end
 
     # A page can be defined in one version while its parent is only defined in
@@ -116,8 +162,11 @@ module Ingenic
       seen = {}
       walk(children_by_parent, nil, 0, ordered, seen)
 
-      # A page whose parent is unpublished or missing is not reachable from the
-      # root. Showing it at the top level beats dropping it silently.
+      # A page whose parent is missing from the resolved set is not reachable
+      # from the root — the parent may exist only in the other language.
+      # Showing the page at the top level beats dropping it silently.
+      # Unpublished parents never reach this point: their whole subtree was
+      # pruned in effective_rows.
       rows.each_value do |resolved|
         next if seen[resolved.slug]
 
