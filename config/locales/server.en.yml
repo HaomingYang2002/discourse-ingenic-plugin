@@ -19,6 +19,12 @@ en:
     ingenic_high_like_threshold: "How many likes across a topic's live posts earn the 高赞 tag. Twenty is the forum's default; a topic that falls below the threshold loses the tag at the next pass."
 
   ingenic:
+    import:
+      unsupported: "Only Markdown (.md, .markdown, .txt) and Word (.docx) files can be imported."
+      too_large: "The file is larger than 5 MB."
+      unreadable: "The Word file could not be read."
+      no_files: "Choose at least one file to import."
+      default_title: "Imported page"
     errors:
       product_not_found: "Documentation product not found."
       version_not_found: "Documentation version not found."

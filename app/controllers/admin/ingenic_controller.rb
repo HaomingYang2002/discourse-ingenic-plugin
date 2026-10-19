@@ -74,6 +74,36 @@ module Admin
       )
     end
 
+    # One uploaded document per page: Markdown as written, Word converted to
+    # Markdown first. Partial success is the useful outcome here — one bad file
+    # should not discard the pages that were fine — so the response carries both
+    # lists rather than a single status.
+    def import_pages
+      version = IngenicDocVersion.find(params[:id])
+      authorize_ingenic!(version)
+
+      files =
+        Array(params[:files]).select do |file|
+          file.respond_to?(:original_filename) && file.original_filename.present?
+        end
+      return render_json_error(I18n.t("ingenic.import.no_files"), status: 422) if files.empty?
+
+      importer = ::Ingenic::DocumentImporter.new(version)
+      imported = []
+      errors = []
+
+      files.each do |file|
+        begin
+          imported << page_json(importer.import(file))
+        rescue ::Ingenic::DocumentImporter::ImportError, ActiveRecord::RecordInvalid => error
+          message = error.is_a?(ActiveRecord::RecordInvalid) ? error.record.errors.full_messages.join(", ") : error.message
+          errors << { "file" => file.original_filename, "error" => message }
+        end
+      end
+
+      render_json_dump(imported: imported, errors: errors)
+    end
+
     def create_page
       record = IngenicDocPage.new(page_params)
       authorize_ingenic!(record.version)

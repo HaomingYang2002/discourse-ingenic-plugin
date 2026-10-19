@@ -19,6 +19,12 @@ zh_CN:
     ingenic_high_like_threshold: "帖子所有正常回复的点赞数达到多少时获得「高赞」标签。默认 20；低于阈值的帖子会在下次执行时失去由系统打上的标签。"
 
   ingenic:
+    import:
+      unsupported: "只能导入 Markdown（.md、.markdown、.txt）或 Word（.docx）文件。"
+      too_large: "文件超过 5 MB。"
+      unreadable: "无法读取该 Word 文件。"
+      no_files: "请至少选择一个要导入的文件。"
+      default_title: "导入的页面"
     errors:
       product_not_found: "未找到该文档产品。"
       version_not_found: "未找到该文档版本。"

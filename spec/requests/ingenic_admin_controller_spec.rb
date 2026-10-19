@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "zip"
 
 describe Admin::IngenicController do
   fab!(:admin) { Fabricate(:admin) }
@@ -59,6 +60,106 @@ describe Admin::IngenicController do
       }.to change(IngenicDocVersion, :count).by(1)
 
       expect(response.status).to eq(200)
+    end
+  end
+
+  # Importing turns a manual a team already has as files into pages. One file is
+  # one page — a heading is not a reliable unit, and neither is a Word section —
+  # so what is pinned down here is that shape, the heading becoming the title,
+  # and a bad file being reported without discarding the good ones beside it.
+  describe "POST /admin/plugins/discourse-ingenic/documentation/versions/:id/import" do
+    fab!(:chip) do
+      IngenicDocProduct.create!(
+        slug: "t33",
+        name: "T33",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "en",
+      )
+    end
+    fab!(:version) do
+      IngenicDocVersion.create!(product: chip, slug: "v1", label: "v1.0", locale: "en", position: 0)
+    end
+
+    def uploaded(name, content, type)
+      Rack::Test::UploadedFile.new(StringIO.new(content), type, original_filename: name)
+    end
+
+    def words(text)
+      "<w:p><w:r><w:t>#{text}</w:t></w:r></w:p>"
+    end
+
+    def docx(*body)
+      Zip::OutputStream.write_buffer do |zip|
+        zip.put_next_entry("word/document.xml")
+        zip.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:body>#{body.join}</w:body>
+          </w:document>
+        XML
+      end.string
+    end
+
+    it "stores a Markdown file as a page and takes its first heading as the title" do
+      markdown = "# Getting Started\n\nBuild the firmware with `make`.\n"
+
+      post "/admin/plugins/discourse-ingenic/documentation/versions/#{version.id}/import.json",
+           params: { files: [uploaded("getting-started.md", markdown, "text/markdown")] }
+
+      expect(response.status).to eq(200)
+      page = IngenicDocPage.find_by!(version: version, slug: "getting-started")
+      expect(page.title).to eq("Getting Started")
+      expect(page.body).to eq("Build the firmware with `make`.")
+      expect(page.locale).to eq("en")
+      expect(page.published).to eq(true)
+      expect(response.parsed_body["errors"]).to eq([])
+    end
+
+    it "converts a Word file to Markdown and reports a file it cannot read" do
+      document =
+        docx(
+          "<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr><w:r><w:t>Flash Guide</w:t></w:r></w:p>",
+          "<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Erase</w:t></w:r><w:r><w:t> the chip first.</w:t></w:r></w:p>",
+          "<w:p><w:pPr><w:numPr/></w:pPr><w:r><w:t>Connect USB</w:t></w:r></w:p>",
+          <<~TABLE,
+            <w:tbl>
+              <w:tr><w:tc>#{words("Pin")}</w:tc><w:tc>#{words("Signal")}</w:tc></w:tr>
+              <w:tr><w:tc>#{words("1")}</w:tc><w:tc>#{words("VDD")}</w:tc></w:tr>
+            </w:tbl>
+          TABLE
+        )
+
+      post "/admin/plugins/discourse-ingenic/documentation/versions/#{version.id}/import.json",
+           params: {
+             files: [
+               uploaded("flash-guide.docx", document, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+               uploaded("manual.pdf", "%PDF-1.4", "application/pdf"),
+             ],
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["imported"].length).to eq(1)
+      expect(response.parsed_body["errors"].first["file"]).to eq("manual.pdf")
+
+      page = IngenicDocPage.find_by!(version: version, slug: "flash-guide")
+      expect(page.title).to eq("Flash Guide")
+      expect(page.body).to include("**Erase** the chip first.")
+      expect(page.body).to include("- Connect USB")
+      expect(page.body).to include("| Pin | Signal |")
+      expect(page.body).to include("| --- | --- |")
+    end
+
+    it "keeps the slug unique when two files would claim the same one" do
+      2.times do
+        post "/admin/plugins/discourse-ingenic/documentation/versions/#{version.id}/import.json",
+             params: { files: [uploaded("overview.md", "# Overview\n\nText.", "text/markdown")] }
+      end
+
+      expect(IngenicDocPage.where(version: version).pluck(:slug)).to contain_exactly(
+        "overview",
+        "overview-2",
+      )
     end
   end
 

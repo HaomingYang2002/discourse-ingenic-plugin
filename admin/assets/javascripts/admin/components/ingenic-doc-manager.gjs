@@ -27,6 +27,7 @@ export default class IngenicDocManager extends Component {
   @tracked selectedPageSlug = null;
   @tracked busy = false;
   @tracked error = null;
+  @tracked importMessage = null;
 
   get chips() {
     return this.series.flatMap((entry) => entry.chips ?? []);
@@ -59,6 +60,7 @@ export default class IngenicDocManager extends Component {
     this.selectedChipId = chip.id;
     this.selectedPageSlug = null;
     this.pages = [];
+    this.importMessage = null;
 
     const version = (chip.versions ?? []).find((entry) => entry.latest) ?? (chip.versions ?? [])[0];
 
@@ -73,6 +75,7 @@ export default class IngenicDocManager extends Component {
   async selectVersion(version) {
     this.selectedVersionId = version.id;
     this.selectedPageSlug = null;
+    this.importMessage = null;
     await this.loadTree();
   }
 
@@ -125,6 +128,44 @@ export default class IngenicDocManager extends Component {
       version_id: this.selectedVersionId,
       parent_id: values.parent_slug ? this.#idForSlug(values.parent_slug) : null,
     });
+  }
+
+  // A file is a whole page, not a field: a team that already has its manual as
+  // Markdown or Word should not have to copy each file's text in by hand. The
+  // server reports each failure separately, so one unsupported file does not
+  // hide the pages that imported.
+  @action
+  async importPages(event) {
+    event.preventDefault();
+    this.busy = true;
+    this.error = null;
+    this.importMessage = null;
+
+    try {
+      const response = await ajax(`${BASE}/documentation/versions/${this.selectedVersionId}/import`, {
+        type: "POST",
+        data: new FormData(event.target),
+        processData: false,
+        contentType: false,
+      });
+
+      this.importMessage = i18n("admin.ingenic.documentation.imported", {
+        count: response.imported?.length ?? 0,
+      });
+
+      if (response.errors?.length) {
+        this.error = response.errors
+          .map((entry) => `${entry.file}: ${entry.error}`)
+          .join("; ");
+      }
+
+      event.target.reset();
+      await this.loadTree();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
   }
 
   @action
@@ -399,6 +440,19 @@ export default class IngenicDocManager extends Component {
           </div>
 
           {{#if this.selectedVersion}}
+            <form class="ingenic-admin-form ingenic-admin-form--inline" {{on "submit" this.importPages}}>
+              <input type="file" name="files[]" accept=".md,.markdown,.txt,.docx" multiple required />
+              <button type="submit" disabled={{this.busy}}>
+                {{i18n "admin.ingenic.documentation.import_action"}}
+              </button>
+            </form>
+            <p class="ingenic-admin-note">
+              {{i18n "admin.ingenic.documentation.import_hint"}}
+            </p>
+            {{#if this.importMessage}}
+              <p class="ingenic-admin-note">{{this.importMessage}}</p>
+            {{/if}}
+
             <div class="ingenic-doc-manager__columns">
               <IngenicDocPageTree
                 @pages={{this.pages}}
