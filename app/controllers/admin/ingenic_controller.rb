@@ -168,6 +168,10 @@ module Admin
         # The chips a board can be filed against, each with the series it sits
         # under, so the picker can offer them without a second request.
         chips: board_chip_options,
+        # The languages this site serves, labelled by their own speakers. A
+        # board filed under a spelling no reader's locale equals is one nobody
+        # finds, and nothing reports the mistake.
+        locales: locale_options,
       )
     end
 

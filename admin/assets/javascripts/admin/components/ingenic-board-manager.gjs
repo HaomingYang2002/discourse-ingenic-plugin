@@ -58,6 +58,23 @@ export default class IngenicBoardManager extends Component {
     return this.args.chips ?? [];
   }
 
+  // The languages this Discourse serves, sent with the listing. A list rather
+  // than free text because the front end matches this value against the
+  // reader's locale: a spelling no reader's locale equals is a board nobody
+  // finds, and the mistake reports nothing.
+  get localeOptions() {
+    const options = [...(this.args.locales ?? [])];
+    const current = this.draft?.locale;
+
+    // A row filed before a language was switched off still has to show what it
+    // is filed under, or the field would read blank.
+    if (current && !options.some((option) => option.value === current)) {
+      options.unshift({ value: current, name: current });
+    }
+
+    return options.length ? options : [{ value: this.defaultLocale, name: this.defaultLocale }];
+  }
+
   get chipLabel() {
     return (chip) =>
       chip.series_name ? `${chip.series_name} › ${chip.name}` : chip.name;
@@ -99,6 +116,11 @@ export default class IngenicBoardManager extends Component {
   // built from, so the two are kept in step. The value still travels as a form
   // field: the select carries a name and the browser reads the choice back out
   // of it when the form is submitted.
+  @action
+  pickLocale(value) {
+    this.draft = { ...this.draft, locale: value || this.defaultLocale };
+  }
+
   @action
   pickKind(value) {
     this.draft = { ...this.draft, kind: value || "board" };
@@ -217,7 +239,20 @@ export default class IngenicBoardManager extends Component {
 
           <label>
             <span>{{i18n "admin.ingenic.boards.fields.locale"}}</span>
-            <input name="locale" value={{this.draft.locale}} />
+            {{! The ui-kit select rather than free text: the value is matched
+                against the reader's locale, so a spelling nobody else uses
+                hides the board from everyone. }}
+            <DNativeSelect
+              name="locale"
+              @includeNone={{false}}
+              @value={{this.draft.locale}}
+              @onChange={{this.pickLocale}}
+              as |select|
+            >
+              {{#each this.localeOptions as |option|}}
+                <select.Option @value={{option.value}}>{{option.name}}</select.Option>
+              {{/each}}
+            </DNativeSelect>
           </label>
 
           <label>

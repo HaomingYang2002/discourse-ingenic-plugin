@@ -8,7 +8,11 @@ const Boards = <template>
       @titleLabel={{i18n "admin.ingenic.boards.title"}}
       @descriptionLabel={{i18n "admin.ingenic.boards.description"}}
     />
-    <IngenicBoardManager @boards={{@model.boards}} @chips={{@model.chips}} />
+    <IngenicBoardManager
+      @boards={{@model.boards}}
+      @chips={{@model.chips}}
+      @locales={{@model.locales}}
+    />
   </div>
 </template>;
 
