@@ -44,6 +44,7 @@ module Admin
     def create_version
       record = IngenicDocVersion.new(version_params)
       record.locale = default_documentation_locale(record) if params[:locale].blank?
+      record.position = next_version_position(record) if params[:position].blank?
       authorize_ingenic!(record.product)
       save_or_error(record) { render_json_dump(version: version_json(record)) }
     end
@@ -109,6 +110,7 @@ module Admin
     def create_page
       record = IngenicDocPage.new(page_params)
       record.locale = default_documentation_locale(record) if params[:locale].blank?
+      record.position = next_page_position(record) if params[:position].blank?
       authorize_ingenic!(record.version)
       save_or_error(record) { render_json_dump(page: page_json(record)) }
     end
@@ -996,6 +998,23 @@ module Admin
       inherited.presence || SiteSetting.ingenic_default_locale.presence || "en"
     end
 
+    # Position decides two things a reader can see: the order of the contents
+    # and, for versions, which version inherits from which. Rows created before
+    # the order controls all carried the default 0, so a new version would sort
+    # by insertion order and a new page would sort by id. Appending to the
+    # list is both the honest description of "created last" and the state the
+    # move buttons expect.
+    def next_version_position(record)
+      (IngenicDocVersion.where(product_id: record.product_id).maximum(:position) || -1) + 1
+    end
+
+    def next_page_position(record)
+      scope =
+        IngenicDocPage.where(version_id: record.version_id, locale: record.locale)
+      scope = record.parent_id.present? ? scope.where(parent_id: record.parent_id) : scope.where(parent_id: nil)
+      (scope.maximum(:position) || -1) + 1
+    end
+
     def product_params
       params.permit(:kind, :parent_id, :slug, :name, :description, :locale, :published, :position)
     end
@@ -1010,7 +1029,7 @@ module Admin
     end
 
     def page_params
-      params.permit(:version_id, :parent_id, :slug, :title, :body, :locale, :topic_url, :published, :position)
+      params.permit(:version_id, :parent_id, :kind, :slug, :title, :body, :locale, :topic_url, :published, :position)
     end
 
     def board_params
@@ -1510,7 +1529,7 @@ module Admin
     def page_json(page)
       page
         .attributes
-        .slice("id", "version_id", "parent_id", "slug", "title", "body", "locale", "topic_url", "published", "position")
+        .slice("id", "version_id", "parent_id", "kind", "slug", "title", "body", "locale", "topic_url", "published", "position")
     end
 
     # A page as the management page needs it: the stored row plus what the

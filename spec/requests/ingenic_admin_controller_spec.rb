@@ -63,6 +63,68 @@ describe Admin::IngenicController do
     end
   end
 
+  # The page tree distinguishes folders from articles and files a child by id.
+  # A parent typed as a slug used to produce a top-level page when the slug
+  # matched nothing, which read as "the folder would not take".
+  describe "POST /admin/plugins/discourse-ingenic/documentation/pages" do
+    fab!(:chip) do
+      IngenicDocProduct.create!(
+        slug: "t33",
+        name: "T33",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "en",
+      )
+    end
+    fab!(:version) do
+      IngenicDocVersion.create!(product: chip, slug: "v1", label: "v1.0", locale: "en", position: 0)
+    end
+
+    it "creates a folder and returns its kind" do
+      post "/admin/plugins/discourse-ingenic/documentation/pages.json",
+           params: {
+             version_id: version.id,
+             slug: "guide",
+             title: "Guide",
+             kind: "folder",
+             body: "ignored",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["page"]["kind"]).to eq("folder")
+
+      folder = IngenicDocPage.find_by!(version: version, slug: "guide")
+      expect(folder).to be_folder
+      expect(folder.body).to be_nil
+    end
+
+    it "files a page under the folder named by parent_id and appends it" do
+      folder =
+        IngenicDocPage.create!(
+          version: version,
+          slug: "guide",
+          title: "Guide",
+          kind: "folder",
+          locale: "en",
+          position: 0,
+        )
+
+      post "/admin/plugins/discourse-ingenic/documentation/pages.json",
+           params: {
+             version_id: version.id,
+             parent_id: folder.id,
+             slug: "setup",
+             title: "Setup",
+             kind: "page",
+           }
+
+      expect(response.status).to eq(200)
+      page = IngenicDocPage.find_by!(version: version, slug: "setup")
+      expect(page.parent_id).to eq(folder.id)
+      expect(page.position).to eq(0)
+    end
+  end
+
   # Importing turns a manual a team already has as files into pages. One file is
   # one page — a heading is not a reliable unit, and neither is a Word section —
   # so what is pinned down here is that shape, the heading becoming the title,

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class IngenicPageListSerializer < ActiveModel::Serializer
-  attributes :id, :slug, :title, :parent_id, :position, :depth, :inherited, :inherited_from_label
+  attributes :id, :slug, :title, :kind, :parent_id, :parent_slug, :position, :depth, :inherited, :inherited_from_label
 
   # Set by Ingenic::DocumentationResolver for reading, and computed from the
   # parent chain when a raw page row is serialized (admin listings).

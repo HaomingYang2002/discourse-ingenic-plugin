@@ -40,14 +40,17 @@ module Ingenic
       build_tree(effective_rows(version, published_only: published_only))
     end
 
+    # Folders never resolve as a page: an address that names one is a broken
+    # link, not an empty document.
     def find_page(version, slug)
-      effective_pages(version).find { |resolved| resolved.slug == slug }
+      effective_pages(version).find { |resolved| resolved.slug == slug && !resolved.folder? }
     end
 
     # Previous and next in the flattened reading order, so the theme can render
-    # footer navigation without rebuilding the tree.
+    # footer navigation without rebuilding the tree. Folders are skipped: a
+    # reader stepping forward should land on an article.
     def navigation_for(version, page)
-      flat = effective_pages(version)
+      flat = effective_pages(version).reject(&:folder?)
       index = flat.index { |resolved| resolved.slug == page.slug }
 
       {

@@ -84,6 +84,67 @@ describe Ingenic::DocumentationResolver do
     end
   end
 
+  describe "folders" do
+    it "keeps a folder in the tree but does not resolve it as a page" do
+      folder =
+        IngenicDocPage.create!(
+          version: v1,
+          slug: "guide",
+          title: "Guide",
+          kind: "folder",
+          locale: "en",
+        )
+      page(v1, "setup", parent: folder)
+
+      expect(v2.published_pages.map(&:slug)).to eq(%w[guide setup])
+      expect(v2.published_pages.first).to be_folder
+      expect(v2.find_readable_page("guide")).to be_nil
+    end
+
+    it "steps over a folder when moving between articles" do
+      folder =
+        IngenicDocPage.create!(
+          version: v1,
+          slug: "guide",
+          title: "Guide",
+          kind: "folder",
+          locale: "en",
+        )
+      page(v1, "setup", parent: folder, position: 0)
+      page(v1, "flash", position: 1)
+
+      links = v2.navigation_for(v2.find_readable_page("setup"))
+
+      expect(links[:next].slug).to eq("flash")
+    end
+
+    it "drops a body written under a folder" do
+      folder =
+        IngenicDocPage.create!(
+          version: v1,
+          slug: "guide",
+          title: "Guide",
+          kind: "folder",
+          body: "never read",
+          locale: "en",
+        )
+
+      expect(folder.reload.body).to be_nil
+    end
+
+    it "refuses a parent chain that loops back on itself" do
+      one = page(v1, "one")
+      two = page(v1, "two", parent: one)
+
+      two.parent = two
+      expect(two).not_to be_valid
+      two.reload
+
+      one.parent = two
+      expect(one).not_to be_valid
+    end
+  end
+
   describe "navigation" do
     it "walks the resolved order, including inherited pages" do
       page(v1, "one", position: 0)

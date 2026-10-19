@@ -133,6 +133,7 @@ module Ingenic
           "version_locale" => page.version.locale,
           "slug" => page.slug,
           "locale" => page.locale,
+          "kind" => page.kind,
           "title" => page.title,
           "body" => page.body,
           "parent_slug" => page.parent&.slug,
@@ -432,6 +433,9 @@ module Ingenic
         next if version.nil?
 
         upsert(report, IngenicDocPage, { version_id: version.id, slug: row["slug"], locale: locale_of(row) }) do |page|
+          # Files written before folders existed carry no `kind`; every row in
+          # them is an article.
+          page.kind = row["kind"].presence || "page"
           page.title = row["title"]
           page.body = row["body"]
           page.topic_url = row["topic_url"]

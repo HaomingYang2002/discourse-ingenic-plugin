@@ -30,7 +30,15 @@ module Ingenic
       !inherited_from.nil?
     end
 
+    # A folder is a heading in the contents, not a destination. The reader
+    # renders it as an expand/collapse row, and the server refuses to serve it
+    # as a page.
+    def folder?
+      kind == "folder"
+    end
+
     delegate :id,
+             :kind,
              :slug,
              :title,
              :body,

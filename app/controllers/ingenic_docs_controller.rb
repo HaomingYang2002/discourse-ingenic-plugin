@@ -130,7 +130,7 @@ class IngenicDocsController < ::ApplicationController
   def search_results(version, query)
     needle = query.downcase
 
-    version.published_pages.filter_map do |resolved|
+    version.published_pages.reject(&:folder?).filter_map do |resolved|
       body = resolved.body.to_s
       title = resolved.title.to_s
 

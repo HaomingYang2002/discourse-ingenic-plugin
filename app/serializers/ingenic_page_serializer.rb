@@ -4,6 +4,7 @@ class IngenicPageSerializer < ActiveModel::Serializer
   attributes :id,
              :slug,
              :title,
+             :kind,
              :body,
              :locale,
              :topic_url,

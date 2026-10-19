@@ -529,11 +529,15 @@ category seeding task — see [`DEPLOY.md`](../DEPLOY.md) and
    the admin screen and the database both refuse a chip without one.
 3. **Add a version to the chip.** Give it a version slug (for example `1.1.0`),
    a label and an order. One version can be flagged **latest**.
-4. **Add pages to the version.** Each page has a title, slug, optional parent
-   slug, Markdown body and a published switch. The parent slug is what builds
-   the contents tree.
-5. **Order and rename** rows with the arrows and the rename control. A row with
-   children cannot be deleted; remove or move the children first.
+4. **Add pages to the version.** Choose a type first: a **folder** only groups
+   content and expands in the contents; an **article** has a Markdown body. The
+   parent is picked from a list, so a parent that does not exist can no longer
+   be silently dropped to the top level. The published switch decides what a
+   reader sees.
+5. **Order and rename** rows with the arrows and the rename control. Pages move
+   within their parent only; version order decides what inherits from what, and
+   page order decides the contents. A row with children cannot be deleted;
+   remove or move the children first.
 6. **Override an inherited page** by choosing **Override in this version**; the
    page becomes editable in this version. **Restore inheritance** deletes the
    copy in this version and returns to the earlier source.

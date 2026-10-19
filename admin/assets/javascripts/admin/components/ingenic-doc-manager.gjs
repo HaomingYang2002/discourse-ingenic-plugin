@@ -151,9 +151,44 @@ export default class IngenicDocManager extends Component {
     }
   }
 
+  // Version order is not cosmetic: a version inherits from the ones before it,
+  // so swapping two rows changes what a reader sees at each version.
+  @action
+  async moveVersion(version, direction) {
+    const index = this.versions.findIndex((entry) => entry.id === version.id);
+    const target = index + direction;
+
+    if (index < 0 || target < 0 || target >= this.versions.length) {
+      return;
+    }
+
+    const reordered = [...this.versions];
+    reordered.splice(index, 1);
+    reordered.splice(target, 0, version);
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await Promise.all(
+        reordered.map((entry, position) =>
+          ajax(`${BASE}/documentation/versions/${entry.id}`, {
+            type: "PUT",
+            data: { position },
+          })
+        )
+      );
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   @action
   async destroyVersion(version) {
-    if (!window.confirm(i18n("admin.ingenic.documentation.delete_confirm"))) {
+    if (!window.confirm(i18n("admin.ingenic.documentation.delete_version_confirm"))) {
       return;
     }
 
@@ -215,11 +250,56 @@ export default class IngenicDocManager extends Component {
 
   @action
   async createPage(event) {
+    // The parent is an id picked from the tree, not a slug typed from memory:
+    // a slug that matched nothing used to create the page at the top level
+    // without saying so, which is why "the folder would not take".
     const values = Object.fromEntries(new FormData(event.target));
     await this.#create(event, "documentation/pages", {
       version_id: this.selectedVersionId,
-      parent_id: values.parent_slug ? this.#idForSlug(values.parent_slug) : null,
+      kind: values.kind || "page",
     });
+  }
+
+  // Sibling order, rewritten for the whole list. Rows created before this
+  // control all carry position 0, so swapping two neighbours would move
+  // nothing. Inherited rows are left alone: their position belongs to the
+  // version that owns them.
+  @action
+  async movePage(page, direction) {
+    const siblings = this.pages.filter(
+      (entry) =>
+        (entry.parent_slug ?? null) === (page.parent_slug ?? null) &&
+        !entry.inherited
+    );
+    const index = siblings.findIndex((entry) => entry.id === page.id);
+    const target = index + direction;
+
+    if (index < 0 || target < 0 || target >= siblings.length) {
+      return;
+    }
+
+    const reordered = [...siblings];
+    reordered.splice(index, 1);
+    reordered.splice(target, 0, page);
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await Promise.all(
+        reordered.map((entry, position) =>
+          ajax(`${BASE}/documentation/pages/${entry.id}`, {
+            type: "PUT",
+            data: { position },
+          })
+        )
+      );
+      await this.loadTree();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
   }
 
   // A file is a whole page, not a field: a team that already has its manual as
@@ -410,6 +490,10 @@ export default class IngenicDocManager extends Component {
 
   @action
   async destroyPage(page) {
+    if (!window.confirm(i18n("admin.ingenic.documentation.delete_page_confirm"))) {
+      return;
+    }
+
     this.busy = true;
     this.error = null;
 
@@ -447,10 +531,6 @@ export default class IngenicDocManager extends Component {
     } finally {
       this.busy = false;
     }
-  }
-
-  #idForSlug(slug) {
-    return this.pages.find((page) => page.slug === slug)?.id ?? null;
   }
 
   #errorMessage(error) {
@@ -530,6 +610,8 @@ export default class IngenicDocManager extends Component {
                   {{version.label}}
                 </button>
                 <span class="ingenic-doc-manager__tools">
+                  <button type="button" title={{i18n "admin.ingenic.documentation.move_up"}} {{on "click" (fn this.moveVersion version -1)}}>↑</button>
+                  <button type="button" title={{i18n "admin.ingenic.documentation.move_down"}} {{on "click" (fn this.moveVersion version 1)}}>↓</button>
                   <button type="button" title={{i18n "admin.ingenic.documentation.rename"}} {{on "click" (fn this.renameVersion version)}}>✎</button>
                   <button type="button" title={{i18n "admin.ingenic.documentation.delete"}} {{on "click" (fn this.destroyVersion version)}}>×</button>
                 </span>
@@ -566,6 +648,7 @@ export default class IngenicDocManager extends Component {
                 @pages={{this.pages}}
                 @selectedSlug={{this.selectedPageSlug}}
                 @onSelect={{this.selectPage}}
+                @onMove={{this.movePage}}
               />
 
               <div class="ingenic-doc-manager__editor">
@@ -586,15 +669,32 @@ export default class IngenicDocManager extends Component {
                       <input name="title" required />
                     </label>
                     <label>
+                      <span>{{i18n "admin.ingenic.documentation.page_kind"}}</span>
+                      <select name="kind">
+                        <option value="page">{{i18n "admin.ingenic.documentation.kind_page"}}</option>
+                        <option value="folder">{{i18n "admin.ingenic.documentation.kind_folder"}}</option>
+                      </select>
+                    </label>
+                    <label>
                       <span>{{i18n "admin.ingenic.documentation.page_slug"}}</span>
                       <input name="slug" required />
                     </label>
                     <label>
-                      <span>{{i18n "admin.ingenic.documentation.parent_slug"}}</span>
-                      <input name="parent_slug" />
+                      <span>{{i18n "admin.ingenic.documentation.parent_page"}}</span>
+                      <select name="parent_id">
+                        <option value="">{{i18n "admin.ingenic.documentation.parent_none"}}</option>
+                        {{#each this.pages as |page|}}
+                          <option value={{page.id}}>
+                            {{#if (eq page.kind "folder")}}📁 {{/if}}{{page.title}}
+                          </option>
+                        {{/each}}
+                      </select>
                     </label>
+                    <p class="ingenic-admin-note">
+                      {{i18n "admin.ingenic.documentation.folder_hint"}}
+                    </p>
                     <button type="submit" disabled={{this.busy}}>
-                      {{i18n "admin.ingenic.documentation.add_page"}}
+                      {{i18n "admin.ingenic.documentation.add_entry"}}
                     </button>
                   </form>
                 {{/if}}
