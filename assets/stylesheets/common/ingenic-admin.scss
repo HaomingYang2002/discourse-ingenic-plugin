@@ -551,8 +551,13 @@
 
 // The row is a container: selecting the page, folding it and reordering it are
 // separate controls, and a button may not contain another button.
+//
+// The basis is 0, not auto. A row wraps on the flex base size, and a long
+// title's base size is its full unbroken width, so with `auto` the + was
+// pushed onto a second line in a deep folder even though the title itself was
+// going to be ellipsised anyway.
 .ingenic-admin-tree__select {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -637,8 +642,10 @@
 
 // Naming a new row happens in the tree, where the row will live, so the input
 // takes the width the title would have. The hint only appears while typing.
+// The basis is 0 for the same reason as the title above: an input's intrinsic
+// width must not decide where the row wraps.
 .ingenic-admin-tree__name-input {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   padding: 0.15rem 0.35rem;
   border: 1px solid var(--tertiary-medium);
