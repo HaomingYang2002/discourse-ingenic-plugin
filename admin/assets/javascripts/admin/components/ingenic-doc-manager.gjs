@@ -304,7 +304,13 @@ export default class IngenicDocManager extends Component {
     this.error = null;
 
     try {
-      const payload = await ajax(`${BASE}/documentation/versions/${this.selectedVersionId}/tree`);
+      // The server resolves the tree in the language it is told, which is the
+      // one picked at the top of this screen — not the admin's UI language.
+      const locale = this.selectedLocale;
+      const query = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+      const payload = await ajax(
+        `${BASE}/documentation/versions/${this.selectedVersionId}/tree${query}`
+      );
       this.pages = payload.pages;
     } catch {
       this.error = i18n("admin.ingenic.save_failed");
@@ -419,16 +425,16 @@ export default class IngenicDocManager extends Component {
 
     const response = await ajax(
       `${BASE}/documentation/versions/${this.selectedVersionId}/pages/${page.slug}/override`,
-      { type: "POST" }
+      { type: "POST", data: { locale: this.selectedLocale } }
     );
 
     return response?.page ?? page;
   }
 
   // A Latin title keeps a readable slug. A Chinese one has nothing to
-  // transliterate in the browser, so it gets a short fallback and the slug
-  // field in the editor is where that gets fixed — it only has to be unique
-  // within the version and locale.
+  // transliterate in the browser, so it gets a short fallback. The slug is
+  // derived once, never asked for again, and only has to be unique within the
+  // version and locale.
   #slugFor(title) {
     const ascii = title
       .normalize("NFKD")

@@ -165,13 +165,18 @@ class IngenicDocsController < ::ApplicationController
     fragment
   end
 
-  # A version carries no `published` flag, so the selector lists them all: what
-  # a reader may see is decided page by page, and the version that is empty
-  # because nobody has written it yet shows the pages it inherited.
+  # A version carries no `published` flag, so the selector lists the ones in
+  # the reader's language: what a reader may see is decided page by page, and
+  # the version that is empty because nobody has written it yet shows the pages
+  # it inherited. Versions in another language are a different manual — their
+  # slugs can repeat and "latest" is flagged once per language — so mixing them
+  # makes the dropdown, the default version and `latest` ambiguous.
   def available_versions(chip)
     return [] if chip.nil?
 
-    chip.versions.ordered.map { |record| IngenicVersionSerializer.new(record, root: false) }
+    versions_in_reading_locale(chip).map do |record|
+      IngenicVersionSerializer.new(record, root: false)
+    end
   end
 
   # Read from the path segments on `show`, and from query parameters on
@@ -234,17 +239,39 @@ class IngenicDocsController < ::ApplicationController
     end
   end
 
-  # Versions hang off a chip row and a chip row belongs to a single locale, so
-  # the chip lookup has already settled the language. An explicit `latest` is an
-  # alias for the version flagged latest, not a slug of its own.
+  # Versions hang off a chip row and are themselves filed under a language, so
+  # the lookup starts from the reader's manual. An explicit `latest` is an alias
+  # for the version flagged latest in that language, not a slug of its own.
   def find_version(chip)
-    return chip.default_version if version_slug.blank? || version_slug == "latest"
+    versions = versions_in_reading_locale(chip)
+
+    if version_slug.blank? || version_slug == "latest"
+      return versions.find(&:latest) || versions.first
+    end
 
     # No `published` scope here: a version has no such column. What is published
     # or not is decided per page — an unpublished version is one whose pages a
     # reader cannot see — so a version that exists is one a reader can open, and
     # asking for one that does not exist is the 404 below.
-    chip.versions.find_by(slug: version_slug)
+    #
+    # A link written for another language still opens instead of 404ing: the
+    # page list goes through the usual language fallback. Only the selector and
+    # the bare `latest` are decided by the reader's language.
+    versions.find { |version| version.slug == version_slug } ||
+      chip.versions.find_by(slug: version_slug)
+  end
+
+  # The versions of the manual this reader is reading. The reader's language
+  # wins; a chip written only in the site's documentation language falls back to
+  # that. Rows that predate the locale column, or a chip filed under neither,
+  # still list something rather than turning the documentation blank.
+  def versions_in_reading_locale(chip)
+    rows = chip.versions.ordered.to_a
+    preferred = rows.select { |version| version.locale.to_s == locale }
+    return preferred if preferred.any?
+
+    fallback = rows.select { |version| version.locale.to_s == default_locale }
+    fallback.any? ? fallback : rows
   end
 
   # The version already resolves the reading language per slug, so matching the

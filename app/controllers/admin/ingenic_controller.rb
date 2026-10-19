@@ -108,7 +108,10 @@ module Admin
       render_json_dump(
         product: product_json(version.product, include_versions: true),
         version: version_json(version),
-        pages: version.page_tree.map { |page| admin_page_json(page) },
+        pages:
+          version.page_tree(locale: documentation_locale).map do |page|
+            admin_page_json(page)
+          end,
       )
     end
 
@@ -182,7 +185,8 @@ module Admin
       version = IngenicDocVersion.find(params[:version_id])
       authorize_ingenic!(version)
 
-      resolved = version.find_readable_page(params[:slug])
+      resolved =
+        version.find_readable_page(params[:slug], locale: documentation_locale)
       return render_json_error(I18n.t("ingenic.admin_errors.page_not_found"), status: 404) if resolved.nil?
 
       # Already owned by this version: editing it is the same request.
@@ -190,6 +194,10 @@ module Admin
 
       copy = resolved.page.dup
       copy.version_id = version.id
+      # The copy joins the manual being written, so it is filed under that
+      # manual's language. Keeping the source language would leave an English
+      # version holding a row that only the Chinese reading path serves.
+      copy.locale = version.locale if version.locale.present?
       copy.save!
       render_json_dump(page: page_json(copy), inherited_from: nil)
     end
@@ -1153,6 +1161,18 @@ module Admin
       end
 
       codes.map { |code| code.to_s.strip }.reject(&:empty?).uniq
+    end
+
+    # The language picked at the top of the documentation workbench. It is not
+    # the admin's UI language, so the tree cannot use I18n.locale: an admin
+    # reading the panel in Chinese still has to edit the English manual. An
+    # unknown or missing value falls back to the request's locale, which is
+    # what the screen used before it had a picker.
+    def documentation_locale
+      requested = params[:locale].to_s
+      return nil if requested.blank?
+
+      served_locales.include?(requested) ? requested : nil
     end
 
     def download_params

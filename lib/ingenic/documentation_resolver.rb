@@ -36,21 +36,30 @@ module Ingenic
     #
     # `published_only: false` is for the management page, which has to show
     # drafts that a reader would not see.
-    def effective_pages(version, published_only: true)
-      build_tree(effective_rows(version, published_only: published_only))
+    #
+    # `locale` is the language the caller is looking at. Readers omit it and
+    # get their own locale; the management screen passes the language chosen at
+    # the top of the workbench, because the admin's UI language and the manual
+    # being edited are two different things. Without it, choosing English in a
+    # Chinese admin panel resolved the tree in Chinese and the English pages
+    # disappeared.
+    def effective_pages(version, published_only: true, locale: nil)
+      build_tree(effective_rows(version, published_only: published_only, locale: locale))
     end
 
     # Folders never resolve as a page: an address that names one is a broken
     # link, not an empty document.
-    def find_page(version, slug)
-      effective_pages(version).find { |resolved| resolved.slug == slug && !resolved.folder? }
+    def find_page(version, slug, locale: nil)
+      effective_pages(version, locale: locale).find do |resolved|
+        resolved.slug == slug && !resolved.folder?
+      end
     end
 
     # Previous and next in the flattened reading order, so the theme can render
     # footer navigation without rebuilding the tree. Folders are skipped: a
     # reader stepping forward should land on an article.
-    def navigation_for(version, page)
-      flat = effective_pages(version).reject(&:folder?)
+    def navigation_for(version, page, locale: nil)
+      flat = effective_pages(version, locale: locale).reject(&:folder?)
       index = flat.index { |resolved| resolved.slug == page.slug }
 
       {
@@ -66,10 +75,12 @@ module Ingenic
     # Newest definition of each slug wins, so walking the chain oldest-first and
     # overwriting gives the inherited value for anything the target version left
     # alone.
-    def effective_rows(version, published_only:)
+    def effective_rows(version, published_only:, locale:)
       chain = chain_for(version)
       pages_by_version =
-        chain.index_with { |source| readable_pages(source, published_only: published_only) }
+        chain.index_with do |source|
+          readable_pages(source, published_only: published_only, locale: locale)
+        end
       rows_by_id = pages_by_version.values.flatten.index_by(&:id)
       target_id = version.id
 
@@ -139,10 +150,11 @@ module Ingenic
       (rows_by_id[page.parent_id] || page.parent)&.slug
     end
 
-    # The reader's language wins over the site default, and a slug appears once
-    # even when both languages define it.
-    def readable_pages(version, published_only:)
-      reading = I18n.locale.to_s
+    # The reading language wins over the site default, and a slug appears once
+    # even when both languages define it. An explicit locale (the management
+    # screen) replaces the request's locale; a blank one falls back to it.
+    def readable_pages(version, published_only:, locale: nil)
+      reading = locale.to_s.presence || I18n.locale.to_s
       fallback = SiteSetting.ingenic_default_locale
 
       scope = version.pages.where(locale: [reading, fallback].uniq)

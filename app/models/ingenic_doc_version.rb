@@ -22,18 +22,21 @@ class IngenicDocVersion < ActiveRecord::Base
 
   # The version's pages as a reader sees them, which includes everything
   # inherited from earlier versions. See Ingenic::DocumentationResolver.
-  def published_pages
-    resolver.effective_pages(self)
+  #
+  # `locale` names the language whose pages to resolve. Readers leave it out to
+  # use their own; the management screen passes the language picked at the top.
+  def published_pages(locale: nil)
+    resolver.effective_pages(self, locale: locale)
   end
 
-  def find_readable_page(slug)
-    resolver.find_page(self, slug)
+  def find_readable_page(slug, locale: nil)
+    resolver.find_page(self, slug, locale: locale)
   end
 
   # Every page the version resolves to, drafts included. Used by the management
   # page, which has to show what a reader cannot yet see.
-  def page_tree
-    resolver.effective_pages(self, published_only: false)
+  def page_tree(locale: nil)
+    resolver.effective_pages(self, published_only: false, locale: locale)
   end
 
   # The row this version owns for a slug, if any. Its absence is what makes a
@@ -42,8 +45,8 @@ class IngenicDocVersion < ActiveRecord::Base
     pages.find_by(slug: slug)
   end
 
-  def navigation_for(page)
-    resolver.navigation_for(self, page)
+  def navigation_for(page, locale: nil)
+    resolver.navigation_for(self, page, locale: locale)
   end
 
   def resolver
