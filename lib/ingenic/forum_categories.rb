@@ -302,7 +302,10 @@ module Ingenic
     # being in a particular shape.
     def normalized(permissions)
       permissions.to_h do |group, level|
-        [group.to_s, level.is_a?(Integer) ? CategoryGroup.permission_types[level] : level]
+        name = level.is_a?(Integer) ? CategoryGroup.permission_types[level] : level
+        # A stored permission is a string and the list above writes symbols;
+        # comparing the two without this made a matching set look different.
+        [group.to_s, name.to_s]
       end
     end
 

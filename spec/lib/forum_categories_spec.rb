@@ -108,6 +108,15 @@ describe Ingenic::ForumCategories do
     expect(row[:detail]).to include("everyone: readonly", "everyone: full")
   end
 
+  it "does not call permissions different when they already match" do
+    described_class.seed!
+
+    row = described_class.seed!.find { |entry| entry[:slug] == "technical-discussions" }
+
+    expect(row[:action]).to eq(:kept)
+    expect(row[:detail]).to be_nil
+  end
+
   it "puts the asked-for permissions back when told to" do
     # Official Open Source is a sub-forum, so the one already on the forum has
     # to be filed under the section too — the seeder looks a sub-forum up inside
