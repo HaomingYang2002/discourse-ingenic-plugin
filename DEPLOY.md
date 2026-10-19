@@ -325,6 +325,22 @@ their own, or Ingenic's own releases. "Administrators" is Discourse's ordinary
 category security: edit the category, and under **Security** give `everyone`
 *See* but not *Create / Reply*, with `admins` holding *Create / Reply*.
 
+Every section also carries a Chinese name, so a reader whose interface is Chinese
+sees `技术讨论` on the home card rather than `Technical Discussions`. Discourse
+only serves a category's translation when content localization is enabled and
+`zh_CN` is listed as a supported language, so set both before seeding:
+
+```ruby
+SiteSetting.content_localization_enabled = true
+SiteSetting.content_localization_supported_locales = "zh_CN"
+```
+
+If the categories were seeded before those settings were on, run
+`rake ingenic:seed_categories` again. It adds the missing `locale` and Chinese
+name to the existing rows and leaves everything else untouched; running it twice
+does not create a second translation. With localization switched off it writes
+no translation rows, because nothing would read them.
+
 The task creates what is missing and leaves everything else exactly as the forum
 has it — renaming, re-colouring and re-parenting a category afterwards is
 expected, and a second run will not undo it. The one thing it will put back, when

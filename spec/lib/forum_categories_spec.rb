@@ -161,12 +161,48 @@ describe Ingenic::ForumCategories do
       described_class.seed!
       category = Category.find_by(slug: "open-source")
 
+      expect(category.locale).to eq("en")
       expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("开源版块")
       expect(category.category_localizations.find_by(locale: "zh_CN").name).not_to eq(category.name)
     end
 
+    it "names every section, not only the one a test happened to open" do
+      described_class.seed!
+
+      described_class::SPECS.each do |spec|
+        localization =
+          Category.find_by(slug: spec[:slug]).category_localizations.find_by(locale: "zh_CN")
+
+        expect(localization.name).to eq(spec[:zh_name]), "#{spec[:slug]} is still English"
+      end
+    end
+
     it "still creates every section" do
       expect(actions(described_class.seed!).uniq).to eq([:created])
+    end
+
+    it "adds the names to sections seeded before the feature was switched on" do
+      SiteSetting.content_localization_enabled = false
+      described_class.seed!
+
+      expect(Category.find_by(slug: "technical-discussions").category_localizations).to be_empty
+
+      SiteSetting.content_localization_enabled = true
+      report = described_class.seed!
+
+      expect(actions(report).uniq).to eq([:kept])
+      category = Category.find_by(slug: "technical-discussions")
+      expect(category.locale).to eq("en")
+      expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("技术讨论")
+    end
+
+    it "does not add a second row for a name it has already written" do
+      described_class.seed!
+      described_class.seed!
+
+      category = Category.find_by(slug: "official-announcements")
+      expect(category.category_localizations.where(locale: "zh_CN").count).to eq(1)
+      expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("官方公告")
     end
   end
 

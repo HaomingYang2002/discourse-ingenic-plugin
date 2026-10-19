@@ -35,6 +35,21 @@ Open Source is a section holding two sub-forums rather than a place to post:
 | Third-Party Open Source (`third-party`) | `open-source` | Everyone |
 | Official Open Source (`official`) | `open-source` | Administrators only |
 
+Each section also carries a Chinese name (`官方公告`, `技术讨论`, …). Discourse
+serves it only when content localization is on and `zh_CN` is one of its
+languages, so switch both on before the first run:
+
+```ruby
+SiteSetting.content_localization_enabled = true
+SiteSetting.content_localization_supported_locales = "zh_CN"
+```
+
+Run the task again if the sections were seeded before those settings were
+turned on: it writes the missing `locale` and `zh_CN` name to categories that
+already exist, without renaming the English one a second time or duplicating a
+row. With localization off, no translation rows are written — there would be
+nothing to read them.
+
 A second run leaves categories that already exist exactly as the forum has them —
 renaming, re-colouring and re-parenting included. Permissions are the one thing a
 re-run will write, and only when asked:

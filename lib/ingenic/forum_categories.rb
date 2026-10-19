@@ -194,6 +194,7 @@ module Ingenic
       if permissions
         category.set_permissions(spec[:permissions])
         apply_flags(category, spec)
+        localize(category, spec)
         category.save!
         return {
           slug: spec[:slug],
@@ -202,8 +203,12 @@ module Ingenic
         }
       end
 
-      solved_changed = apply_flags(category, spec)
-      category.save! if solved_changed
+      # A category that was seeded before content localization was switched on
+      # has neither its own language nor the Chinese name. Seeding again adds
+      # them without touching anything the forum has changed since.
+      changed = apply_flags(category, spec)
+      changed = localize(category, spec) || changed
+      category.save! if changed
 
       current = normalized(category.permissions_params)
       # An empty set is not "nobody": Discourse stores everyone-full by storing
@@ -257,16 +262,39 @@ module Ingenic
     end
 
     # Discourse keeps a category's name per language in its own table and reads
-    # it only when content localization is switched on. Building the rows while
-    # it is off would leave names nothing consults; skipping them while it is on
-    # would leave a Chinese reader in a Chinese sidebar looking at English
-    # category names.
+    # it only when content localization is switched on — and only for a
+    # category that says which language its own name is written in. Building the
+    # rows while the feature is off would leave names nothing consults; skipping
+    # them while it is on would leave a Chinese reader in a Chinese sidebar
+    # looking at English category names. Both the language and the translation
+    # are written here, so a second run repairs a category seeded before the
+    # feature was enabled.
     def localize(category, spec)
-      return unless SiteSetting.content_localization_enabled
-      return if spec[:zh_name].blank?
-      return if SiteSetting.content_localization_supported_locales.to_s.split("|").exclude?("zh_CN")
+      return false unless SiteSetting.content_localization_enabled
+      return false if spec[:zh_name].blank?
+      return false if SiteSetting.content_localization_supported_locales.to_s.split("|").exclude?("zh_CN")
 
-      category.category_localizations.build(locale: "zh_CN", name: spec[:zh_name])
+      changed = false
+
+      if category.locale.blank?
+        category.locale = "en"
+        changed = true
+      end
+
+      localization =
+        if category.new_record?
+          category.category_localizations.detect { |row| row.locale == "zh_CN" } ||
+            category.category_localizations.build(locale: "zh_CN")
+        else
+          category.category_localizations.find_or_initialize_by(locale: "zh_CN")
+        end
+
+      if localization.name != spec[:zh_name]
+        localization.name = spec[:zh_name]
+        changed = true
+      end
+
+      changed
     end
 
     # Group names as strings and permission levels as names, so what a category
