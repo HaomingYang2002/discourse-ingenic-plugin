@@ -1,24 +1,32 @@
 # frozen_string_literal: true
 
-# The weekly contribution leaderboard on the home page.
+# The weekly contribution leaderboard, and the page it is shown on.
 #
-# It counts what the ledger says members earned this week — opening topics,
-# answering, being liked, having an answer accepted — and deliberately not what
-# they spent. A ranking that moved when somebody unlocked a download would rank
-# spending rather than contributing.
+# It ranks by IngenicContribution, never by IngenicPointEntry. The two used to be
+# the same table, which meant a member who won a 500-point bounty outranked a
+# week of answering — the board was ranking windfalls. Contribution is a separate
+# number with no bounty in it, so this is now a reading of what people did.
 #
-# Administrators' manual adjustments and the return of a bounty escrow are left
-# out for the same reason: neither is something a member did this week.
+# Public, because a ranking nobody can see encourages nothing, and read-only from
+# the front end.
 class IngenicLeaderboardController < ::ApplicationController
   requires_plugin DiscourseIngenic::PLUGIN_NAME
 
-  skip_before_action :check_xhr
+  include DiscourseIngenic::AppShell
+
+  skip_before_action :check_xhr, only: %i[index]
 
   def index
+    return render_app_shell unless request.format.json?
+
     render_json_dump(
-      enabled: Ingenic::Points.enabled?,
+      enabled: Ingenic::Contributions.enabled?,
       week_start: week_start.iso8601,
       entries: entries,
+      # The viewer's own line, whether or not they made the top ten. A board
+      # that only shows the leaders leaves everybody else with no number to
+      # watch, and this one is cheap: one indexed sum.
+      viewer: viewer,
     )
   end
 
@@ -28,27 +36,15 @@ class IngenicLeaderboardController < ::ApplicationController
     @week_start ||= Time.zone.now.beginning_of_week
   end
 
+  def limit
+    requested = params[:limit].to_i
+    requested.positive? ? [requested, 50].min : 10
+  end
+
   def entries
-    return [] if !Ingenic::Points.enabled?
+    return [] if !Ingenic::Contributions.enabled?
 
-    rows =
-      IngenicPointEntry
-        .where(created_at: week_start..)
-        .where("points > 0")
-        .where.not(
-          event: [
-            IngenicPointEntry::MANUAL,
-            IngenicPointEntry::BOUNTY_REFUND,
-            IngenicPointEntry::REVERSAL,
-            IngenicPointEntry::DOWNLOAD,
-          ],
-        )
-        .where.not(user_id: nil)
-        .group(:user_id)
-        .order(Arel.sql("SUM(points) DESC"))
-        .limit(10)
-        .pluck(:user_id, Arel.sql("SUM(points)"))
-
+    rows = Ingenic::Contributions.weekly(limit: limit, at: week_start)
     users = User.where(id: rows.map(&:first)).index_by(&:id)
 
     rows.filter_map.with_index(1) do |(user_id, points), rank|
@@ -65,5 +61,14 @@ class IngenicLeaderboardController < ::ApplicationController
         "points" => points.to_i,
       }
     end
+  end
+
+  def viewer
+    return nil if current_user.nil? || !Ingenic::Contributions.enabled?
+
+    {
+      "username" => current_user.username,
+      "points" => Ingenic::Contributions.weekly_for(current_user, at: week_start),
+    }
   end
 end

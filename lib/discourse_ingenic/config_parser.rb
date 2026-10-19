@@ -63,6 +63,8 @@ module DiscourseIngenic
       discussions
       latest
       hot
+      popular
+      activity
       downloads
       boards
       bounties

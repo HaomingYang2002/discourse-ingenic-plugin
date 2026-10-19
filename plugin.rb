@@ -32,6 +32,8 @@ require_relative "lib/ingenic/forum_categories"
 require_relative "lib/ingenic/official_flair"
 require_relative "lib/ingenic/points"
 require_relative "lib/ingenic/point_events"
+require_relative "lib/ingenic/contributions"
+require_relative "lib/ingenic/contribution_events"
 require_relative "lib/ingenic/status_tags"
 require_relative "lib/ingenic/tag_policy"
 require_relative "lib/ingenic/bounties"
@@ -66,6 +68,7 @@ require_relative "app/models/ingenic_footer_link"
 require_relative "app/models/ingenic_point_rule"
 require_relative "app/models/ingenic_point_entry"
 require_relative "app/models/ingenic_point_balance"
+require_relative "app/models/ingenic_contribution"
 require_relative "app/models/ingenic_bounty"
 
 require_relative "app/serializers/ingenic_version_serializer"
@@ -97,6 +100,7 @@ require_relative "app/controllers/ingenic_points_controller"
 require_relative "app/controllers/ingenic_home_controller"
 require_relative "app/controllers/ingenic_bounties_controller"
 require_relative "app/controllers/ingenic_leaderboard_controller"
+require_relative "app/controllers/ingenic_popular_controller"
 end
 
 add_admin_route "admin.ingenic.documentation.title", "discourse-ingenic", use_new_show_route: true
@@ -175,6 +179,24 @@ after_initialize do
   on(:like_destroyed) { |post_action, _creator| Ingenic::PointEvents.like_destroyed(post_action) }
   on(:accepted_solution) { |post| Ingenic::PointEvents.solution_accepted(post) }
   on(:unaccepted_solution) { |post| Ingenic::PointEvents.solution_unaccepted(post) }
+
+  # The contribution score, listening to the same forum as the ledger above and
+  # writing to a table of its own. They are separate subscriptions rather than
+  # one handler writing both, so that either can be switched off, and so that a
+  # failure in one cannot take the other with it.
+  #
+  # `user_seen` is the one event points do not use: contribution counts turning
+  # up, points do not. It is deduplicated per day by the table's own index, so
+  # the handler can be called as often as Discourse sees the member.
+  on(:post_created) { |post, _opts, _user| Ingenic::ContributionEvents.post_created(post) }
+  on(:post_destroyed) { |post, _opts, _user| Ingenic::ContributionEvents.post_destroyed(post) }
+  on(:like_created) { |post_action, _creator| Ingenic::ContributionEvents.like_created(post_action) }
+  on(:like_destroyed) do |post_action, _creator|
+    Ingenic::ContributionEvents.like_destroyed(post_action)
+  end
+  on(:accepted_solution) { |post| Ingenic::ContributionEvents.solution_accepted(post) }
+  on(:unaccepted_solution) { |post| Ingenic::ContributionEvents.solution_unaccepted(post) }
+  on(:user_seen) { |user, previous_seen_at| Ingenic::ContributionEvents.user_seen(user, previous_seen_at) }
 
   # The visible half of the same two events: 已解决 is put on the topic when an
   # answer is accepted and taken off when it is not. Guarded on the plugin's
@@ -513,5 +535,9 @@ after_initialize do
     # The weekly contribution ranking on the front page. Read-only, and public:
     # a ranking nobody can see is a ranking that does not encourage anything.
     get "/ingenic/leaderboard", to: "ingenic_leaderboard#index", as: :ingenic_leaderboard
+
+    # The popular topics behind its card, and the page the card links to. Likes
+    # first within a recent window; the controller says why.
+    get "/ingenic/popular", to: "ingenic_popular#index", as: :ingenic_popular
   end
 end

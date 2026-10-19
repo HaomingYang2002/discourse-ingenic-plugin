@@ -240,3 +240,29 @@ plugins:
     default: 20
     min: 1
     client: false
+
+  # The contribution score — the weekly ranking on the home page.
+  #
+  # Separate from points on purpose. Points are money: earned, spent on a
+  # download, escrowed for a bounty. Contribution is a reading of how much a
+  # member took part, and it is never spent. Switching this off stops the
+  # ranking being written and read; it does not touch any balance and does not
+  # delete what has already been recorded, so turning it back on resumes the
+  # same table.
+  #
+  # The prices live in Ingenic::Contributions rather than here because they are
+  # a shape of the scoring, not an operational choice: a topic, an answer, a
+  # like, an accepted answer, a visit.
+  ingenic_contributions_enabled:
+    default: true
+    client: false
+
+  # How far back the "Popular posts" card looks, in days.
+  #
+  # All-time popularity freezes — the same threads sit at the top for years. A
+  # month keeps the card a reading of the forum as it is now, and is long enough
+  # that a good answer is not gone before it is read.
+  ingenic_popular_window_days:
+    default: 30
+    min: 1
+    client: false

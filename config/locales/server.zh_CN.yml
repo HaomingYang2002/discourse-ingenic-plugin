@@ -2,7 +2,7 @@ zh_CN:
   site_settings:
     ingenic_enabled: "启用君正社区扩展（文档版本管理、下载中心、开发板商店）。"
     ingenic_nav_items: "左侧导航项，使用 JSON 数组。可设置标签、图标、链接目标、排序和可见性。"
-    ingenic_homepage_blocks: "首页区块，使用 JSON 数组。可设置显示哪些区块及其顺序。类型：categories（论坛版块网格，并带全部版块入口）、latest（最新讨论）、hot（本周热门）、bounties（积分最高的进行中悬赏，无悬赏时不显示）、announcements、discussions、downloads、boards、promotions。可在「管理 → 插件 → Ingenic → 站点内容」中编辑；留空则首页使用默认布局。"
+    ingenic_homepage_blocks: "首页区块，使用 JSON 数组。可设置显示哪些区块及其顺序。类型：categories（论坛版块网格，并带全部版块入口）、latest（最新讨论）、hot（本周热门）、popular（近期最受点赞）、activity（官方活动与说明，按时间倒序）、bounties（积分最高的进行中悬赏，无悬赏时不显示）、announcements、discussions、downloads、boards、promotions。可在「管理 → 插件 → Ingenic → 站点内容」中编辑；留空则首页使用默认布局。"
     ingenic_default_locale: "当文档没有读者所用语言的版本时使用的语言。此处仅提供本站支持的语言；内容记录必须使用相同的代码（zh_CN，而非 zh-CN）。"
     ingenic_docs_discussion_category: "当文档页面没有关联主题时，「在论坛中讨论」链接所使用的分类标识。"
     ingenic_download_storage_path: "存放已上传 SDK 和固件文件的目录。留空则使用 <app>/ingenic-downloads。必须位于 public/ 之外。"
@@ -16,6 +16,8 @@ zh_CN:
     ingenic_bounty_max_points: "悬赏可设置的最大积分。"
     ingenic_bounty_expiry_days: "悬赏的挂出天数，到期后自动结束并将积分退回给提问者。"
     ingenic_high_like_enabled: "为社区点赞足够多的帖子打上「高赞」标签，点赞数回落后再撤回。管理员手动打的「高赞」不会被此任务移除。"
+    ingenic_contributions_enabled: "保留每周贡献排行。它与可消费积分相互独立：悬赏结算不会改变贡献分，关闭此项也不会影响任何积分余额。"
+    ingenic_popular_window_days: "「热门帖子」卡片回看的天数。点赞优先，浏览数用于并列时排序。"
     ingenic_high_like_threshold: "帖子所有正常回复的点赞数达到多少时获得「高赞」标签。默认 20；低于阈值的帖子会在下次执行时失去由系统打上的标签。"
 
   ingenic:
