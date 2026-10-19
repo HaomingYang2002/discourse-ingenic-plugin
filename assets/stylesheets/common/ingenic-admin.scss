@@ -113,6 +113,12 @@
   border: 1px solid var(--primary-low);
 }
 
+.ingenic-doc-manager__version-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
 .ingenic-doc-manager__latest {
   display: inline-flex;
   align-items: center;

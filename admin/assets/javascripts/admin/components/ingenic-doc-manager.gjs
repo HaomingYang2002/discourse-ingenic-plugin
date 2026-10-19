@@ -121,6 +121,62 @@ export default class IngenicDocManager extends Component {
     await this.#create(event, "documentation/versions", { product_id: this.selectedChipId });
   }
 
+  // A version is created in one field and corrected in another; without these
+  // two controls a typo in the label, or a version created against the wrong
+  // chip, could only be fixed in the database.
+  @action
+  async renameVersion(version) {
+    const label = window.prompt(
+      i18n("admin.ingenic.documentation.rename_prompt"),
+      version.label
+    );
+
+    if (!label || label.trim() === version.label) {
+      return;
+    }
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await ajax(`${BASE}/documentation/versions/${version.id}`, {
+        type: "PUT",
+        data: { label: label.trim() },
+      });
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  @action
+  async destroyVersion(version) {
+    if (!window.confirm(i18n("admin.ingenic.documentation.delete_confirm"))) {
+      return;
+    }
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      await ajax(`${BASE}/documentation/versions/${version.id}`, { type: "DELETE" });
+
+      if (version.id === this.selectedVersionId) {
+        this.selectedVersionId = null;
+        this.selectedPageSlug = null;
+        this.pages = [];
+      }
+
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   // Which version a reader lands on when the URL names none. The imported and
   // hand-written rows both start with no flag, so without this control a chip
   // with two versions would land on whichever the database happened to return
@@ -465,13 +521,19 @@ export default class IngenicDocManager extends Component {
 
           <div class="ingenic-doc-manager__versions">
             {{#each this.versions as |version|}}
-              <button
-                type="button"
-                class="ingenic-doc-manager__version {{if (eq version.id this.selectedVersionId) 'is-selected'}}"
-                {{on "click" (fn this.selectVersion version)}}
-              >
-                {{version.label}}
-              </button>
+              <span class="ingenic-doc-manager__version-row">
+                <button
+                  type="button"
+                  class="ingenic-doc-manager__version {{if (eq version.id this.selectedVersionId) 'is-selected'}}"
+                  {{on "click" (fn this.selectVersion version)}}
+                >
+                  {{version.label}}
+                </button>
+                <span class="ingenic-doc-manager__tools">
+                  <button type="button" title={{i18n "admin.ingenic.documentation.rename"}} {{on "click" (fn this.renameVersion version)}}>✎</button>
+                  <button type="button" title={{i18n "admin.ingenic.documentation.delete"}} {{on "click" (fn this.destroyVersion version)}}>×</button>
+                </span>
+              </span>
             {{/each}}
           </div>
 
