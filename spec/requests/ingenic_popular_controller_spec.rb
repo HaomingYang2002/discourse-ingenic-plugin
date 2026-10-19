@@ -52,6 +52,17 @@ describe IngenicPopularController do
     )
   end
 
+  it "carries the topic's tags so the card can label it" do
+    tagged = topic(title: "A camera question with tags", likes: 4, views: 40)
+    tagged.tags << Fabricate(:tag, name: "t33")
+
+    get "/ingenic/popular.json"
+
+    row = response.parsed_body["topics"].first
+    expect(row["tags"]).to eq([{ "name" => "t33", "slug" => "t33" }])
+    expect(row["category_url"]).to eq(category.url)
+  end
+
   it "does not leak a restricted category's topics to a guest" do
     private_category = Fabricate(:category, read_restricted: true)
     topic(title: "Members only question", likes: 50, views: 500, category: private_category)

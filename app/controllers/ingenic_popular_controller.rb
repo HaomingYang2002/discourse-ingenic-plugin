@@ -51,10 +51,12 @@ class IngenicPopularController < ::ApplicationController
         .where("topics.created_at > ?", window_days.days.ago)
         .order(like_count: :desc, views: :desc, created_at: :desc)
         .limit(limit)
-        .includes(:category)
+        .includes(:category, :tags)
   end
 
   def json_for(topic)
+    category = topic.category
+
     {
       "id" => topic.id,
       "title" => topic.title,
@@ -63,9 +65,13 @@ class IngenicPopularController < ::ApplicationController
       "likes" => topic.like_count.to_i,
       "views" => topic.views.to_i,
       "posts_count" => topic.posts_count.to_i,
-      "category" => topic.category&.name,
-      "category_slug" => topic.category&.slug,
+      "tags" => topic.tags.map { |tag| { "name" => tag.name, "slug" => tag.slug } },
+      "category" => category&.name,
+      "category_slug" => category&.slug,
+      "category_url" => category&.url,
+      "category_color" => category&.color,
       "created_at" => topic.created_at.iso8601,
+      "last_posted_at" => topic.last_posted_at&.iso8601,
     }
   end
 end
