@@ -213,6 +213,18 @@ describe Ingenic::ForumCategories do
       expect(category.category_localizations.where(locale: "zh_CN").count).to eq(1)
       expect(category.category_localizations.find_by(locale: "zh_CN").name).to eq("官方公告")
     end
+
+    it "leaves a Chinese name an administrator has changed" do
+      described_class.seed!
+      category = Category.find_by(slug: "official-announcements")
+      category.category_localizations.find_by(locale: "zh_CN").update!(name: "站务公告")
+
+      described_class.seed!
+
+      expect(
+        category.category_localizations.find_by(locale: "zh_CN").name,
+      ).to eq("站务公告")
+    end
   end
 
   context "with content localization off" do

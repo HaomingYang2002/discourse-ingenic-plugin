@@ -289,7 +289,10 @@ module Ingenic
           category.category_localizations.find_or_initialize_by(locale: "zh_CN")
         end
 
-      if localization.name != spec[:zh_name]
+      # Fill in a name that is not there; do not overwrite one an administrator
+      # has edited. A re-run repairs what is missing, it does not reset the
+      # forum to this list.
+      if localization.new_record? || localization.name.blank?
         localization.name = spec[:zh_name]
         changed = true
       end
