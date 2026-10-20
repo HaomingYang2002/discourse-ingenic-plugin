@@ -6,11 +6,11 @@
 
 // The workbench -------------------------------------------------------------
 //
-// The whole hierarchy lives in the left pane — series, chip, version, page —
-// and every level is created, renamed, moved and deleted there. The only thing
-// above the tree is the language filter: it hides version rows of other
-// languages without renumbering anything. The right pane edits the article
-// picked in the tree.
+// Three things an editor chooses once (series, chip, version) sit in the bar;
+// everything below is the two panes that are actually worked in: the contents
+// on the left, the page on the right. Changing a series/chip/version is rare
+// enough that it belongs in a drawer rather than in a column that would then
+// sit idle most of the day.
 .ingenic-doc-workbench {
   border: 1px solid var(--primary-low);
   border-radius: 10px;
@@ -18,23 +18,20 @@
   overflow: hidden;
 }
 
-// Stays put while the tree scrolls under it: the language filter and the one
-// button that creates a series at the top level. Every other + sits on the row
-// that will own the new row. Label and select share a line, the way the old
-// bar's fields did, so the tree below keeps the plain left column look.
-.ingenic-doc-tree-toolbar {
+.ingenic-doc-workbench__bar {
   display: flex;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.6rem 0.6rem 0.3rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--primary-low);
+  background: var(--primary-very-low);
 }
 
-.ingenic-doc-tree-toolbar__field {
+.ingenic-doc-workbench__field {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  min-width: 0;
 
   span {
     font-size: var(--font-down-1);
@@ -43,8 +40,8 @@
   }
 
   select {
-    min-width: 6.5rem;
-    max-width: 10rem;
+    min-width: 7rem;
+    max-width: 12rem;
   }
 }
 
@@ -74,6 +71,22 @@
   }
 }
 
+.ingenic-doc-workbench__sep {
+  color: var(--primary-low-mid);
+}
+
+.ingenic-doc-workbench__spacer {
+  flex: 1 1 auto;
+}
+
+.ingenic-doc-workbench__latest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--font-down-1);
+  color: var(--primary-high);
+}
+
 // A fixed height, not a minimum: the editor is the point of the page, and it
 // should be the same size whether the article is two lines or two hundred. The
 // tree scrolls inside its column so a long manual never pushes the editor
@@ -91,16 +104,15 @@
   }
 }
 
-// The left column is a toolbar plus one scroll area. The whole hierarchy lives
-// inside it, so there is exactly one scrollbar here — a page tree nested under
-// a version must not grow a second one.
 .ingenic-doc-workbench__tree {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  padding: 0.6rem;
   border-right: 1px solid var(--primary-low);
   background: var(--primary-very-low);
+  overflow-y: auto;
 
   @media screen and (max-width: 924px) {
     max-height: 40vh;
@@ -109,29 +121,51 @@
   }
 }
 
-.ingenic-doc-tree-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 0.3rem 0.6rem 0.6rem;
-  overflow-y: auto;
+.ingenic-doc-workbench__tree-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+
+  h3 {
+    margin: 0;
+    font-size: var(--font-down-1);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-medium);
+  }
 }
 
-// A version's pages sit one level under it through the tree's own indent
-// classes, offset by `@indentBase` — the wrapper is only a grouping element,
-// so page rows look exactly like they did when the tree stood alone.
+.ingenic-doc-workbench__tree-foot {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
 
-// "No chips here" / "no versions here" line up with the title of the row that
-// would be there, so the + that creates one is easy to find.
-.ingenic-doc-tree-hint {
-  margin: 0.15rem 0;
+  button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.ingenic-doc-workbench__ghost {
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed var(--primary-low-mid);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary-high);
   font-size: var(--font-down-1);
+  cursor: pointer;
+  white-space: nowrap;
 
-  &--1 {
-    padding-left: 3.8rem;
+  &:hover:not(:disabled) {
+    border-color: var(--tertiary-medium);
+    color: var(--tertiary-hover);
   }
 
-  &--2 {
-    padding-left: 4.8rem;
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 }
 
@@ -393,8 +427,8 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
-// A centred modal, not a right-hand drawer: it is opened from a row in a
-// narrow column, so the form belongs under the eye rather than beside the row.
+// A centred modal, not a right-hand drawer: the top bar already names the
+// series/chip/version being edited, so the form should sit under the eye.
 .ingenic-doc-drawer {
   position: fixed;
   top: 50%;
@@ -477,15 +511,17 @@
 // The page tree is a flat, depth-ordered list. Indentation is expressed as
 // classes rather than inline styles so the markup stays free of style
 // attributes.
-//
-// It has no scroll area of its own any more: a version's tree is nested inside
-// the workbench's single scroll container, and two nested scrollers make the
-// wheel behave unpredictably near the bottom of a long manual.
+// The page tree is a flat, depth-ordered list. Indentation is expressed as
+// classes rather than inline styles so the markup stays free of style
+// attributes. It scrolls inside the workbench's left pane instead of growing
+// the whole page: a manual can run to hundreds of rows.
 .ingenic-admin-tree {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 8rem;
+  max-height: 52vh;
   margin: 0 -0.25rem;
   padding: 0.1rem 0.25rem;
+  overflow-y: auto;
 }
 
 .ingenic-admin-tree__row {
@@ -647,6 +683,13 @@
   flex-wrap: wrap;
   gap: 0.25rem;
   padding: 0.15rem 0.25rem 0.3rem 2.5rem;
+
+  // The heading's + has no indentation to line up with.
+  .ingenic-doc-workbench__tree-head > & {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0.35rem;
+  }
 
   button {
     padding: 0.2rem 0.55rem;

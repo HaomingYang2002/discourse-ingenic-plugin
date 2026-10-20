@@ -15,13 +15,12 @@ const TOOLBAR_KEY = "admin.ingenic.documentation.workbench.toolbar";
 /**
  * Editor for a single page.
  *
- * Everything that locates a page is decided above the pane: the tree on the
- * left owns the structure — its + menu says whether a row is an article or a
- * folder, indentation and drag decide where it sits, and double-clicking the
- * name renames it. The version the row belongs to comes from the tree as well,
- * because the same inherited page can be opened under more than one version.
- * A page's address is derived when it is created; the editor does not ask for
- * it again.
+ * Everything that locates a page is decided above the pane: the top bar picks
+ * the chip and the language, the version list narrows it to one manual, and the
+ * tree on the left owns the structure — the + menu says whether a row is an
+ * article or a folder, indentation and drag decide where it sits, and
+ * double-clicking the name renames it. A page's address is derived when it is
+ * created; the editor does not ask for it again.
  *
  * What is left is the article itself. Apart from its name, the pane is the
  * writing surface: one large textarea, with save, published state and delete
@@ -61,36 +60,19 @@ export default class IngenicDocPageForm extends Component {
     return this.args.page.kind === "folder";
   }
 
-  // The version whose row is on screen, which is not always the row's own
-  // version: an inherited page keeps the id of the version that owns it.
-  get versionId() {
-    return this.args.version?.id ?? this.args.page.version_id;
-  }
-
-  // The same inherited row appears under every version inheriting it and keeps
-  // one database id. Keying drafts on the pair keeps unsaved text from
-  // following the author into another version.
-  get draftKey() {
-    return `${this.versionId}:${this.args.page.id}`;
-  }
-
-  get writable() {
-    return this.args.writable ?? true;
-  }
-
   get body() {
-    if (this.bodyDraft?.id === this.draftKey) {
+    if (this.bodyDraft?.id === this.args.page.id) {
       return this.bodyDraft.body;
     }
 
     return this.args.page.body ?? "";
   }
 
-  // Read through the draft key, not a bare flag: selecting another row has to
+  // Read through the page's id, not a bare flag: selecting another row has to
   // forget a draft left on this one, or the next save writes it to the wrong
   // article.
   get published() {
-    if (this.publishedDraft?.id === this.draftKey) {
+    if (this.publishedDraft?.id === this.args.page.id) {
       return this.publishedDraft.published;
     }
 
@@ -98,7 +80,7 @@ export default class IngenicDocPageForm extends Component {
   }
 
   get tab() {
-    if (this.tabDraft?.id === this.draftKey) {
+    if (this.tabDraft?.id === this.args.page.id) {
       return this.tabDraft.tab;
     }
 
@@ -110,7 +92,7 @@ export default class IngenicDocPageForm extends Component {
   }
 
   get previewHtml() {
-    if (this.preview?.id !== this.draftKey) {
+    if (this.preview?.id !== this.args.page.id) {
       return "";
     }
 
@@ -121,13 +103,13 @@ export default class IngenicDocPageForm extends Component {
   // the only part of the image the page stores, and saving around it would
   // leave the textarea and the saved body disagreeing.
   get saveDisabled() {
-    return this.args.busy || this.uploading || !this.writable;
+    return this.args.busy || this.uploading;
   }
 
   // Keyed to the page, like the drafts: an error from the previous article
   // must not follow the author to the next one.
   get uploadErrorMessage() {
-    if (this.uploadError?.id !== this.draftKey) {
+    if (this.uploadError?.id !== this.args.page.id) {
       return null;
     }
 
@@ -146,13 +128,13 @@ export default class IngenicDocPageForm extends Component {
 
   @action
   updateBody(event) {
-    this.bodyDraft = { id: this.draftKey, body: event.target.value };
+    this.bodyDraft = { id: this.args.page.id, body: event.target.value };
   }
 
   @action
   updatePublished(event) {
     this.publishedDraft = {
-      id: this.draftKey,
+      id: this.args.page.id,
       published: event.target.checked,
     };
   }
@@ -160,30 +142,28 @@ export default class IngenicDocPageForm extends Component {
   @action
   showEdit(event) {
     event?.preventDefault();
-    this.tabDraft = { id: this.draftKey, tab: "edit" };
+    this.tabDraft = { id: this.args.page.id, tab: "edit" };
   }
 
   @action
   async showPreview(event) {
     event?.preventDefault();
-    this.tabDraft = { id: this.draftKey, tab: "preview" };
+    this.tabDraft = { id: this.args.page.id, tab: "preview" };
     this.previewBusy = true;
 
     try {
       const response = await ajax(`${BASE}/documentation/preview`, {
         type: "POST",
         data: {
-          // Authorization is checked against the version being shown, not the
-          // one that owns an inherited row.
-          version_id: this.versionId,
+          version_id: this.args.page.version_id,
           body: this.body,
         },
       });
 
-      this.preview = { id: this.draftKey, html: response.html ?? "" };
+      this.preview = { id: this.args.page.id, html: response.html ?? "" };
     } catch {
       this.preview = {
-        id: this.draftKey,
+        id: this.args.page.id,
         html: `<p class="ingenic-doc-editor__preview-error">${i18n(
           "admin.ingenic.documentation.workbench.preview_failed"
         )}</p>`,
@@ -196,7 +176,7 @@ export default class IngenicDocPageForm extends Component {
   // The editor sends only what it owns. Title, kind, parent, slug and locale
   // are not in this pane: the tree named the row, the + menu picked the kind,
   // the structure is the row's place in the tree, and the address and language
-  // belong to the version the tree opened.
+  // come from the top bar and the version being edited.
   @action
   save(event) {
     event?.preventDefault();
@@ -308,10 +288,10 @@ export default class IngenicDocPageForm extends Component {
       return;
     }
 
-    // Uploading takes a moment, and the author can switch rows (or versions)
-    // while it runs. Remember which page asked, so the URLs are never written
-    // into another article when the request comes back.
-    const pageId = this.draftKey;
+    // Uploading takes a moment, and the author can switch rows while it runs.
+    // Remember which page asked, so the URLs are never written into another
+    // article when the request comes back.
+    const pageId = this.args.page.id;
     this.uploading = true;
     this.uploadError = null;
 
@@ -330,7 +310,7 @@ export default class IngenicDocPageForm extends Component {
           contentType: false,
         });
 
-        if (this.draftKey !== pageId) {
+        if (this.args.page.id !== pageId) {
           return;
         }
 
@@ -341,11 +321,11 @@ export default class IngenicDocPageForm extends Component {
         }
       }
 
-      if (snippets.length && this.draftKey === pageId) {
+      if (snippets.length && this.args.page.id === pageId) {
         this.#insertAtCaret(snippets.join("\n\n"));
       }
     } catch (error) {
-      if (this.draftKey === pageId) {
+      if (this.args.page.id === pageId) {
         this.uploadError = {
           id: pageId,
           message:
@@ -411,7 +391,7 @@ export default class IngenicDocPageForm extends Component {
   }
 
   #write(value, start, end) {
-    this.bodyDraft = { id: this.draftKey, body: value };
+    this.bodyDraft = { id: this.args.page.id, body: value };
     this.#selectLater(start, end);
   }
 
