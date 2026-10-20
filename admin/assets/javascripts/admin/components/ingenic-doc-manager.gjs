@@ -837,6 +837,18 @@ export default class IngenicDocManager extends Component {
         },
       });
       await this.reload();
+
+      // Correcting a row's language moves its whole subtree with it. When that
+      // row is the one open at the top, follow the move; otherwise the
+      // workbench would still filter on the old language and show nothing.
+      const selected =
+        record.kind === "series"
+          ? record.id === this.selectedSeriesId
+          : record.id === this.selectedChipId;
+
+      if (values.locale && selected) {
+        this.selectedLocale = values.locale;
+      }
     } catch (error) {
       this.error = this.#errorMessage(error);
     } finally {
