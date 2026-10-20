@@ -80,21 +80,26 @@ export default class IngenicDocManager extends Component {
     );
   }
 
-  // The languages this chip actually has versions in. When it has none yet,
-  // the site's documentation default still appears, so the mandatory picker is
-  // never empty.
+  // Every language the forum serves, not only the ones this chip has versions
+  // in: picking a served language with no version yet is how its first version
+  // gets created, and the reader switching to that language must find it.
+  // Values a chip already stores stay in the list even when the site no longer
+  // serves them, or those versions would become unreachable from the picker.
   get languageOptions() {
-    const values = [
-      ...new Set((this.selectedChip?.versions ?? []).map((version) => this.#localeOf(version))),
-    ].filter(Boolean);
+    const served = this.args.locales ?? [];
+    const values = served.map((locale) => locale.value);
+
+    for (const version of this.selectedChip?.versions ?? []) {
+      values.push(this.#localeOf(version));
+    }
 
     // The language being shown stays in the picker while it has no version, or
     // deleting the last one would silently switch the workbench elsewhere.
-    if (this.selectedLocale && !values.includes(this.selectedLocale)) {
+    if (this.selectedLocale) {
       values.push(this.selectedLocale);
     }
 
-    if (values.length === 0) {
+    if (values.filter(Boolean).length === 0) {
       const fallback = this.selectedChip?.locale || this.args.defaultLocale;
 
       if (!fallback) {
@@ -104,9 +109,9 @@ export default class IngenicDocManager extends Component {
       values.push(fallback);
     }
 
-    return values.map((value) => ({
+    return [...new Set(values)].filter(Boolean).map((value) => ({
       value,
-      name: (this.args.locales ?? []).find((locale) => locale.value === value)?.name ?? value,
+      name: served.find((locale) => locale.value === value)?.name ?? value,
     }));
   }
 
@@ -187,14 +192,20 @@ export default class IngenicDocManager extends Component {
     return version.locale || this.args.defaultLocale || "";
   }
 
-  // The language kept across chip switches when the new chip has it, the site
-  // default next, and the chip's first language otherwise. Never blank.
+  // The language kept across chip switches: an administrator translating a
+  // manual works through chips one at a time, so a served language stays
+  // selected even where that chip has no version in it yet — that empty screen
+  // is where its first version gets created. The site default is next, then
+  // the chip's first language. Never blank.
   #localeFor(chip) {
     const locales = (chip.versions ?? [])
       .map((version) => this.#localeOf(version))
       .filter(Boolean);
+    const served = (this.args.locales ?? []).some(
+      (locale) => locale.value === this.selectedLocale
+    );
 
-    if (this.selectedLocale && locales.includes(this.selectedLocale)) {
+    if (this.selectedLocale && (served || locales.includes(this.selectedLocale))) {
       return this.selectedLocale;
     }
 
@@ -1081,8 +1092,8 @@ export default class IngenicDocManager extends Component {
 
         {{! Language sits at the end of the bar but is still mandatory: a chip
             plus a language names one manual, and it narrows the version list.
-            It has no + of its own — a language appears the moment a version is
-            created in it, and that happens in the version drawer. }}
+            It lists every language the forum serves, so one with no version
+            yet can be picked and its first version created in the drawer. }}
         <div class="ingenic-doc-workbench__field">
           <span>{{i18n "admin.ingenic.documentation.workbench.language"}}</span>
           <select
