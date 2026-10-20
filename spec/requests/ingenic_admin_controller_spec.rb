@@ -130,6 +130,87 @@ describe Admin::IngenicController do
 
       expect(response.status).to eq(200)
     end
+
+    # The form always creates the new version as the latest one, and a partial
+    # unique index keeps "latest" exclusive per chip and language. Clearing the
+    # previous latest after the INSERT hit that index, so a chip that already
+    # had a version refused every further one — the editor read that as "it
+    # will not create".
+    it "creates a second version flagged latest in the same chip" do
+      first =
+        IngenicDocVersion.create!(
+          product: chip,
+          slug: "v1",
+          label: "v1.0",
+          locale: "en",
+          latest: true,
+        )
+
+      expect {
+        post "/admin/plugins/discourse-ingenic/documentation/versions.json",
+             params: {
+               product_id: chip.id,
+               slug: "v2",
+               label: "v2.0",
+               locale: "en",
+               latest: "true",
+             }
+      }.to change(IngenicDocVersion, :count).by(1)
+
+      expect(response.status).to eq(200)
+      expect(first.reload).not_to be_latest
+      expect(IngenicDocVersion.find_by!(slug: "v2")).to be_latest
+    end
+  end
+
+  describe "PUT /admin/plugins/discourse-ingenic/documentation/versions/:id" do
+    fab!(:other_chip) do
+      IngenicDocProduct.create!(
+        slug: "t32pro",
+        name: "T32Pro",
+        kind: IngenicDocProduct::CHIP,
+        parent: product,
+        locale: "en",
+      )
+    end
+    fab!(:latest_version) do
+      chip =
+        IngenicDocProduct.create!(
+          slug: "t33",
+          name: "T33",
+          kind: IngenicDocProduct::CHIP,
+          parent: product,
+          locale: "en",
+        )
+      IngenicDocVersion.create!(
+        product: chip,
+        slug: "v1",
+        label: "v1.0",
+        locale: "en",
+        latest: true,
+      )
+    end
+
+    # Moving the row that is already flagged latest into a chip that has one
+    # of its own had the same problem in the other direction: the UPDATE hit
+    # the index before the new sibling was cleared, and the drag looked like it
+    # simply refused to land.
+    it "moves a version flagged latest into another chip" do
+      IngenicDocVersion.create!(
+        product: other_chip,
+        slug: "v1",
+        label: "v1.0",
+        locale: "en",
+        latest: true,
+      )
+
+      put "/admin/plugins/discourse-ingenic/documentation/versions/#{latest_version.id}.json",
+          params: { product_id: other_chip.id }
+
+      expect(response.status).to eq(200)
+      expect(latest_version.reload.product_id).to eq(other_chip.id)
+      expect(other_chip.versions.where(latest: true).count).to eq(1)
+    end
   end
 
   # The page tree distinguishes folders from articles and files a child by id.

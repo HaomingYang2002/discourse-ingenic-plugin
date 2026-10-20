@@ -242,9 +242,23 @@ export default class IngenicDocPageTree extends Component {
 
   @action
   focusDraft(element) {
-    // The draft can land below the fold in a long manual.
-    element.scrollIntoView({ block: "nearest" });
-    element.focus();
+    // The draft can land below the fold in a long manual. Scroll the tree pane
+    // only: `scrollIntoView` also scrolls the admin page, and the whole screen
+    // moving made the rows look like they had jumped somewhere else.
+    const pane = element.closest(".ingenic-doc-tree-scroll");
+
+    if (pane) {
+      const box = element.getBoundingClientRect();
+      const frame = pane.getBoundingClientRect();
+
+      if (box.bottom > frame.bottom) {
+        pane.scrollTop += box.bottom - frame.bottom + 8;
+      } else if (box.top < frame.top) {
+        pane.scrollTop -= frame.top - box.top + 8;
+      }
+    }
+
+    element.focus({ preventScroll: true });
     element.select?.();
   }
 
@@ -268,8 +282,15 @@ export default class IngenicDocPageTree extends Component {
   // file explorer does. Enter clears the draft first, so the blur it causes
   // finds nothing left to commit.
   @action
-  draftBlur() {
+  draftBlur(event) {
     if (!this.draft) {
+      return;
+    }
+
+    // Clicking another control in the workbench is not clicking away: the
+    // draft would be created (or silently dropped) while the editor was still
+    // naming it.
+    if (event.relatedTarget?.closest?.(".ingenic-doc-workbench")) {
       return;
     }
 

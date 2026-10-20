@@ -52,6 +52,13 @@ class IngenicDocVersion < ActiveRecord::Base
   # A reader lands on one version per language, so "latest" is exclusive
   # within the chip's versions filed under the same language. The workbench
   # has a checkbox for it; nothing in the public picker would show two.
+  # `latest` is exclusive within a chip and language — the database enforces it
+  # with a partial unique index. The exclusion has to be written *before* this
+  # row is saved: clearing the sibling afterwards hits the index the moment
+  # this row is inserted, and again when a latest version is moved to another
+  # chip. Both failures made creating or moving a version look impossible.
+  before_save :clear_sibling_latest, if: :latest?
+
   def make_latest!
     return unless latest?
 
@@ -60,5 +67,14 @@ class IngenicDocVersion < ActiveRecord::Base
 
   def resolver
     @resolver ||= Ingenic::DocumentationResolver.new(product)
+  end
+
+  private
+
+  def clear_sibling_latest
+    self.class
+      .where(product_id: product_id, locale: locale)
+      .where.not(id: id)
+      .update_all(latest: false)
   end
 end
