@@ -75,50 +75,89 @@ module Ingenic
     # Newest definition of each slug wins, so walking the chain oldest-first and
     # overwriting gives the inherited value for anything the target version left
     # alone.
+    #
+    # The newest version that mentions a slug decides its fate even when the row
+    # it wrote is unpublished: taking a page down has to beat the version that
+    # published it, otherwise the older, still-published row kept winning. That
+    # is also why the publish filter runs here instead of inside the per-version
+    # query.
     def effective_rows(version, published_only:, locale:)
       chain = chain_for(version)
-      pages_by_version =
-        chain.index_with do |source|
-          readable_pages(source, published_only: published_only, locale: locale)
-        end
-      rows_by_id = pages_by_version.values.flatten.index_by(&:id)
+      rows_by_version = chain.index_with { |source| readable_rows(source, locale: locale) }
+
+      # Where each page sits is decided by `node_key`, not by `parent_id`: a
+      # copy in a later version points its parent id at the row in the version
+      # it was copied from, which may since have been overridden or deleted.
+      node_owner = node_owners(rows_by_version)
+
       target_id = version.id
+      newest = newest_definitions(rows_by_version, published_only: published_only)
 
       resolved =
-        chain.each_with_object({}) do |source, result|
-          pages_by_version[source].each do |page|
-            result[page.slug] = ResolvedPage.new(
-              page,
-              inherited_from: (source.id == target_id ? nil : source),
-              parent_slug: parent_slug_for(page, rows_by_id),
-            )
-          end
+        newest.each_with_object({}) do |(slug, (source, page)), result|
+          next if published_only && !page.published?
+
+          result[slug] = ResolvedPage.new(
+            page,
+            inherited_from: (source.id == target_id ? nil : source),
+            parent_slug: parent_slug_for(page, node_owner),
+          )
         end
 
       # A folder taken down takes its section with it. Without this, its
       # published children lost their parent from the resolved set and
       # build_tree re-attached them at the top level — taking a folder down
       # published its articles, one level up.
-      prune_taken_down_subtrees!(resolved) if published_only
+      prune_taken_down_subtrees!(resolved, node_owner) if published_only
 
       resolved
+    end
+
+    # The newest row for every page in the chain, with the version that wrote
+    # it. When one version holds the page in two languages the reading one
+    # wins; a reader gets a published translation in its place when the one
+    # they speak was withdrawn, which is the fallback there was before. The
+    # management page edits the language it is looking at, drafts included.
+    def newest_definitions(rows_by_version, published_only:)
+      definitions = {}
+
+      rows_by_version.each do |source, pages|
+        pages.group_by(&:slug).each do |slug, rows|
+          chosen = published_only ? (rows.find(&:published?) || rows.first) : rows.first
+          definitions[slug] = [source, chosen]
+        end
+      end
+
+      definitions
+    end
+
+    # `node_key` of every page in the chain mapped to its newest definition,
+    # published or not. Parent slugs and the "was this section taken down"
+    # question both read from here.
+    def node_owners(rows_by_version)
+      owners = {}
+
+      rows_by_version.each do |_source, pages|
+        pages.group_by { |page| node_key_for(page) }.each do |node, rows|
+          owners[node] = rows.find(&:published?) || rows.first
+        end
+      end
+
+      owners
     end
 
     # A parent that exists but is not published is a section that was
     # withdrawn, not a missing row: readers see none of it. The management page
     # asks for drafts as well (published_only: false), so this only runs for a
     # reader.
-    def prune_taken_down_subtrees!(rows)
-      parent_ids = rows.each_value.filter_map { |resolved| resolved.page.parent_id }.uniq
-      return if parent_ids.empty?
-
-      published_parent_ids =
-        IngenicDocPage.where(id: parent_ids, published: true).pluck(:id).to_set
-
+    def prune_taken_down_subtrees!(rows, node_owner)
       hidden =
         rows.each_value.filter_map do |resolved|
-          parent_id = resolved.page.parent_id
-          resolved.slug if parent_id && !published_parent_ids.include?(parent_id)
+          parent_node = parent_node_key_for(resolved.page)
+          next if parent_node.nil?
+
+          parent = node_owner[parent_node] || resolved.page.parent
+          resolved.slug if parent && !parent.published?
         end.to_set
 
       return if hidden.empty?
@@ -142,25 +181,39 @@ module Ingenic
     end
 
     # A page can be defined in one version while its parent is only defined in
-    # an earlier one, so the parent is resolved by identity first and by a plain
-    # lookup second.
-    def parent_slug_for(page, rows_by_id)
-      return if page.parent_id.nil?
+    # an earlier one, so the parent is resolved by node first. The raw
+    # association is the fallback for rows written before node keys existed and
+    # for a parent that only has a row in the other language.
+    def parent_slug_for(page, node_owner)
+      parent_node = parent_node_key_for(page)
+      return if parent_node.nil?
 
-      (rows_by_id[page.parent_id] || page.parent)&.slug
+      (node_owner[parent_node] || page.parent)&.slug
     end
 
-    # The reading language wins over the site default, and a slug appears once
-    # even when both languages define it. An explicit locale (the management
-    # screen) replaces the request's locale; a blank one falls back to it.
-    def readable_pages(version, published_only:, locale: nil)
+    def parent_node_key_for(page)
+      page.parent_node_key.presence ||
+        (page.parent_id.present? ? node_key_for(page.parent) : nil)
+    end
+
+    # Rows written before the node_key migration (or by a console write that
+    # skipped the model) still resolve through their row id.
+    def node_key_for(page)
+      page.node_key.presence || "page-#{page.id}"
+    end
+
+    # The reading language wins over the site default. Both rows for a slug are
+    # kept: the caller decides which one stands for the page, so a withdrawn
+    # translation can still be replaced by the fallback language.
+    def readable_rows(version, locale: nil)
       reading = locale.to_s.presence || I18n.locale.to_s
       fallback = SiteSetting.ingenic_default_locale
 
-      scope = version.pages.where(locale: [reading, fallback].uniq)
-      scope = scope.where(published: true) if published_only
-
-      scope.to_a.sort_by { |page| page.locale == reading ? 0 : 1 }.uniq(&:slug)
+      version
+        .pages
+        .where(locale: [reading, fallback].uniq)
+        .to_a
+        .sort_by { |page| page.locale == reading ? 0 : 1 }
     end
 
     # A depth-ordered flat list is enough to render the tree, and it keeps the

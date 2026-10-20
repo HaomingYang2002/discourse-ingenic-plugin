@@ -1784,7 +1784,21 @@ module Admin
     def page_json(page)
       page
         .attributes
-        .slice("id", "version_id", "parent_id", "kind", "slug", "title", "body", "locale", "topic_url", "published", "position")
+        .slice(
+          "id",
+          "version_id",
+          "parent_id",
+          "parent_node_key",
+          "node_key",
+          "kind",
+          "slug",
+          "title",
+          "body",
+          "locale",
+          "topic_url",
+          "published",
+          "position",
+        )
     end
 
     # A page as the management page needs it: the stored row plus what the

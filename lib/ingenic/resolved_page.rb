@@ -45,9 +45,11 @@ module Ingenic
              :locale,
              :topic_url,
              :parent_id,
+             :parent_node_key,
              :position,
              :updated_at,
              :version_id,
+             :node_key,
              to: :page
   end
 end

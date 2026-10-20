@@ -22,6 +22,19 @@ class IngenicDocPage < ActiveRecord::Base
   validates :title, presence: true
   validates :kind, presence: true, inclusion: { in: KINDS }
 
+  # `node_key` names the page itself rather than the row that holds this
+  # version's copy of it: a page inherited, overridden or re-ordered by a later
+  # version keeps the same key, and children keep pointing at it after the row
+  # they were copied from is edited or removed. `parent_node_key` is the tree
+  # edge the resolver walks. Both are written by the callbacks below; the key
+  # never changes after creation.
+  attr_readonly :node_key
+
+  validates :node_key, presence: true, uniqueness: { scope: %i[version_id locale] }
+
+  before_validation :ensure_node_key, on: :create
+  before_validation :sync_parent_node_key
+
   # A body under a folder is invisible to every reader, so accepting one would
   # store text that can never be seen and leave the editor wondering where it
   # went.
@@ -73,6 +86,44 @@ class IngenicDocPage < ActiveRecord::Base
     end
 
     ids
+  end
+
+  # A slug is the page's address and its identity in the resolver, so a page
+  # created under a slug the product already knows joins that page's node
+  # instead of becoming a second page the same slug would shadow. Importing the
+  # same manual into a newer version is the case this keeps in one piece.
+  def ensure_node_key
+    return if node_key.present?
+
+    self.node_key = existing_node_key || SecureRandom.uuid
+  end
+
+  def existing_node_key
+    return if version_id.blank? || slug.blank?
+
+    product_id = version&.product_id
+    return if product_id.nil?
+
+    IngenicDocPage
+      .joins(:version)
+      .where(ingenic_doc_versions: { product_id: product_id })
+      .where(slug: slug)
+      .where.not(node_key: nil)
+      .pick(:node_key)
+  end
+
+  # The tree edge is derived from the parent row, so the admin can keep filing
+  # a page by `parent_id` while the resolver only ever reads node keys. A copy
+  # (`dup`) carries its source's `parent_node_key` and never reaches the query
+  # unless the parent actually changed.
+  def sync_parent_node_key
+    if parent_id.present?
+      return if parent_node_key.present? && !parent_id_changed?
+
+      self.parent_node_key = IngenicDocPage.where(id: parent_id).pick(:node_key)
+    elsif parent_id_changed?
+      self.parent_node_key = nil
+    end
   end
 
   def parent_does_not_close_a_loop
