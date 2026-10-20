@@ -3,6 +3,7 @@ import { action } from "@ember/object";
 import { on } from "@ember/modifier";
 import { fn } from "@ember/helper";
 import { tracked } from "@glimmer/tracking";
+import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { eq } from "discourse/truth-helpers";
 import { ajax } from "discourse/lib/ajax";
 import { i18n } from "discourse-i18n";
@@ -19,12 +20,17 @@ const PAGE_INDENT_BASE = 3;
 /**
  * Authoring workbench for the documentation tree.
  *
- * The whole hierarchy lives in the left pane: series, the chips under each
- * series, the versions under each chip, and — once a version is opened — its
- * pages. Every level can be created, renamed, moved and deleted there, so the
- * old top bar that selected one series/chip/version at a time had nothing left
- * to do. What survives is the language filter above the tree, which only hides
- * version rows of other languages.
+ * The hierarchy is fixed: series → chip → version → pages and folders. Every
+ * level lives in the left pane and is edited there like a file explorer — each
+ * row has a grip, an icon, a name, and ＋ / − controls. ＋ inserts a draft row
+ * under the row that owns it (a series' ＋ above the tree creates a series),
+ * Enter creates, Esc cancels; double-clicking a name renames it in place.
+ * There is no settings dialog: the slug, language and publish flags a row is
+ * born with are the ones it keeps.
+ *
+ * The language picker above the tree is the only thing in the toolbar. Each
+ * language has its own independent tree: the picker filters the whole
+ * hierarchy, and every row created while it is set inherits that language.
  *
  * Series and chips are expanded by default, versions are collapsed until their
  * pages are asked for: a site with a few dozen chips should not fetch every
@@ -67,15 +73,14 @@ export default class IngenicDocManager extends Component {
   @tracked error = null;
   @tracked importMessage = null;
 
-  // { kind: "series" | "chip" | "version", action: "create" | "edit", record }
-  @tracked drawer = null;
+  // The row currently being named in place: { kind, parent }. A series has no
+  // parent row, a chip's parent is its series, a version's is its chip.
+  @tracked draft = null;
+  @tracked draftName = "";
 
-  // What the create drawer's parent pickers start on. They are editable, not
-  // read-only: the row being added can be filed somewhere other than the row
-  // whose + was pressed, and choosing a series narrows the chip list.
-  @tracked formLocale = null;
-  @tracked formSeriesId = null;
-  @tracked formChipId = null;
+  // The row whose name is being edited in place: { key, kind, record }.
+  @tracked renaming = null;
+  @tracked renameDraft = "";
 
   // The row in hand and the row it is over: { key, kind, record } and
   // { key, mode: "before" | "after" | "into" }.
@@ -100,43 +105,6 @@ export default class IngenicDocManager extends Component {
       : [];
 
     return pages.find((page) => page.slug === this.selectedPageSlug) ?? null;
-  }
-
-  get noSeries() {
-    return this.series.length === 0;
-  }
-
-  get drawerTitle() {
-    if (!this.drawer) {
-      return "";
-    }
-
-    return i18n(
-      `admin.ingenic.documentation.workbench.${this.drawer.action}_${this.drawer.kind}`
-    );
-  }
-
-  // Editing uses the row's own language; creating starts where the row whose +
-  // was pressed says.
-  get drawerLocale() {
-    return this.drawer?.record?.locale ?? this.formLocale ?? null;
-  }
-
-  // A new series or chip starts out published; an existing one keeps whatever
-  // it has. The checkbox has to show the same thing the request will send.
-  get drawerPublished() {
-    return this.drawer?.record?.published ?? true;
-  }
-
-  // The chips the create drawer can file a version under. It follows the
-  // series picker above it, so changing that picker cannot leave a version
-  // pointing at a chip from another series.
-  get formChips() {
-    return this.series.find((entry) => entry.id === this.formSeriesId)?.chips ?? [];
-  }
-
-  get formHasNoChips() {
-    return this.formChips.length === 0;
   }
 
   // Every language the forum serves, plus any language a row still carries:
@@ -184,6 +152,11 @@ export default class IngenicDocManager extends Component {
   get structureRows() {
     const rows = [];
 
+    // A series has no parent row, so its draft sits above the first series.
+    if (this.draft?.kind === "series") {
+      rows.push(this.#draftRow(0));
+    }
+
     for (const series of this.#visibleSeries()) {
       const seriesKey = this.#keyOf("series", series);
       const seriesOpen = !this.collapsedProducts.has(seriesKey);
@@ -193,42 +166,27 @@ export default class IngenicDocManager extends Component {
         continue;
       }
 
-      const chips = this.#visibleChips(series);
-
-      if (chips.length === 0) {
-        // The series may simply have no chip in the selected language, which
-        // is a different situation from a brand new, empty series.
-        const hint =
-          this.activeLanguage && (series.chips ?? []).length > 0
-            ? "no_chips_in_locale"
-            : "no_chips_in_series";
-
-        rows.push(this.#hintRow(`${seriesKey}-empty`, 1, hint));
-        continue;
+      // A chip's draft is a child of this series: directly under it.
+      if (this.draft?.kind === "chip" && this.draft.parent?.id === series.id) {
+        rows.push(this.#draftRow(1));
       }
 
-      for (const chip of chips) {
+      for (const chip of this.#visibleChips(series)) {
         const chipKey = this.#keyOf("chip", chip);
         const versions = this.#visibleVersions(chip);
-        // A chip whose versions are all hidden by the language filter stays
-        // open even if it was folded: otherwise it would show no chevron, no
-        // rows and no hint, and there would be nothing to act on.
-        const chipOpen =
-          !this.collapsedProducts.has(chipKey) || versions.length === 0;
+        const chipOpen = !this.collapsedProducts.has(chipKey);
         rows.push(this.#rowFor("chip", chip, 1, chipOpen));
 
         if (!chipOpen) {
           continue;
         }
 
-        if (versions.length === 0) {
-          rows.push(
-            this.#hintRow(
-              `${chipKey}-empty`,
-              2,
-              this.activeLanguage ? "no_versions_in_locale" : "empty_version"
-            )
-          );
+        // A version's draft is a child of this chip: before its versions.
+        if (
+          this.draft?.kind === "version" &&
+          this.draft.parent?.id === chip.id
+        ) {
+          rows.push(this.#draftRow(2));
         }
 
         for (const version of versions) {
@@ -250,9 +208,12 @@ export default class IngenicDocManager extends Component {
     return rows;
   }
 
+  #draftRow(depth) {
+    return { key: "__draft__", kind: "draft", depth, isDraft: true };
+  }
+
   #rowFor(kind, record, depth, expanded) {
     const key = this.#keyOf(kind, record);
-    const latest = kind === "version" && record.latest;
 
     return {
       key,
@@ -261,15 +222,12 @@ export default class IngenicDocManager extends Component {
       depth,
       expanded,
       writable: record.writable ?? true,
-      // The tree shows one language at a time, so a row needs no badge; the
-      // latest version is marked the way the old version selector did, in the
-      // title itself.
-      label:
-        kind === "version"
-          ? [record.label, latest && i18n("admin.ingenic.documentation.latest")]
-              .filter(Boolean)
-              .join(" · ")
-          : record.name,
+      // The first three levels are containers, so they use the same folder
+      // glyph as a page folder; an article is the only document row.
+      icon: "📁",
+      label: kind === "version" ? record.label : record.name,
+      isLatest: kind === "version" && record.latest,
+      isRenaming: this.renaming?.key === key,
       addTitle: i18n(
         `admin.ingenic.documentation.workbench.add_${kind === "series" ? "chip" : kind === "chip" ? "version" : "page"}`
       ),
@@ -286,15 +244,6 @@ export default class IngenicDocManager extends Component {
       isDropAfter: this.drop?.key === key && this.drop.mode === "after",
       isDropInto: this.drop?.key === key && this.drop.mode === "into",
       addMenuOpen: this.addMenuKey === key,
-    };
-  }
-
-  #hintRow(key, depth, textKey) {
-    return {
-      key,
-      kind: "hint",
-      depth,
-      text: i18n(`admin.ingenic.documentation.workbench.${textKey}`),
     };
   }
 
@@ -357,18 +306,6 @@ export default class IngenicDocManager extends Component {
     );
   }
 
-  #chipById(chipId) {
-    for (const series of this.series) {
-      const chip = (series.chips ?? []).find((entry) => entry.id === chipId);
-
-      if (chip) {
-        return chip;
-      }
-    }
-
-    return null;
-  }
-
   #chipOfVersion(versionId) {
     for (const series of this.series) {
       for (const chip of series.chips ?? []) {
@@ -401,10 +338,6 @@ export default class IngenicDocManager extends Component {
     return null;
   }
 
-  #seriesIdOfChip(chipId) {
-    return this.#seriesOfChip(chipId)?.id ?? null;
-  }
-
   // Rows written before the language default was fixed may have no locale at
   // all. The documentation default is the language they were meant for.
   #localeOf(record) {
@@ -420,15 +353,6 @@ export default class IngenicDocManager extends Component {
 
   pagesFor(version) {
     return this.pagesByVersion[version.id] ?? [];
-  }
-
-  // Only a tree with nothing to show yet displays the loading line. Re-fetching
-  // after a save keeps the current rows mounted, so the inline editor and the
-  // page's scroll position survive the round trip.
-  isLoading(version) {
-    return (
-      this.loadingVersions.has(version.id) && !this.pagesByVersion[version.id]
-    );
   }
 
   @action
@@ -564,41 +488,291 @@ export default class IngenicDocManager extends Component {
     this.expandedVersions = next;
   }
 
-  // Clicking a series or chip name folds it; clicking a version name opens it
-  // (the chevron is the control that folds it again).
+  // Clicking a name only selects the row — the chevron is the control that
+  // folds it, the way a file explorer works, and double-clicking renames it.
+  // A version also opens, because that is how its pages are reached.
   @action
-  openRow(row) {
+  selectRow(row) {
     this.selectedNodeKey = row.key;
     this.addMenuKey = null;
 
-    if (row.kind === "version") {
-      if (this.selectedVersionId !== row.record.id) {
-        this.selectedVersionId = row.record.id;
-        this.selectedPageSlug = null;
-      }
+    if (row.kind !== "version") {
+      return;
+    }
 
-      if (!this.expandedVersions.has(row.record.id)) {
-        this.expandedVersions = new Set(this.expandedVersions).add(
-          row.record.id
-        );
-        this.#ensurePages(row.record);
-      }
-    } else {
-      this.#toggleProduct(row.record);
+    if (this.selectedVersionId !== row.record.id) {
+      this.selectedVersionId = row.record.id;
+      this.selectedPageSlug = null;
+    }
+
+    if (!this.expandedVersions.has(row.record.id)) {
+      this.expandedVersions = new Set(this.expandedVersions).add(
+        row.record.id
+      );
+      this.#ensurePages(row.record);
     }
   }
 
+  // The + adds the next level down: a series gets a chip, a chip gets a
+  // version, a version gets a page or folder. Only the last one has a choice
+  // to make, so only it opens a menu; everything else starts typing at once.
   @action
   addChild(row) {
     this.selectedNodeKey = row.key;
 
     if (row.kind === "series") {
-      this.openDrawer("chip", "create", null, row.record);
+      this.#startDraft("chip", row.record);
     } else if (row.kind === "chip") {
-      this.openDrawer("version", "create", null, row.record);
+      this.#startDraft("version", row.record);
     } else {
       this.addMenuKey = this.addMenuKey === row.key ? null : row.key;
     }
+  }
+
+  // A series has no parent row, so its + is the button above the tree; the
+  // draft still appears as a row at the top, not in a dialog.
+  @action
+  startSeriesDraft() {
+    this.#startDraft("series", null);
+  }
+
+  #startDraft(kind, parent) {
+    this.error = null;
+    this.addMenuKey = null;
+    this.renaming = null;
+
+    // The draft has to be visible: a folded parent would hide the row being
+    // typed into.
+    if (parent) {
+      const parentKey = this.#keyOf(kind === "version" ? "chip" : "series", parent);
+      this.#expandProductKeys([parentKey]);
+
+      if (kind === "version") {
+        const series = this.#seriesOfChip(parent.id);
+        this.#expandProductKeys([series && this.#keyOf("series", series)]);
+      }
+    }
+
+    this.draft = { kind, parent };
+    this.draftName = "";
+  }
+
+  @action
+  focusDraft(element) {
+    element.focus();
+    element.select?.();
+  }
+
+  @action
+  updateDraftName(event) {
+    this.draftName = event.target.value;
+  }
+
+  @action
+  draftKeydown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      this.commitDraft();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      this.cancelDraft();
+    }
+  }
+
+  // Clicking away commits a named row and discards an empty one, the way a
+  // file explorer does.
+  @action
+  draftBlur() {
+    if (!this.draft) {
+      return;
+    }
+
+    if (this.draftName.trim()) {
+      this.commitDraft();
+    } else {
+      this.cancelDraft();
+    }
+  }
+
+  @action
+  async commitDraft() {
+    const draft = this.draft;
+    const name = this.draftName.trim();
+
+    if (!draft || !name) {
+      return;
+    }
+
+    this.draft = null;
+    this.draftName = "";
+    this.busy = true;
+    this.error = null;
+
+    const locale = this.activeLanguage || this.args.defaultLocale || undefined;
+
+    try {
+      if (draft.kind === "series" || draft.kind === "chip") {
+        const response = await ajax(`${BASE}/documentation/products`, {
+          type: "POST",
+          data: {
+            kind: draft.kind,
+            name,
+            slug: this.#slugFor(name, draft.kind),
+            locale,
+            published: true,
+            parent_id: draft.kind === "chip" ? draft.parent.id : null,
+          },
+        });
+
+        await this.reload();
+
+        if (response?.product) {
+          this.selectedNodeKey = this.#keyOf(draft.kind, response.product);
+
+          if (draft.kind === "chip") {
+            this.#expandProductKeys([
+              this.#keyOf("series", draft.parent),
+            ]);
+          }
+        }
+      } else {
+        const response = await ajax(`${BASE}/documentation/versions`, {
+          type: "POST",
+          data: {
+            label: name,
+            slug: this.#slugFor(name, "version"),
+            locale,
+            released_on: null,
+            deprecated: false,
+            // The version just added is the one readers should land on. The
+            // server keeps "latest" exclusive within this chip and language.
+            latest: true,
+            product_id: draft.parent.id,
+          },
+        });
+
+        await this.reload();
+
+        const series = this.#seriesOfChip(draft.parent.id);
+        this.#expandProductKeys([
+          this.#keyOf("chip", draft.parent),
+          series && this.#keyOf("series", series),
+        ]);
+
+        if (response?.version) {
+          this.selectedVersionId = response.version.id;
+          this.selectedPageSlug = null;
+          this.selectedNodeKey = this.#keyOf("version", response.version);
+          this.expandedVersions = new Set(this.expandedVersions).add(
+            response.version.id
+          );
+          await this.loadPages(response.version);
+        }
+      }
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  @action
+  cancelDraft() {
+    this.draft = null;
+    this.draftName = "";
+  }
+
+  // Double-clicking a series, chip or version name edits it in place. Only the
+  // display name changes: the slug an address uses stays as it was.
+  @action
+  startRowRename(row, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!row.writable) {
+      return;
+    }
+
+    this.error = null;
+    this.addMenuKey = null;
+    this.draft = null;
+    this.renaming = { key: row.key, kind: row.kind, record: row.record };
+    this.renameDraft =
+      row.kind === "version" ? row.record.label : row.record.name;
+  }
+
+  @action
+  focusRename(element) {
+    element.focus();
+    element.select?.();
+  }
+
+  @action
+  updateRename(event) {
+    this.renameDraft = event.target.value;
+  }
+
+  @action
+  renameKeydown(row, event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      this.commitRowRename();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      this.cancelRename();
+    }
+  }
+
+  @action
+  renameBlur(row) {
+    if (this.renaming?.key === row.key) {
+      this.commitRowRename();
+    }
+  }
+
+  @action
+  async commitRowRename() {
+    const renaming = this.renaming;
+    const name = this.renameDraft.trim();
+    this.renaming = null;
+    this.renameDraft = "";
+
+    if (!renaming || !name) {
+      return;
+    }
+
+    const record = renaming.record;
+    const current =
+      renaming.kind === "version" ? record.label : record.name;
+
+    if (name === current) {
+      return;
+    }
+
+    this.busy = true;
+    this.error = null;
+
+    try {
+      const endpoint =
+        renaming.kind === "version"
+          ? `${BASE}/documentation/versions/${record.id}`
+          : `${BASE}/documentation/products/${record.id}`;
+      await ajax(endpoint, {
+        type: "PUT",
+        data: renaming.kind === "version" ? { label: name } : { name },
+      });
+      await this.reload();
+    } catch (error) {
+      this.error = this.#errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  @action
+  cancelRename() {
+    this.renaming = null;
+    this.renameDraft = "";
   }
 
   // A version row's + asks the page tree to insert its draft row. Opening the
@@ -723,14 +897,14 @@ export default class IngenicDocManager extends Component {
   // transliterate in the browser, so it gets a short fallback. The slug is
   // derived once, never asked for again, and only has to be unique within the
   // version and locale.
-  #slugFor(title) {
+  #slugFor(title, prefix = "page") {
     const ascii = title
       .normalize("NFKD")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    return ascii || `page-${Math.random().toString(36).slice(2, 8)}`;
+    return ascii || `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   @action
@@ -879,7 +1053,40 @@ export default class IngenicDocManager extends Component {
       return;
     }
 
-    if (!window.confirm(i18n("admin.ingenic.documentation.delete_page_confirm"))) {
+    if (
+      !window.confirm(
+        i18n("admin.ingenic.documentation.workbench.delete_item_confirm", {
+          name: page.title,
+        })
+      )
+    ) {
+      return;
+    }
+
+    const pages = this.pagesFor(version);
+    const descendants =
+      page.kind === "folder"
+        ? this.#descendantSlugs(pages, page.slug)
+        : new Set();
+
+    // Only rows this version owns are destroyed with the folder; a child it
+    // merely inherits stays in the version that wrote it.
+    const ownDescendantSlugs = new Set(
+      [...descendants].filter((slug) => {
+        const entry = pages.find((candidate) => candidate.slug === slug);
+        return entry && !entry.inherited;
+      })
+    );
+
+    if (
+      ownDescendantSlugs.size &&
+      !window.confirm(
+        i18n(
+          "admin.ingenic.documentation.workbench.delete_folder_contents",
+          { count: ownDescendantSlugs.size }
+        )
+      )
+    ) {
       return;
     }
 
@@ -889,7 +1096,10 @@ export default class IngenicDocManager extends Component {
     try {
       await ajax(`${BASE}/documentation/pages/${page.id}`, { type: "DELETE" });
 
-      if (this.selectedPageSlug === page.slug) {
+      if (
+        this.selectedPageSlug === page.slug ||
+        ownDescendantSlugs.has(this.selectedPageSlug)
+      ) {
         this.selectedPageSlug = null;
       }
 
@@ -1200,48 +1410,6 @@ export default class IngenicDocManager extends Component {
 
   // ------------------------------------------------------------- versions ---
 
-  @action
-  async saveVersion(event, version) {
-    event.preventDefault();
-    const form = event.target;
-    const values = Object.fromEntries(new FormData(form));
-    const previousLocale = version.locale;
-
-    this.busy = true;
-    this.error = null;
-
-    try {
-      await ajax(`${BASE}/documentation/versions/${version.id}`, {
-        type: "PUT",
-        data: {
-          label: values.label?.trim(),
-          slug: values.slug?.trim(),
-          locale: values.locale,
-          // An empty date input is "no date", not the epoch.
-          released_on: values.released_on || null,
-          deprecated: form.elements.deprecated.checked,
-          latest: form.elements.latest?.checked ?? false,
-        },
-      });
-      await this.reload();
-
-      // A version moved to another language resolves its pages in that
-      // language, so the cached tree is no longer the one the editor wrote.
-      if (previousLocale !== values.locale) {
-        this.#forgetPages(version.id);
-        const updated = this.#versionById(version.id);
-
-        if (updated && this.expandedVersions.has(version.id)) {
-          await this.loadPages(updated);
-        }
-      }
-    } catch (error) {
-      this.error = this.#errorMessage(error);
-    } finally {
-      this.busy = false;
-    }
-  }
-
   #forgetPages(versionId) {
     const pages = { ...this.pagesByVersion };
     delete pages[versionId];
@@ -1259,7 +1427,39 @@ export default class IngenicDocManager extends Component {
 
   @action
   async destroyVersion(version) {
-    if (!window.confirm(i18n("admin.ingenic.documentation.delete_version_confirm"))) {
+    if (
+      !window.confirm(
+        i18n("admin.ingenic.documentation.workbench.delete_item_confirm", {
+          name: version.label,
+        })
+      )
+    ) {
+      return false;
+    }
+
+    // The warning has to name what disappears, so fetch the tree if this
+    // version was never expanded.
+    if (!this.pagesByVersion[version.id]) {
+      await this.loadPages(version);
+
+      if (!this.pagesByVersion[version.id]) {
+        return false;
+      }
+    }
+
+    const ownPages = (this.pagesByVersion[version.id] ?? []).filter(
+      (page) => !page.inherited
+    );
+
+    if (
+      ownPages.length &&
+      !window.confirm(
+        i18n(
+          "admin.ingenic.documentation.workbench.delete_version_contents",
+          { count: ownPages.length }
+        )
+      )
+    ) {
       return false;
     }
 
@@ -1289,99 +1489,52 @@ export default class IngenicDocManager extends Component {
     }
   }
 
-  @action
-  async moveVersion(version, direction) {
-    const chip = this.#chipOfVersion(version.id);
-    const siblings = this.#versionsOf(chip);
-    const index = siblings.findIndex((entry) => entry.id === version.id);
-    const target = index + direction;
-
-    if (!chip || index < 0 || target < 0 || target >= siblings.length) {
-      return;
-    }
-
-    const reordered = [...siblings];
-    reordered.splice(index, 1);
-    reordered.splice(target, 0, version);
-
-    await this.#persistVersionOrder(chip.id, version, reordered);
-  }
-
   // ------------------------------------------------ series and chips CRUD ---
 
-  // Series and chips are the front end's first two filter rows, so the words a
-  // visitor picks from — and the slug the address spells, the language a reader
-  // must be using to see it, and whether it is on the site at all — are edited
-  // here rather than in code.
-  @action
-  async saveProduct(event, record) {
-    event.preventDefault();
-    const form = event.target;
-    const values = Object.fromEntries(new FormData(form));
-    const localeChanged = record.locale !== values.locale;
-
-    this.busy = true;
-    this.error = null;
-
-    try {
-      await ajax(`${BASE}/documentation/products/${record.id}`, {
-        type: "PUT",
-        data: {
-          name: values.name?.trim(),
-          slug: values.slug?.trim(),
-          locale: values.locale,
-          published: form.elements.published.checked,
-        },
-      });
-      await this.reload();
-
-      // Correcting a row's language moves its whole subtree with it, which
-      // changes how every affected version resolves its pages.
-      if (localeChanged) {
-        this.pagesByVersion = {};
-        await this.#reloadExpandedPages();
-      }
-    } catch (error) {
-      this.error = this.#errorMessage(error);
-    } finally {
-      this.busy = false;
-    }
-  }
-
-  async #reloadExpandedPages() {
-    const versions = [...this.expandedVersions]
-      .map((id) => this.#versionById(id))
-      .filter(Boolean);
-
-    await Promise.all(versions.map((version) => this.loadPages(version)));
-  }
-
-  // The arrows in the settings modal move a series or chip one place among its
-  // siblings; the left pane offers the same operation as a drag.
-  @action
-  async moveProduct(record, direction) {
-    const siblings =
-      record.kind === "series"
-        ? this.#orderedSeries()
-        : this.#orderedChips(this.#seriesOfChip(record.id));
-    const index = siblings.findIndex((entry) => entry.id === record.id);
-    const target = index + direction;
-
-    if (index < 0 || target < 0 || target >= siblings.length) {
-      return;
-    }
-
-    const reordered = [...siblings];
-    reordered.splice(index, 1);
-    reordered.splice(target, 0, record);
-
-    const parentId = record.kind === "series" ? null : record.parent_id;
-    await this.#persistProductOrder(record.kind, parentId, record, reordered);
-  }
-
+  // Renaming a series or chip is handled by the inline row editor above; its
+  // slug is left alone, because that is the address readers have bookmarked.
   @action
   async destroyProduct(record) {
-    if (!window.confirm(i18n("admin.ingenic.documentation.delete_confirm"))) {
+    const name = record.name;
+    const versions = (record.versions ?? []).length;
+
+    if (
+      !window.confirm(
+        i18n("admin.ingenic.documentation.workbench.delete_item_confirm", {
+          name,
+        })
+      )
+    ) {
+      return false;
+    }
+
+    if (record.kind === "series") {
+      const chips = (record.chips ?? []).length;
+      const descendantVersions = (record.chips ?? []).reduce(
+        (count, chip) => count + (chip.versions ?? []).length,
+        0
+      );
+
+      if (
+        chips &&
+        !window.confirm(
+          i18n(
+            "admin.ingenic.documentation.workbench.delete_series_contents",
+            { name, chips, versions: descendantVersions }
+          )
+        )
+      ) {
+        return false;
+      }
+    } else if (
+      versions &&
+      !window.confirm(
+        i18n(
+          "admin.ingenic.documentation.workbench.delete_chip_contents",
+          { name, versions }
+        )
+      )
+    ) {
       return false;
     }
 
@@ -1393,6 +1546,10 @@ export default class IngenicDocManager extends Component {
         type: "DELETE",
       });
 
+      if (this.selectedNodeKey === this.#keyOf(record.kind, record)) {
+        this.selectedNodeKey = null;
+      }
+
       // Deleting a series deletes its chips and versions; `reload` prunes the
       // caches and the selection of anything that is gone.
       await this.reload();
@@ -1403,219 +1560,13 @@ export default class IngenicDocManager extends Component {
     }
   }
 
-  // ----------------------------------------------------------------- modal ---
-
   @action
-  openDrawer(kind, action = "edit", record = null, parent = null) {
-    this.error = null;
-    this.addMenuKey = null;
-
-    if (action === "create") {
-      // Pre-fill the parent pickers from the row whose + was pressed, but
-      // leave them editable: a new row may belong somewhere else.
-      // The new row starts in the language the tree is showing, so it lands
-      // in view; the parent's language is only the fallback when no language
-      // is known yet.
-      this.formLocale =
-        this.activeLanguage ??
-        (parent ? this.#localeOf(parent) : null) ??
-        this.args.defaultLocale ??
-        null;
-
-      if (kind === "series") {
-        this.formSeriesId = null;
-        this.formChipId = null;
-      } else if (kind === "chip") {
-        this.formSeriesId = parent?.id ?? this.#orderedSeries()[0]?.id ?? null;
-        this.formChipId = null;
-      } else {
-        this.formChipId = parent?.id ?? null;
-        this.formSeriesId =
-          this.#seriesIdOfChip(this.formChipId) ??
-          this.#orderedSeries()[0]?.id ??
-          null;
-      }
-    } else {
-      this.formLocale = record?.locale ?? null;
-      this.formSeriesId =
-        kind === "chip"
-          ? (record?.parent_id ?? null)
-          : kind === "version"
-            ? this.#seriesIdOfChip(record?.product_id)
-            : null;
-      this.formChipId = kind === "version" ? (record?.product_id ?? null) : null;
+  deleteRow(row) {
+    if (row.kind === "version") {
+      return this.destroyVersion(row.record);
     }
 
-    this.drawer = { kind, action, record };
-  }
-
-  @action
-  closeDrawer() {
-    this.drawer = null;
-  }
-
-  @action
-  selectFormLocale(event) {
-    this.formLocale = event.target.value || null;
-  }
-
-  @action
-  selectFormSeries(event) {
-    this.formSeriesId = Number(event.target.value) || null;
-
-    if (!this.formChips.some((chip) => chip.id === this.formChipId)) {
-      this.formChipId = this.formChips[0]?.id ?? null;
-    }
-  }
-
-  @action
-  selectFormChip(event) {
-    this.formChipId = Number(event.target.value) || null;
-  }
-
-  // The site's served languages, plus the row's own value when it is not one
-  // of them: a row filed under "en" on a Chinese site has to show "en" in the
-  // picker, or saving any other field would silently move it to the first
-  // option and take it off the reader's screen.
-  localeOptions(current) {
-    const options = this.args.locales ?? [];
-
-    if (current && !options.some((option) => option.value === current)) {
-      return [{ value: current, name: current }, ...options];
-    }
-
-    return options;
-  }
-
-  @action
-  async submitDrawer(event) {
-    event.preventDefault();
-    const form = event.target;
-    const values = Object.fromEntries(new FormData(form));
-    const { kind, action, record } = this.drawer;
-
-    if (kind === "version") {
-      if (action === "create") {
-        const chipId = Number(values.product_id);
-
-        if (!chipId) {
-          this.error = i18n(
-            "admin.ingenic.documentation.workbench.no_chips_in_series"
-          );
-          return;
-        }
-
-        const response = await this.#createRecord("documentation/versions", {
-          label: values.label?.trim(),
-          slug: values.slug?.trim(),
-          // The drawer's pickers are editable, so use what they say rather
-          // than what the row's + pre-filled.
-          locale: values.locale,
-          released_on: values.released_on || null,
-          deprecated: form.elements.deprecated?.checked ?? false,
-          latest: form.elements.latest?.checked ?? false,
-          product_id: chipId,
-        });
-
-        if (response?.version) {
-          const version = response.version;
-          const chip = this.#chipById(chipId);
-          const series = chip ? this.#seriesOfChip(chip.id) : null;
-          this.#expandProductKeys([
-            chip && this.#keyOf("chip", chip),
-            series && this.#keyOf("series", series),
-          ]);
-          this.expandedVersions = new Set(this.expandedVersions).add(
-            version.id
-          );
-
-          // A version created in another language must not land behind the
-          // language filter and look like it was not created at all. The tree
-          // shows one language, so follow the new row to its language.
-          const createdLocale = this.#localeOf(version);
-
-          if (createdLocale && createdLocale !== this.activeLanguage) {
-            this.languageFilter = createdLocale;
-          }
-
-          this.selectedVersionId = version.id;
-          this.selectedPageSlug = null;
-          this.selectedNodeKey = this.#keyOf("version", version);
-          await this.loadPages(version);
-        }
-      } else {
-        await this.saveVersion(event, record);
-      }
-    } else if (action === "create") {
-      const seriesId = Number(values.series_id);
-      const response = await this.#createRecord("documentation/products", {
-        name: values.name?.trim(),
-        slug: values.slug?.trim(),
-        // The parent pickers default to the row's + but can be changed here,
-        // so the row is filed where the drawer says.
-        locale: values.locale,
-        published: form.elements.published?.checked ?? true,
-        kind,
-        parent_id: kind === "chip" ? seriesId : null,
-      });
-
-      if (response?.product) {
-        // Same rule as versions: follow the new row to the language it was
-        // filed under, or the tree would look like it dropped the creation.
-        const productLocale = this.#localeOf(response.product);
-
-        if (productLocale && productLocale !== this.activeLanguage) {
-          this.languageFilter = productLocale;
-        }
-
-        if (kind === "series") {
-          this.selectedNodeKey = this.#keyOf("series", response.product);
-        } else {
-          const series = this.#seriesOfChip(response.product.id);
-          this.#expandProductKeys([series && this.#keyOf("series", series)]);
-          this.selectedNodeKey = this.#keyOf("chip", response.product);
-        }
-      }
-    } else {
-      await this.saveProduct(event, record);
-    }
-
-    if (!this.error) {
-      this.drawer = null;
-    }
-  }
-
-  @action
-  async deleteFromDrawer() {
-    const { kind, record } = this.drawer;
-    const done =
-      kind === "version"
-        ? await this.destroyVersion(record)
-        : await this.destroyProduct(record);
-
-    // A refused delete (a series with chips) leaves the error on screen and
-    // the modal open, so the user can see why and act on it. A cancelled
-    // confirmation (`false`) leaves the modal open too — the row is still
-    // there to look at.
-    if (done !== false && !this.error) {
-      this.drawer = null;
-    }
-  }
-
-  async #createRecord(endpoint, data) {
-    this.busy = true;
-    this.error = null;
-
-    try {
-      const response = await ajax(`${BASE}/${endpoint}`, { type: "POST", data });
-      await this.reload();
-      return response;
-    } catch (error) {
-      this.error = this.#errorMessage(error);
-      return null;
-    } finally {
-      this.busy = false;
-    }
+    return this.destroyProduct(row.record);
   }
 
   #errorMessage(error) {
@@ -1644,43 +1595,49 @@ export default class IngenicDocManager extends Component {
                 {{/each}}
               </select>
             </label>
-
           </div>
 
           <div class="ingenic-doc-tree-scroll">
-            {{! The tree is the only place rows are created: a series has no
-                parent row, so its + sits at the top of the tree itself. }}
+            {{! A series has no row above it; this is its +. Everything else is
+                created by the + at the end of the row that will own it. }}
             <button
               type="button"
               class="ingenic-doc-tree-new"
-              {{on "click" (fn this.openDrawer "series" "create" null)}}
+              {{on "click" this.startSeriesDraft}}
             >＋ {{i18n "admin.ingenic.documentation.workbench.new_series"}}</button>
 
             {{#each this.structureRows key="key" as |row|}}
               {{#if (eq row.kind "pages")}}
                 <div class="ingenic-doc-subtree">
-                  {{#if (this.isLoading row.record)}}
-                    <p class="ingenic-admin-tree__empty">
-                      {{i18n "admin.ingenic.documentation.workbench.loading_pages"}}
-                    </p>
-                  {{else}}
-                    <IngenicDocPageTree
-                      @pages={{this.pagesFor row.record}}
-                      @selectedSlug={{this.selectedPageSlug}}
-                      @indentBase={{row.depth}}
-                      @writable={{row.record.writable}}
-                      @onSelect={{fn this.selectPage row.record}}
-                      @onDrop={{fn this.dropPage row.record}}
-                      @onCreate={{fn this.createPage row.record}}
-                      @onRename={{fn this.renamePage row.record}}
-                      @onReady={{fn this.registerTree row.record}}
-                    />
-                  {{/if}}
+                  <IngenicDocPageTree
+                    @pages={{this.pagesFor row.record}}
+                    @selectedSlug={{this.selectedPageSlug}}
+                    @indentBase={{row.depth}}
+                    @writable={{row.record.writable}}
+                    @onSelect={{fn this.selectPage row.record}}
+                    @onDrop={{fn this.dropPage row.record}}
+                    @onCreate={{fn this.createPage row.record}}
+                    @onRename={{fn this.renamePage row.record}}
+                    @onDelete={{fn this.destroyPage row.record}}
+                    @onReady={{fn this.registerTree row.record}}
+                  />
                 </div>
-              {{else if (eq row.kind "hint")}}
-                <p class="ingenic-admin-tree__empty ingenic-doc-tree-hint ingenic-doc-tree-hint--{{row.depth}}">
-                  {{row.text}}
-                </p>
+              {{else if row.isDraft}}
+                <div class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{row.depth}} is-draft">
+                  <span class="ingenic-admin-tree__handle ingenic-admin-tree__handle--empty"></span>
+                  <span class="ingenic-admin-tree__chevron ingenic-admin-tree__chevron--empty"></span>
+                  <span class="ingenic-admin-tree__kind" aria-hidden="true">📁</span>
+                  <input
+                    class="ingenic-admin-tree__name-input"
+                    type="text"
+                    value={{this.draftName}}
+                    placeholder={{i18n "admin.ingenic.documentation.workbench.name_placeholder"}}
+                    {{on "input" this.updateDraftName}}
+                    {{on "keydown" this.draftKeydown}}
+                    {{on "blur" this.draftBlur}}
+                    {{didInsert this.focusDraft}}
+                  />
+                </div>
               {{else}}
                 <div
                   class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{row.depth}} {{if row.isSelected 'is-selected'}} {{if (eq row.kind 'version') 'is-version'}} {{if row.isDragging 'is-dragging'}} {{if row.isDropBefore 'is-drop-before'}} {{if row.isDropAfter 'is-drop-after'}} {{if row.isDropInto 'is-drop-into'}}"
@@ -1711,28 +1668,51 @@ export default class IngenicDocManager extends Component {
                     <span class="ingenic-admin-tree__chevron ingenic-admin-tree__chevron--empty"></span>
                   {{/if}}
 
-                  <button
-                    type="button"
-                    class="ingenic-admin-tree__select"
-                    {{on "click" (fn this.openRow row)}}
-                  >
-                    <span class="ingenic-admin-tree__title">{{row.label}}</span>
-                  </button>
+                  {{#if row.isRenaming}}
+                    <span class="ingenic-admin-tree__kind" aria-hidden="true">{{row.icon}}</span>
+                    <input
+                      class="ingenic-admin-tree__name-input"
+                      type="text"
+                      value={{this.renameDraft}}
+                      {{on "input" this.updateRename}}
+                      {{on "keydown" (fn this.renameKeydown row)}}
+                      {{on "blur" (fn this.renameBlur row)}}
+                      {{didInsert this.focusRename}}
+                    />
+                  {{else}}
+                    <button
+                      type="button"
+                      class="ingenic-admin-tree__select"
+                      title={{i18n "admin.ingenic.documentation.workbench.rename_hint"}}
+                      {{on "click" (fn this.selectRow row)}}
+                      {{on "dblclick" (fn this.startRowRename row)}}
+                    >
+                      <span class="ingenic-admin-tree__title">
+                        <span class="ingenic-admin-tree__kind" aria-hidden="true">{{row.icon}}</span>
+                        {{row.label}}
+                      </span>
+                      {{#if row.isLatest}}
+                        <span class="ingenic-admin-tree__badge">
+                          {{i18n "admin.ingenic.documentation.latest"}}
+                        </span>
+                      {{/if}}
+                    </button>
+                  {{/if}}
 
                   {{#if row.writable}}
                     <span class="ingenic-admin-tree__tools">
                       <button
                         type="button"
                         class="ingenic-admin-tree__add"
-                        title={{i18n "admin.ingenic.documentation.workbench.settings"}}
-                        {{on "click" (fn this.openDrawer row.kind "edit" row.record null)}}
-                      >⚙</button>
-                      <button
-                        type="button"
-                        class="ingenic-admin-tree__add"
                         title={{row.addTitle}}
                         {{on "click" (fn this.addChild row)}}
                       >＋</button>
+                      <button
+                        type="button"
+                        class="ingenic-admin-tree__delete"
+                        title={{i18n "admin.ingenic.documentation.delete"}}
+                        {{on "click" (fn this.deleteRow row)}}
+                      >−</button>
                     </span>
                   {{/if}}
 
@@ -1748,40 +1728,12 @@ export default class IngenicDocManager extends Component {
                   {{/if}}
                 </div>
               {{/if}}
-            {{else}}
-              <p class="ingenic-admin-tree__empty">
-                {{#if this.noSeries}}
-                  {{i18n "admin.ingenic.documentation.workbench.empty_series"}}
-                {{else}}
-                  {{i18n "admin.ingenic.documentation.workbench.empty_series_in_locale"}}
-                {{/if}}
-              </p>
             {{/each}}
-
-            {{#if this.selectedVersion}}
-              <details class="ingenic-doc-workbench__import">
-                <summary>{{i18n "admin.ingenic.documentation.import_action"}}</summary>
-                <form class="ingenic-admin-form" {{on "submit" this.importPages}}>
-                  <input type="file" name="files[]" accept=".md,.markdown,.txt,.docx" multiple required />
-                  <button type="submit" disabled={{this.busy}}>
-                    {{i18n "admin.ingenic.documentation.import_action"}}
-                  </button>
-                </form>
-                <p class="ingenic-admin-note">
-                  {{i18n "admin.ingenic.documentation.import_hint"}}
-                </p>
-                {{#if this.importMessage}}
-                  <p class="ingenic-admin-note">{{this.importMessage}}</p>
-                {{/if}}
-              </details>
-            {{/if}}
           </div>
         </aside>
 
         <section class="ingenic-doc-workbench__editor">
           {{#if this.selectedPage}}
-            {{! The right pane edits the page chosen on the left. Adding a child
-                is a tree action, so that button lives on the row's + menu. }}
             <div class="ingenic-doc-workbench__editor-head">
               <h3>{{this.selectedPage.title}}</h3>
             </div>
@@ -1797,221 +1749,28 @@ export default class IngenicDocManager extends Component {
           {{else}}
             <div class="ingenic-doc-workbench__empty">
               <p>{{i18n "admin.ingenic.documentation.workbench.empty_editor"}}</p>
-              {{#if this.noSeries}}
-                <p class="ingenic-admin-note">
-                  {{i18n "admin.ingenic.documentation.workbench.empty_series"}}
-                </p>
-              {{else if this.selectedVersion}}
-                <p class="ingenic-admin-note">
-                  {{i18n "admin.ingenic.documentation.workbench.pick_version"}}
-                </p>
+
+              {{#if this.selectedVersion}}
+                <details class="ingenic-doc-workbench__import">
+                  <summary>{{i18n "admin.ingenic.documentation.import_action"}}</summary>
+                  <form class="ingenic-admin-form" {{on "submit" this.importPages}}>
+                    <input type="file" name="files[]" accept=".md,.markdown,.txt,.docx" multiple required />
+                    <button type="submit" disabled={{this.busy}}>
+                      {{i18n "admin.ingenic.documentation.import_action"}}
+                    </button>
+                  </form>
+                  <p class="ingenic-admin-note">
+                    {{i18n "admin.ingenic.documentation.import_hint"}}
+                  </p>
+                  {{#if this.importMessage}}
+                    <p class="ingenic-admin-note">{{this.importMessage}}</p>
+                  {{/if}}
+                </details>
               {{/if}}
             </div>
           {{/if}}
         </section>
       </div>
     </div>
-
-    {{#if this.drawer}}
-      <div class="ingenic-doc-drawer__backdrop" role="presentation" {{on "click" this.closeDrawer}}></div>
-
-      <aside class="ingenic-doc-drawer" role="dialog" aria-modal="true">
-        <header class="ingenic-doc-drawer__head">
-          <h3>{{this.drawerTitle}}</h3>
-          <button type="button" class="ingenic-doc-drawer__close" {{on "click" this.closeDrawer}}>×</button>
-        </header>
-
-        <form class="ingenic-admin-form ingenic-doc-drawer__form" {{on "submit" this.submitDrawer}}>
-          {{#if this.error}}
-            <p class="ingenic-admin-note ingenic-admin-note--error">{{this.error}}</p>
-          {{/if}}
-
-          {{#if (eq this.drawer.kind "version")}}
-            {{#if (eq this.drawer.action "create")}}
-              {{! The pickers start on the row whose + was pressed but stay
-                  editable: the new version may belong to another series or
-                  chip, and the series picker narrows the chip list. }}
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-                <select name="locale" required {{on "change" this.selectFormLocale}}>
-                  {{#each (this.localeOptions this.formLocale) as |locale|}}
-                    <option value={{locale.value}} selected={{eq locale.value this.formLocale}}>
-                      {{locale.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>
-                <select name="series_id" required {{on "change" this.selectFormSeries}}>
-                  {{#each this.series as |series|}}
-                    <option value={{series.id}} selected={{eq series.id this.formSeriesId}}>
-                      {{series.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.workbench.chip"}}</span>
-                <select name="product_id" required disabled={{this.formHasNoChips}}>
-                  {{#each this.formChips as |chip|}}
-                    <option value={{chip.id}} selected={{eq chip.id this.formChipId}}>
-                      {{chip.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-              {{#if this.formHasNoChips}}
-                <p class="ingenic-admin-note">
-                  {{i18n "admin.ingenic.documentation.workbench.no_chips_in_series"}}
-                </p>
-              {{/if}}
-            {{/if}}
-
-            <label>
-              <span>{{i18n "admin.ingenic.documentation.version_label"}}</span>
-              <input name="label" value={{this.drawer.record.label}} required />
-            </label>
-            <label>
-              <span>{{i18n "admin.ingenic.documentation.version_slug"}}</span>
-              <input name="slug" value={{this.drawer.record.slug}} required />
-            </label>
-            {{#if (eq this.drawer.action "edit")}}
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-                <select name="locale" required>
-                  {{#each (this.localeOptions this.drawerLocale) as |locale|}}
-                    <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
-                      {{locale.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-            {{/if}}
-            <label>
-              <span>{{i18n "admin.ingenic.documentation.released_on"}}</span>
-              <input type="date" name="released_on" value={{this.drawer.record.released_on}} />
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" name="latest" checked={{this.drawer.record.latest}} />
-              <span>{{i18n "admin.ingenic.documentation.latest"}}</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" name="deprecated" checked={{this.drawer.record.deprecated}} />
-              <span>{{i18n "admin.ingenic.documentation.deprecated"}}</span>
-            </label>
-          {{else}}
-            {{#if (eq this.drawer.action "create")}}
-              {{! Language, then (for a chip) the series it belongs to. Both
-                  default to the row whose + was pressed and can be changed. }}
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-                <select name="locale" required {{on "change" this.selectFormLocale}}>
-                  {{#each (this.localeOptions this.formLocale) as |locale|}}
-                    <option value={{locale.value}} selected={{eq locale.value this.formLocale}}>
-                      {{locale.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-              {{#if (eq this.drawer.kind "chip")}}
-                <label>
-                  <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>
-                  <select name="series_id" required {{on "change" this.selectFormSeries}}>
-                    {{#each this.series as |series|}}
-                      <option value={{series.id}} selected={{eq series.id this.formSeriesId}}>
-                        {{series.name}}
-                      </option>
-                    {{/each}}
-                  </select>
-                </label>
-              {{/if}}
-            {{/if}}
-
-            <label>
-              <span>
-                {{#if (eq this.drawer.kind "series")}}
-                  {{i18n "admin.ingenic.documentation.series_name"}}
-                {{else}}
-                  {{i18n "admin.ingenic.documentation.chip_name"}}
-                {{/if}}
-              </span>
-              <input name="name" value={{this.drawer.record.name}} required />
-            </label>
-            <label>
-              <span>
-                {{#if (eq this.drawer.kind "series")}}
-                  {{i18n "admin.ingenic.documentation.series_slug"}}
-                {{else}}
-                  {{i18n "admin.ingenic.documentation.chip_slug"}}
-                {{/if}}
-              </span>
-              <input name="slug" value={{this.drawer.record.slug}} required />
-            </label>
-            {{#if (eq this.drawer.action "edit")}}
-              <label>
-                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-                <select name="locale" required>
-                  {{#each (this.localeOptions this.drawerLocale) as |locale|}}
-                    <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
-                      {{locale.name}}
-                    </option>
-                  {{/each}}
-                </select>
-              </label>
-            {{/if}}
-            <label class="checkbox-label">
-              <input type="checkbox" name="published" checked={{this.drawerPublished}} />
-              <span>{{i18n "admin.ingenic.documentation.published"}}</span>
-            </label>
-          {{/if}}
-
-          <div class="ingenic-doc-drawer__actions">
-            <button type="submit" disabled={{this.busy}}>{{i18n "admin.ingenic.save"}}</button>
-            <button type="button" class="btn" {{on "click" this.closeDrawer}}>
-              {{i18n "admin.ingenic.documentation.cancel"}}
-            </button>
-          </div>
-        </form>
-
-        {{#if (eq this.drawer.action "edit")}}
-          <div class="ingenic-doc-drawer__danger">
-            {{#if (eq this.drawer.kind "version")}}
-              <button
-                type="button"
-                class="btn btn-small"
-                disabled={{this.busy}}
-                {{on "click" (fn this.moveVersion this.drawer.record -1)}}
-              >↑ {{i18n "admin.ingenic.documentation.move_up"}}</button>
-              <button
-                type="button"
-                class="btn btn-small"
-                disabled={{this.busy}}
-                {{on "click" (fn this.moveVersion this.drawer.record 1)}}
-              >↓ {{i18n "admin.ingenic.documentation.move_down"}}</button>
-            {{else}}
-              <button
-                type="button"
-                class="btn btn-small"
-                disabled={{this.busy}}
-                {{on "click" (fn this.moveProduct this.drawer.record -1)}}
-              >↑ {{i18n "admin.ingenic.documentation.move_up"}}</button>
-              <button
-                type="button"
-                class="btn btn-small"
-                disabled={{this.busy}}
-                {{on "click" (fn this.moveProduct this.drawer.record 1)}}
-              >↓ {{i18n "admin.ingenic.documentation.move_down"}}</button>
-            {{/if}}
-            <button
-              type="button"
-              class="btn btn-danger"
-              disabled={{this.busy}}
-              {{on "click" this.deleteFromDrawer}}
-            >{{i18n "admin.ingenic.documentation.delete"}}</button>
-          </div>
-        {{/if}}
-      </aside>
-    {{/if}}
   </template>
 }

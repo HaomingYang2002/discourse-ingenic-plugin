@@ -93,6 +93,11 @@ en:
             settings: "Row settings"
             loading_pages: "Loading pages…"
             inherited_delete_blocked: "This page is inherited from an earlier version. Delete it in the version that owns it."
+            delete_item_confirm: 'Delete "%{name}"?'
+            delete_series_contents: '"%{name}" still has %{chips} chips and %{versions} versions. Deleting it deletes all of them. Continue?'
+            delete_chip_contents: '"%{name}" still has %{versions} versions. Deleting it deletes all of them. Continue?'
+            delete_version_contents: "This version still has %{count} pages or folders. Deleting it deletes them too. Continue?"
+            delete_folder_contents: "This folder still has %{count} items. Deleting it deletes them too. Continue?"
             edit_tab: "Write"
             preview_tab: "Preview"
             body_placeholder: "Write the article here (Markdown)…"

@@ -453,9 +453,6 @@ export default class IngenicDocPageTree extends Component {
               {{on "blur" this.draftBlur}}
               {{didInsert this.focusDraft}}
             />
-            <span class="ingenic-admin-tree__name-hint">
-              {{i18n "admin.ingenic.documentation.workbench.name_hint"}}
-            </span>
           </div>
         {{else}}
           <div
@@ -530,6 +527,16 @@ export default class IngenicDocPageTree extends Component {
                   }}
                   {{on "click" (fn this.toggleAdd page)}}
                 >＋</button>
+                {{! An inherited row belongs to the version that wrote it;
+                    deleting it here would remove it from there instead. }}
+                {{#unless page.inherited}}
+                  <button
+                    type="button"
+                    class="ingenic-admin-tree__delete"
+                    title={{i18n "admin.ingenic.documentation.delete"}}
+                    {{on "click" (fn @onDelete page)}}
+                  >−</button>
+                {{/unless}}
               </span>
             {{/if}}
 
@@ -545,8 +552,6 @@ export default class IngenicDocPageTree extends Component {
             {{/if}}
           </div>
         {{/if}}
-      {{else}}
-        <p class="ingenic-admin-tree__empty">{{i18n "admin.ingenic.documentation.no_pages"}}</p>
       {{/each}}
     </div>
   </template>

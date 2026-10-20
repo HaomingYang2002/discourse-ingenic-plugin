@@ -12,11 +12,15 @@ class IngenicDocProduct < ActiveRecord::Base
              foreign_key: :parent_id,
              optional: true
 
+  # Deleting a series or chip in the workbench is a confirmed cascade: the
+  # editor is told how many rows will disappear, and then they all go in one
+  # transaction. A series therefore destroys its chips, each chip its versions,
+  # and each version its own pages.
   has_many :children,
            -> { order(position: :asc, name: :asc) },
            class_name: "IngenicDocProduct",
            foreign_key: :parent_id,
-           dependent: :restrict_with_error
+           dependent: :destroy
 
   has_many :versions,
            -> { order(position: :asc, released_on: :desc) },
