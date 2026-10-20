@@ -28,6 +28,7 @@ module Admin
     def create_product
       record = IngenicDocProduct.new(product_params)
       record.locale = default_documentation_locale(record) if params[:locale].blank?
+      record.position = next_product_position(record) if params[:position].blank?
       authorize_create!(record.parent, feature: "documentation")
       save_or_error(record) { render_json_dump(product: product_json(record)) }
     end
@@ -36,6 +37,12 @@ module Admin
       record = IngenicDocProduct.find(params[:id])
       previous_locale = record.locale
       record.assign_attributes(product_params)
+      # A record dropped under another series joins the end of its new list;
+      # the list it left closes the gap on its own because positions only say
+      # what order rows are in.
+      if params[:position].blank? && record.parent_id_changed?
+        record.position = next_product_position(record)
+      end
       authorize_ingenic!(record)
 
       # One transaction: if a descendant cannot move to the target language,
@@ -56,7 +63,7 @@ module Admin
       authorize_ingenic!(record)
       record.destroy!
       head :no_content
-    rescue ActiveRecord::DeleteRestrictionError
+    rescue ActiveRecord::DeleteRestrictionError, ActiveRecord::RecordNotDestroyed
       render_json_error(I18n.t("ingenic.admin_errors.has_children"), status: 422)
     end
 
@@ -65,13 +72,21 @@ module Admin
       record.locale = default_documentation_locale(record) if params[:locale].blank?
       record.position = next_version_position(record) if params[:position].blank?
       authorize_ingenic!(record.product)
-      save_or_error(record) { render_json_dump(version: version_json(record)) }
+      ActiveRecord::Base.transaction do
+        save_or_error(record) do
+          record.make_latest!
+          render_json_dump(version: version_json(record))
+        end
+      end
     end
 
     def update_version
       record = IngenicDocVersion.find(params[:id])
       previous_locale = record.locale
       record.assign_attributes(version_params)
+      if params[:position].blank? && record.product_id_changed?
+        record.position = next_version_position(record)
+      end
       authorize_ingenic!(record)
 
       ActiveRecord::Base.transaction do
@@ -84,6 +99,7 @@ module Admin
               .where(version_id: record.id, locale: previous_locale)
               .update_all(locale: record.locale)
           end
+          record.make_latest!
           render_json_dump(version: version_json(record))
         end
       end
@@ -98,6 +114,64 @@ module Admin
       head :no_content
     end
 
+    # The screen drags a row, then sends the whole list it now sees. One
+    # request, one transaction: with a PUT per row a failure halfway left the
+    # list in a shape nobody asked for.
+    #
+    # Only the dragged row is authorized. A scoped manager can see the series
+    # above their chip as a container, and checking every row here made one
+    # unmanageable container fail the whole reorder after some positions had
+    # already been written.
+    def reorder_products
+      kind = params[:kind].to_s
+      parent_id = params[:parent_id].presence&.to_i
+      moved = IngenicDocProduct.find_by(id: params[:moved_id].to_i)
+      ids = Array(params[:ids]).map(&:to_i).uniq
+
+      unless moved && IngenicDocProduct::KINDS.include?(kind) && moved.kind == kind && ids.include?(moved.id)
+        return render_json_error(I18n.t("ingenic.admin_errors.invalid_move"), status: 422)
+      end
+      return render_json_error(I18n.t("ingenic.admin_errors.invalid_move"), status: 422) unless moved.parent_id == parent_id
+
+      authorize_ingenic!(moved)
+
+      scope = IngenicDocProduct.where(kind: kind)
+      scope = parent_id ? scope.where(parent_id: parent_id) : scope.where(parent_id: nil)
+      allowed = scope.where(id: ids).pluck(:id)
+      ordered = ids.select { |id| allowed.include?(id) }
+
+      ActiveRecord::Base.transaction do
+        ordered.each_with_index do |id, index|
+          IngenicDocProduct.where(id: id).update_all(position: index)
+        end
+      end
+
+      render_json_dump(applied: ordered)
+    end
+
+    def reorder_versions
+      product = IngenicDocProduct.find_by(id: params[:product_id].to_i)
+      moved = IngenicDocVersion.find_by(id: params[:moved_id].to_i)
+      ids = Array(params[:ids]).map(&:to_i).uniq
+
+      unless product && moved && moved.product_id == product.id && ids.include?(moved.id)
+        return render_json_error(I18n.t("ingenic.admin_errors.invalid_move"), status: 422)
+      end
+
+      authorize_ingenic!(moved)
+
+      allowed = IngenicDocVersion.where(product_id: product.id, id: ids).pluck(:id)
+      ordered = ids.select { |id| allowed.include?(id) }
+
+      ActiveRecord::Base.transaction do
+        ordered.each_with_index do |id, index|
+          IngenicDocVersion.where(id: id).update_all(position: index)
+        end
+      end
+
+      render_json_dump(applied: ordered)
+    end
+
     # The whole editing surface for one version in a single response: the
     # product tree it belongs to, its sibling versions, and every page it
     # resolves to with inherited pages flagged.
@@ -109,7 +183,7 @@ module Admin
         product: product_json(version.product, include_versions: true),
         version: version_json(version),
         pages:
-          version.page_tree(locale: documentation_locale).map do |page|
+          version.page_tree(locale: tree_locale(version)).map do |page|
             admin_page_json(page)
           end,
       )
@@ -186,7 +260,7 @@ module Admin
       authorize_ingenic!(version)
 
       resolved =
-        version.find_readable_page(params[:slug], locale: documentation_locale)
+        version.find_readable_page(params[:slug], locale: tree_locale(version))
       return render_json_error(I18n.t("ingenic.admin_errors.page_not_found"), status: 404) if resolved.nil?
 
       # Already owned by this version: editing it is the same request.
@@ -1027,9 +1101,22 @@ module Admin
     def visible_series
       return IngenicDocProduct.series.ordered if current_user.admin?
 
-      ids = ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicDocProduct).pluck(:id)
+      ids = writable_product_ids.to_a
       parent_ids = IngenicDocProduct.where(id: ids).where.not(parent_id: nil).distinct.pluck(:parent_id)
       IngenicDocProduct.series.where(id: ids + parent_ids).ordered
+    end
+
+    # What the screen may offer to edit, not merely show. The container series
+    # above a scoped manager's chip is visible but not writable, so its row
+    # loses the drag handle and the gear while it still expands.
+    def writable_product_ids
+      @writable_product_ids ||=
+        ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicDocProduct).pluck(:id).to_set
+    end
+
+    def writable_version_ids
+      @writable_version_ids ||=
+        ::Ingenic::PermissionResolver.new(current_user).visible_ids(IngenicDocVersion).pluck(:id).to_set
     end
 
     # A new series is written in the language this site serves documentation
@@ -1082,6 +1169,12 @@ module Admin
     # by insertion order and a new page would sort by id. Appending to the
     # list is both the honest description of "created last" and the state the
     # move buttons expect.
+    def next_product_position(record)
+      scope = IngenicDocProduct.where(kind: record.kind)
+      scope = record.parent_id.present? ? scope.where(parent_id: record.parent_id) : scope.where(parent_id: nil)
+      (scope.maximum(:position) || -1) + 1
+    end
+
     def next_version_position(record)
       (IngenicDocVersion.where(product_id: record.product_id).maximum(:position) || -1) + 1
     end
@@ -1173,6 +1266,15 @@ module Admin
       return nil if requested.blank?
 
       served_locales.include?(requested) ? requested : nil
+    end
+
+    # One version's pages are filed under that version's language, whether or
+    # not the site serves it. `documentation_locale` only knows what the site
+    # serves, and a nil there falls back to the admin's UI language — an
+    # English manual inspected by a Chinese-reading admin came back empty, and
+    # overriding an inherited page wrote the row under the wrong language.
+    def tree_locale(version)
+      params[:locale].to_s.presence || version.locale.presence || documentation_locale
     end
 
     def download_params
@@ -1598,6 +1700,7 @@ module Admin
         product
           .attributes
           .slice("id", "kind", "parent_id", "slug", "name", "description", "locale", "published", "position")
+      data["writable"] = writable_product_ids.include?(product.id)
 
       if include_children
         data["chips"] = product.children.ordered.map { |child| product_json(child, include_versions: true) }
@@ -1611,9 +1714,12 @@ module Admin
     end
 
     def version_json(version)
-      version
-        .attributes
-        .slice("id", "product_id", "slug", "label", "locale", "latest", "deprecated", "released_on", "position", "published")
+      data =
+        version
+          .attributes
+          .slice("id", "product_id", "slug", "label", "locale", "latest", "deprecated", "released_on", "position", "published")
+      data["writable"] = writable_version_ids.include?(version.id)
+      data
     end
 
     def page_json(page)

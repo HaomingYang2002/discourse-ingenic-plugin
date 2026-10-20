@@ -387,6 +387,8 @@ after_initialize do
     # nothing.
     scope "/admin/plugins/discourse-ingenic", constraints: DiscourseIngenic::ManagementConstraint.new do
       get "/documentation" => "admin/ingenic#documentation"
+      put "/documentation/reorder/products" => "admin/ingenic#reorder_products"
+      put "/documentation/reorder/versions" => "admin/ingenic#reorder_versions"
       get "/documentation/products/:id" => "admin/ingenic#product"
       post "/documentation/products" => "admin/ingenic#create_product"
       put "/documentation/products/:id" => "admin/ingenic#update_product"

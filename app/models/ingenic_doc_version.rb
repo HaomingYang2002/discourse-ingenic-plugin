@@ -49,6 +49,15 @@ class IngenicDocVersion < ActiveRecord::Base
     resolver.navigation_for(self, page, locale: locale)
   end
 
+  # A reader lands on one version per language, so "latest" is exclusive
+  # within the chip's versions filed under the same language. The workbench
+  # has a checkbox for it; nothing in the public picker would show two.
+  def make_latest!
+    return unless latest?
+
+    self.class.where(product_id: product_id, locale: locale).where.not(id: id).update_all(latest: false)
+  end
+
   def resolver
     @resolver ||= Ingenic::DocumentationResolver.new(product)
   end

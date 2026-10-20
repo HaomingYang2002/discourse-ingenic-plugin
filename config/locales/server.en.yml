@@ -36,6 +36,7 @@ en:
     admin_errors:
       has_children: "This record has child records and cannot be deleted."
       locale_conflict: "A record with the same slug already exists in the target language; nothing was saved."
+      invalid_move: "That move has no valid target, so the list was left unchanged."
       page_not_found: "That page does not exist in this version or any version it inherits from."
       storage_unavailable: "Uploaded files cannot be written. Check the download storage path."
       user_not_found: "No such account."
