@@ -135,6 +135,90 @@
     letter-spacing: 0.04em;
     color: var(--primary-medium);
   }
+
+  // The series list sits above the page tree as its own section.
+  &--section {
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--primary-low);
+  }
+}
+
+// Series rows: the top bar picks a series, this list orders it. Same drag
+// affordances as the page tree so the two behave alike.
+.ingenic-doc-series-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 30vh;
+  margin-bottom: 0.5rem;
+  overflow-y: auto;
+}
+
+.ingenic-doc-series-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  border-radius: 5px;
+  color: var(--primary);
+
+  &:hover,
+  &:focus-within {
+    background: var(--primary-low);
+  }
+
+  &.is-selected {
+    background: var(--tertiary-low);
+    font-weight: 600;
+  }
+
+  &.is-dragging {
+    opacity: 0.45;
+  }
+
+  &.is-drop-before {
+    box-shadow: inset 0 2px 0 var(--tertiary);
+  }
+
+  &.is-drop-after {
+    box-shadow: inset 0 -2px 0 var(--tertiary);
+  }
+}
+
+.ingenic-doc-series-tree__handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 1.4rem;
+  color: var(--primary-low-mid);
+  font-size: var(--font-down-2);
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.ingenic-doc-series-tree__select {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.18rem 0.3rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .ingenic-doc-workbench__tree-foot {
@@ -427,21 +511,25 @@
   background: rgba(0, 0, 0, 0.35);
 }
 
+// A centred modal, not a right-hand drawer: the top bar already names the
+// series/chip/version being edited, so the form should sit under the eye.
 .ingenic-doc-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1001;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  width: min(380px, 92vw);
-  padding: 1rem;
+  width: min(460px, 92vw);
+  max-height: min(85vh, 44rem);
+  padding: 1.1rem 1.25rem;
   overflow-y: auto;
   background: var(--secondary);
-  border-left: 1px solid var(--primary-low);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--primary-low);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
 }
 
 .ingenic-doc-drawer__head {

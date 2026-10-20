@@ -45,6 +45,19 @@ export default class IngenicDocManager extends Component {
   // { kind: "series" | "chip" | "version", action: "create" | "edit", record }
   @tracked drawer = null;
 
+  // What the create drawer's parent pickers start on. They are editable, not
+  // read-only: the row being added can be filed somewhere other than the
+  // selection at the top, and choosing a series narrows the chip list.
+  @tracked formLocale = null;
+  @tracked formSeriesId = null;
+  @tracked formChipId = null;
+
+  // Dragging a series row in the left pane: the row in hand and the row it is
+  // hovering over, whose top or bottom half decides before/after.
+  @tracked seriesDragId = null;
+  @tracked seriesDropId = null;
+  @tracked seriesDropAfter = false;
+
   // Whether the + in the tree heading is showing its article/folder menu.
   @tracked topAddMenu = false;
 
@@ -165,16 +178,6 @@ export default class IngenicDocManager extends Component {
     return this.drawer?.record?.locale ?? this.selectedLocale;
   }
 
-  get selectedLocaleName() {
-    const served = this.args.locales ?? [];
-
-    return (
-      served.find((locale) => locale.value === this.selectedLocale)?.name ??
-      this.selectedLocale ??
-      ""
-    );
-  }
-
   // The site's served languages, plus the row's own value when it is not one
   // of them: a row filed under "en" on a Chinese site has to show "en" in the
   // picker, or saving any other field would silently move it to the first
@@ -187,6 +190,36 @@ export default class IngenicDocManager extends Component {
     }
 
     return options;
+  }
+
+  // The chips the create drawer can file a version under. It follows the
+  // series picker above it, so changing that picker cannot leave a version
+  // pointing at a chip from another series.
+  get formChips() {
+    return this.series.find((entry) => entry.id === this.formSeriesId)?.chips ?? [];
+  }
+
+  get formHasNoChips() {
+    return this.formChips.length === 0;
+  }
+
+  @action
+  selectFormLocale(event) {
+    this.formLocale = event.target.value || null;
+  }
+
+  @action
+  selectFormSeries(event) {
+    this.formSeriesId = Number(event.target.value) || null;
+
+    if (!this.formChips.some((chip) => chip.id === this.formChipId)) {
+      this.formChipId = this.formChips[0]?.id ?? null;
+    }
+  }
+
+  @action
+  selectFormChip(event) {
+    this.formChipId = Number(event.target.value) || null;
   }
 
   #selectFirst() {
@@ -209,6 +242,14 @@ export default class IngenicDocManager extends Component {
   // all. The documentation default is the language they were meant for.
   #localeOf(version) {
     return version.locale || this.args.defaultLocale || "";
+  }
+
+  #seriesIdOfChip(chipId) {
+    return (
+      this.series.find((series) =>
+        (series.chips ?? []).some((chip) => chip.id === chipId)
+      )?.id ?? null
+    );
   }
 
   // The language kept across chip switches: an administrator translating a
@@ -249,8 +290,29 @@ export default class IngenicDocManager extends Component {
 
   @action
   selectSeries(event) {
-    const id = Number(event.target.value);
-    this.selectedSeriesId = id || null;
+    const id = Number(event.target.value) || null;
+    const series = this.series.find((entry) => entry.id === id);
+
+    if (series) {
+      this.selectSeriesRow(series);
+    } else {
+      this.selectedSeriesId = null;
+      this.selectedChipId = null;
+      this.selectedVersionId = null;
+      this.selectedPageSlug = null;
+      this.pages = [];
+    }
+  }
+
+  // The left pane lists the series as rows so they can be dragged into order;
+  // clicking one opens it the same way the top-bar selector does.
+  @action
+  selectSeriesRow(series) {
+    if (series.id === this.selectedSeriesId) {
+      return;
+    }
+
+    this.selectedSeriesId = series.id;
     this.selectedChipId = null;
     // The chosen language survives a series switch: translating a manual means
     // walking every series in the same language. `#localeFor` still falls back
@@ -260,11 +322,67 @@ export default class IngenicDocManager extends Component {
     this.pages = [];
     this.importMessage = null;
 
-    const chip = this.chips[0];
+    const chip = (series.chips ?? [])[0];
 
     if (chip) {
       this.selectChip(chip);
     }
+  }
+
+  @action
+  startSeriesDrag(series, event) {
+    this.seriesDragId = series.id;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(series.id));
+  }
+
+  @action
+  seriesDragOver(series, event) {
+    if (!this.seriesDragId || this.seriesDragId === series.id) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    this.seriesDropId = series.id;
+    this.seriesDropAfter = (event.clientY - rect.top) / rect.height > 0.5;
+  }
+
+  @action
+  endSeriesDrag() {
+    this.seriesDragId = null;
+    this.seriesDropId = null;
+    this.seriesDropAfter = false;
+  }
+
+  @action
+  async dropSeries(series, event) {
+    event.preventDefault();
+
+    const dragged = this.series.find((entry) => entry.id === this.seriesDragId);
+    const after = this.seriesDropAfter;
+
+    this.endSeriesDrag();
+
+    if (!dragged || dragged.id === series.id) {
+      return;
+    }
+
+    const reordered = this.series.filter((entry) => entry.id !== dragged.id);
+    let index = reordered.findIndex((entry) => entry.id === series.id);
+
+    if (index < 0) {
+      return;
+    }
+
+    if (after) {
+      index++;
+    }
+
+    reordered.splice(index, 0, dragged);
+    await this.#persistProductOrder(reordered);
   }
 
   @action
@@ -856,9 +974,8 @@ export default class IngenicDocManager extends Component {
     }
   }
 
-  // Positions are rewritten for the whole sibling list rather than swapped
-  // with the neighbour: rows created before this control existed all have
-  // position 0, and swapping two zeroes moves nothing.
+  // The arrows in the settings drawer move a series or chip one place among
+  // its siblings; the left pane offers the same operation as a drag.
   @action
   async moveProduct(record, direction) {
     const siblings =
@@ -876,12 +993,20 @@ export default class IngenicDocManager extends Component {
     reordered.splice(index, 1);
     reordered.splice(target, 0, record);
 
+    await this.#persistProductOrder(reordered);
+  }
+
+  // Positions are rewritten for the whole list rather than swapped with the
+  // neighbour: rows created before these controls existed all have position 0,
+  // and swapping two zeroes moves nothing. The server takes one row per
+  // request; the list is short, so they go out together.
+  async #persistProductOrder(rows) {
     this.busy = true;
     this.error = null;
 
     try {
       await Promise.all(
-        reordered.map((entry, position) =>
+        rows.map((entry, position) =>
           ajax(`${BASE}/documentation/products/${entry.id}`, {
             type: "PUT",
             data: { position },
@@ -934,6 +1059,24 @@ export default class IngenicDocManager extends Component {
   @action
   openDrawer(kind, action = "edit", record = null) {
     this.error = null;
+
+    if (action === "create") {
+      // Pre-fill the parent pickers with what is already open at the top, but
+      // leave them editable: a new row may belong somewhere else.
+      this.formLocale = this.selectedLocale ?? this.args.defaultLocale ?? null;
+      this.formSeriesId = kind === "series" ? null : this.selectedSeriesId;
+      this.formChipId = kind === "version" ? this.selectedChipId : null;
+    } else {
+      this.formLocale = record?.locale ?? this.selectedLocale ?? null;
+      this.formSeriesId =
+        kind === "chip"
+          ? record?.parent_id ?? null
+          : kind === "version"
+            ? this.#seriesIdOfChip(record?.product_id)
+            : null;
+      this.formChipId = kind === "version" ? record?.product_id ?? null : null;
+    }
+
     this.drawer = { kind, action, record };
   }
 
@@ -951,21 +1094,32 @@ export default class IngenicDocManager extends Component {
 
     if (kind === "version") {
       if (action === "create") {
+        const chipId = Number(values.product_id);
+
+        if (!chipId) {
+          this.error = i18n("admin.ingenic.documentation.workbench.no_chips_in_series");
+          return;
+        }
+
+        const seriesId = Number(values.series_id);
         const response = await this.#createRecord("documentation/versions", {
           label: values.label?.trim(),
           slug: values.slug?.trim(),
-          // The folder above the version is already open in the top bar; the
-          // drawer only names the new version, so it inherits the language.
-          locale: this.selectedLocale,
+          // The drawer's pickers are editable, so use what they say rather
+          // than what the top bar said when the drawer opened.
+          locale: values.locale,
           released_on: values.released_on || null,
           deprecated: form.elements.deprecated?.checked ?? false,
-          product_id: this.selectedChipId,
+          product_id: chipId,
         });
 
         if (response?.version) {
-          // Follow the language the server stored — it is the inherited one,
-          // unless a default had to be filled in — so the new version is not
-          // hidden by the current filter.
+          // Open the version where the drawer filed it, which may be another
+          // series or chip than the workbench was showing.
+          if (seriesId) {
+            this.selectedSeriesId = seriesId;
+          }
+          this.selectedChipId = chipId;
           this.selectedLocale = this.#localeOf(response.version);
           this.selectedVersionId = response.version.id;
           await this.loadTree();
@@ -974,31 +1128,38 @@ export default class IngenicDocManager extends Component {
         await this.saveVersion(event, record);
       }
     } else if (action === "create") {
+      const seriesId = Number(values.series_id);
       const response = await this.#createRecord("documentation/products", {
         name: values.name?.trim(),
         slug: values.slug?.trim(),
-        // A new series or chip joins the language open in the top bar; a
-        // chip's series is the one already selected there too.
-        locale: this.selectedLocale,
+        // The parent pickers default to the top bar but can be changed here,
+        // so the row is filed where the drawer says.
+        locale: values.locale,
         published: form.elements.published?.checked ?? true,
         kind,
-        parent_id: kind === "chip" ? this.selectedSeriesId : null,
+        parent_id: kind === "chip" ? seriesId : null,
       });
 
       if (response?.product) {
         if (kind === "series") {
-          // The language stays as it is; the new series simply has no chips
-          // yet, and the first one added will open in that same language.
           this.selectedSeriesId = response.product.id;
           this.selectedChipId = null;
           this.selectedVersionId = null;
           this.selectedPageSlug = null;
           this.pages = [];
         } else {
-          // The new chip opens in the language being worked in, so its first
-          // version can be added without picking the language again.
-          this.selectChip(response.product);
+          // The chip may belong to a series other than the one open at the
+          // top, so adopt the drawer's series before selecting the chip.
+          if (seriesId) {
+            this.selectedSeriesId = seriesId;
+          }
+          this.selectedChipId = response.product.id;
+          this.selectedVersionId = null;
+          this.selectedPageSlug = null;
+          this.pages = [];
         }
+
+        this.selectedLocale = values.locale || this.selectedLocale;
       }
     } else {
       await this.saveProduct(event, record);
@@ -1165,7 +1326,49 @@ export default class IngenicDocManager extends Component {
 
       <div class="ingenic-doc-workbench__body">
         <aside class="ingenic-doc-workbench__tree">
+          {{! The series level lives here as well as in the top bar: it is the
+              only place a series can be dragged into order, and clicking one
+              opens it exactly as the top-bar selector does. }}
           <div class="ingenic-doc-workbench__tree-head">
+            <h3>{{i18n "admin.ingenic.documentation.workbench.series"}}</h3>
+            <button
+              type="button"
+              class="ingenic-doc-workbench__icon"
+              title={{i18n "admin.ingenic.documentation.workbench.new_series"}}
+              {{on "click" (fn this.openDrawer "series" "create")}}
+            >＋</button>
+          </div>
+
+          <div class="ingenic-doc-series-tree">
+            {{#each this.series as |series|}}
+              <div
+                class="ingenic-doc-series-tree__row {{if (eq series.id this.selectedSeriesId) 'is-selected'}} {{if (eq series.id this.seriesDragId) 'is-dragging'}} {{if (eq series.id this.seriesDropId) (if this.seriesDropAfter 'is-drop-after' 'is-drop-before')}}"
+                {{on "dragover" (fn this.seriesDragOver series)}}
+                {{on "drop" (fn this.dropSeries series)}}
+              >
+                <span
+                  class="ingenic-doc-series-tree__handle"
+                  draggable="true"
+                  title={{i18n "admin.ingenic.documentation.workbench.drag"}}
+                  {{on "dragstart" (fn this.startSeriesDrag series)}}
+                  {{on "dragend" this.endSeriesDrag}}
+                >⠿</span>
+                <button
+                  type="button"
+                  class="ingenic-doc-series-tree__select"
+                  {{on "click" (fn this.selectSeriesRow series)}}
+                >
+                  {{series.name}}
+                </button>
+              </div>
+            {{else}}
+              <p class="ingenic-admin-tree__empty">
+                {{i18n "admin.ingenic.documentation.workbench.empty_series"}}
+              </p>
+            {{/each}}
+          </div>
+
+          <div class="ingenic-doc-workbench__tree-head ingenic-doc-workbench__tree-head--section">
             <h3>{{i18n "admin.ingenic.documentation.workbench.tree"}}</h3>
             <button
               type="button"
@@ -1287,6 +1490,47 @@ export default class IngenicDocManager extends Component {
           {{/if}}
 
           {{#if (eq this.drawer.kind "version")}}
+            {{#if (eq this.drawer.action "create")}}
+              {{! The pickers start on the selection at the top but stay
+                  editable: the new version may belong to another series or
+                  chip, and the series picker narrows the chip list. }}
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
+                <select name="locale" required {{on "change" this.selectFormLocale}}>
+                  {{#each (this.localeOptions this.formLocale) as |locale|}}
+                    <option value={{locale.value}} selected={{eq locale.value this.formLocale}}>
+                      {{locale.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>
+                <select name="series_id" required {{on "change" this.selectFormSeries}}>
+                  {{#each this.series as |series|}}
+                    <option value={{series.id}} selected={{eq series.id this.formSeriesId}}>
+                      {{series.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.workbench.chip"}}</span>
+                <select name="product_id" required disabled={{this.formHasNoChips}}>
+                  {{#each this.formChips as |chip|}}
+                    <option value={{chip.id}} selected={{eq chip.id this.formChipId}}>
+                      {{chip.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+              {{#if this.formHasNoChips}}
+                <p class="ingenic-admin-note">
+                  {{i18n "admin.ingenic.documentation.workbench.no_chips_in_series"}}
+                </p>
+              {{/if}}
+            {{/if}}
+
             <label>
               <span>{{i18n "admin.ingenic.documentation.version_label"}}</span>
               <input name="label" value={{this.drawer.record.label}} required />
@@ -1295,22 +1539,7 @@ export default class IngenicDocManager extends Component {
               <span>{{i18n "admin.ingenic.documentation.version_slug"}}</span>
               <input name="slug" value={{this.drawer.record.slug}} required />
             </label>
-            {{#if (eq this.drawer.action "create")}}
-              {{! The version is being added under the chip already open at the
-                  top, so its language and parent are inherited, not asked. }}
-              <p class="ingenic-admin-note">
-                {{i18n
-                  "admin.ingenic.documentation.workbench.inherited_language"
-                  language=this.selectedLocaleName
-                }}
-              </p>
-              <p class="ingenic-admin-note">
-                {{i18n
-                  "admin.ingenic.documentation.workbench.inherited_chip"
-                  name=this.selectedChip.name
-                }}
-              </p>
-            {{else}}
+            {{#if (eq this.drawer.action "edit")}}
               <label>
                 <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
                 <select name="locale" required>
@@ -1331,6 +1560,33 @@ export default class IngenicDocManager extends Component {
               <span>{{i18n "admin.ingenic.documentation.deprecated"}}</span>
             </label>
           {{else}}
+            {{#if (eq this.drawer.action "create")}}
+              {{! Language, then (for a chip) the series it belongs to. Both
+                  default to the top bar and can be changed here. }}
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
+                <select name="locale" required {{on "change" this.selectFormLocale}}>
+                  {{#each (this.localeOptions this.formLocale) as |locale|}}
+                    <option value={{locale.value}} selected={{eq locale.value this.formLocale}}>
+                      {{locale.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+              {{#if (eq this.drawer.kind "chip")}}
+                <label>
+                  <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>
+                  <select name="series_id" required {{on "change" this.selectFormSeries}}>
+                    {{#each this.series as |series|}}
+                      <option value={{series.id}} selected={{eq series.id this.formSeriesId}}>
+                        {{series.name}}
+                      </option>
+                    {{/each}}
+                  </select>
+                </label>
+              {{/if}}
+            {{/if}}
+
             <label>
               <span>
                 {{#if (eq this.drawer.kind "series")}}
@@ -1351,24 +1607,7 @@ export default class IngenicDocManager extends Component {
               </span>
               <input name="slug" value={{this.drawer.record.slug}} required />
             </label>
-            {{#if (eq this.drawer.action "create")}}
-              {{! The new row sits under whatever is already open at the top:
-                  a series inherits the language, a chip also its series. }}
-              <p class="ingenic-admin-note">
-                {{i18n
-                  "admin.ingenic.documentation.workbench.inherited_language"
-                  language=this.selectedLocaleName
-                }}
-              </p>
-              {{#if (eq this.drawer.kind "chip")}}
-                <p class="ingenic-admin-note">
-                  {{i18n
-                    "admin.ingenic.documentation.workbench.inherited_series"
-                    name=this.selectedSeries.name
-                  }}
-                </p>
-              {{/if}}
-            {{else}}
+            {{#if (eq this.drawer.action "edit")}}
               <label>
                 <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
                 <select name="locale" required>
