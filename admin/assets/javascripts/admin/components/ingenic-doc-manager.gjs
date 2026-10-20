@@ -12,9 +12,9 @@ import IngenicDocPageTree from "./ingenic-doc-page-tree";
 const BASE = "/admin/plugins/discourse-ingenic";
 
 // A version sits at depth 2 (series 0, chip 1); its pages start one indent
-// step below it, and the subtree wrapper supplies the offset that lines them
-// up under the version's title.
-const PAGE_INDENT_BASE = 1;
+// step below it. The page tree adds this to each page's own depth, so the
+// first level of pages lands on the same indent scale as the rows above.
+const PAGE_INDENT_BASE = 3;
 
 /**
  * Authoring workbench for the documentation tree.
@@ -259,7 +259,6 @@ export default class IngenicDocManager extends Component {
       // English chip under it, and the row must say so.
       localeName: locale ? this.#localeName(locale) : "",
       label: kind === "version" ? record.label : record.name,
-      icon: kind === "series" ? "▣" : kind === "chip" ? "▦" : "◆",
       latest: kind === "version" && record.latest,
       addTitle: i18n(
         `admin.ingenic.documentation.workbench.add_${kind === "series" ? "chip" : kind === "chip" ? "version" : "page"}`
@@ -1659,10 +1658,7 @@ export default class IngenicDocManager extends Component {
                     class="ingenic-admin-tree__select"
                     {{on "click" (fn this.openRow row)}}
                   >
-                    <span class="ingenic-admin-tree__title">
-                      <span class="ingenic-admin-tree__kind" aria-hidden="true">{{row.icon}}</span>
-                      {{row.label}}
-                    </span>
+                    <span class="ingenic-admin-tree__title">{{row.label}}</span>
                     {{#if row.latest}}
                       <span class="ingenic-admin-tree__badge">
                         {{i18n "admin.ingenic.documentation.latest"}}

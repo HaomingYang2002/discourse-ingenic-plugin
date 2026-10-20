@@ -20,22 +20,20 @@
 
 // Stays put while the tree scrolls under it: the language filter and the one
 // button that creates a series at the top level. Every other + sits on the row
-// that will own the new row.
+// that will own the new row. Label and select share a line, the way the old
+// bar's fields did, so the tree below keeps the plain left column look.
 .ingenic-doc-tree-toolbar {
   display: flex;
   flex: 0 0 auto;
-  align-items: flex-end;
-  gap: 0.4rem;
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid var(--primary-low);
-  background: var(--secondary);
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.6rem 0.3rem;
 }
 
 .ingenic-doc-tree-toolbar__field {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.35rem;
   min-width: 0;
 
   span {
@@ -45,8 +43,8 @@
   }
 
   select {
-    width: 100%;
-    min-width: 0;
+    min-width: 6.5rem;
+    max-width: 10rem;
   }
 }
 
@@ -82,7 +80,7 @@
 // below the fold.
 .ingenic-doc-workbench__body {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   height: 72vh;
   min-height: 32rem;
 
@@ -105,7 +103,7 @@
   background: var(--primary-very-low);
 
   @media screen and (max-width: 924px) {
-    max-height: 55vh;
+    max-height: 40vh;
     border-right: 0;
     border-bottom: 1px solid var(--primary-low);
   }
@@ -114,21 +112,13 @@
 .ingenic-doc-tree-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0.35rem 0.6rem 0.6rem;
+  padding: 0.3rem 0.6rem 0.6rem;
   overflow-y: auto;
 }
 
-// A version's pages sit one level under it. The tree's own indent classes are
-// offset by `@indentBase`, and the wrapper's offset lines both the guide line
-// and the page rows up under the version row's title: version rows start at
-// 2.4rem, and a first-level page lands at 1.9 + 0.2 + 1.4 = 3.5rem, one step
-// deeper. The tree has no scroll area of its own, so the left column keeps a
-// single scrollbar.
-.ingenic-doc-subtree {
-  margin-left: 1.9rem;
-  padding-left: 0.2rem;
-  border-left: 1px dashed var(--primary-low);
-}
+// A version's pages sit one level under it through the tree's own indent
+// classes, offset by `@indentBase` — the wrapper is only a grouping element,
+// so page rows look exactly like they did when the tree stood alone.
 
 // "No chips here" / "no versions here" line up with the title of the row that
 // would be there, so the + that creates one is easy to find.
@@ -137,11 +127,11 @@
   font-size: var(--font-down-1);
 
   &--1 {
-    padding-left: 3.4rem;
+    padding-left: 3.8rem;
   }
 
   &--2 {
-    padding-left: 4.4rem;
+    padding-left: 4.8rem;
   }
 }
 
