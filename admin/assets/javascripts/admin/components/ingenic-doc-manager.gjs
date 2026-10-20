@@ -233,7 +233,9 @@ export default class IngenicDocManager extends Component {
     const id = Number(event.target.value);
     this.selectedSeriesId = id || null;
     this.selectedChipId = null;
-    this.selectedLocale = null;
+    // The chosen language survives a series switch: translating a manual means
+    // walking every series in the same language. `#localeFor` still falls back
+    // if the site stops serving it.
     this.selectedVersionId = null;
     this.selectedPageSlug = null;
     this.pages = [];
@@ -950,14 +952,16 @@ export default class IngenicDocManager extends Component {
 
       if (response?.product) {
         if (kind === "series") {
+          // The language stays as it is; the new series simply has no chips
+          // yet, and the first one added will open in that same language.
           this.selectedSeriesId = response.product.id;
           this.selectedChipId = null;
-          this.selectedLocale = null;
           this.selectedVersionId = null;
           this.selectedPageSlug = null;
           this.pages = [];
         } else {
-          // A new chip starts on its own language, not the previous chip's.
+          // The new chip opens in the language being worked in, so its first
+          // version can be added without picking the language again.
           this.selectChip(response.product);
         }
       }
