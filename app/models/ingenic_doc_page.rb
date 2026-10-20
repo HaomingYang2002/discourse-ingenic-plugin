@@ -45,7 +45,35 @@ class IngenicDocPage < ActiveRecord::Base
     parent ? parent.depth + 1 : 0
   end
 
+  # `dependent: :destroy` follows parent_id without looking at version_id: a
+  # later version's copy of a page still points at the folder it was copied
+  # from. Destroying this folder would therefore destroy that version's own
+  # text, which is not part of this subtree. Move such rows up to this page's
+  # parent before the cascade runs.
+  def detach_foreign_descendants!
+    ids = subtree_ids
+
+    IngenicDocPage
+      .where(parent_id: ids)
+      .where.not(version_id: version_id)
+      .update_all(parent_id: parent_id)
+  end
+
   private
+
+  # Ids of this page and everything below it, in any version.
+  def subtree_ids
+    ids = [id]
+    frontier = [id]
+
+    until frontier.empty?
+      children = IngenicDocPage.where(parent_id: frontier).pluck(:id) - ids
+      ids.concat(children)
+      frontier = children
+    end
+
+    ids
+  end
 
   def parent_does_not_close_a_loop
     return if parent_id.blank?

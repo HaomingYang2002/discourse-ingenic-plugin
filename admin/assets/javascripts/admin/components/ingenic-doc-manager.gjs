@@ -77,6 +77,10 @@ export default class IngenicDocManager extends Component {
   // parent row, a chip's parent is its series, a version's is its chip.
   @tracked draft = null;
   @tracked draftName = "";
+  // Bumped whenever a draft starts. It is part of the draft row's key so the
+  // input is a fresh element every time: reusing the old one skips didInsert,
+  // and the new draft would open without focus.
+  @tracked draftSeq = 0;
 
   // The row whose name is being edited in place: { key, kind, record }.
   @tracked renaming = null;
@@ -152,11 +156,6 @@ export default class IngenicDocManager extends Component {
   get structureRows() {
     const rows = [];
 
-    // A series has no parent row, so its draft sits above the first series.
-    if (this.draft?.kind === "series") {
-      rows.push(this.#draftRow(0));
-    }
-
     for (const series of this.#visibleSeries()) {
       const seriesKey = this.#keyOf("series", series);
       const seriesOpen = !this.collapsedProducts.has(seriesKey);
@@ -164,11 +163,6 @@ export default class IngenicDocManager extends Component {
 
       if (!seriesOpen) {
         continue;
-      }
-
-      // A chip's draft is a child of this series: directly under it.
-      if (this.draft?.kind === "chip" && this.draft.parent?.id === series.id) {
-        rows.push(this.#draftRow(1));
       }
 
       for (const chip of this.#visibleChips(series)) {
@@ -179,14 +173,6 @@ export default class IngenicDocManager extends Component {
 
         if (!chipOpen) {
           continue;
-        }
-
-        // A version's draft is a child of this chip: before its versions.
-        if (
-          this.draft?.kind === "version" &&
-          this.draft.parent?.id === chip.id
-        ) {
-          rows.push(this.#draftRow(2));
         }
 
         for (const version of versions) {
@@ -202,14 +188,40 @@ export default class IngenicDocManager extends Component {
             });
           }
         }
+
+        // The server appends a new version to its chip, so the draft belongs
+        // at the end of the list. Showing it first made the row jump to the
+        // bottom the moment it was created.
+        if (
+          this.draft?.kind === "version" &&
+          this.draft.parent?.id === chip.id
+        ) {
+          rows.push(this.#draftRow(2));
+        }
       }
+
+      // Same for chips: created last means drawn last.
+      if (this.draft?.kind === "chip" && this.draft.parent?.id === series.id) {
+        rows.push(this.#draftRow(1));
+      }
+    }
+
+    // A series has no parent row; its draft closes the list, matching where
+    // the server files the new row.
+    if (this.draft?.kind === "series") {
+      rows.push(this.#draftRow(0));
     }
 
     return rows;
   }
 
   #draftRow(depth) {
-    return { key: "__draft__", kind: "draft", depth, isDraft: true };
+    return {
+      key: `__draft__-${this.draftSeq}`,
+      kind: "draft",
+      depth,
+      isDraft: true,
+    };
   }
 
   #rowFor(kind, record, depth, expanded) {
@@ -226,7 +238,6 @@ export default class IngenicDocManager extends Component {
       // glyph as a page folder; an article is the only document row.
       icon: "📁",
       label: kind === "version" ? record.label : record.name,
-      isLatest: kind === "version" && record.latest,
       isRenaming: this.renaming?.key === key,
       addTitle: i18n(
         `admin.ingenic.documentation.workbench.add_${kind === "series" ? "chip" : kind === "chip" ? "version" : "page"}`
@@ -397,6 +408,12 @@ export default class IngenicDocManager extends Component {
   selectLanguage(event) {
     this.languageFilter = event.target.value || null;
 
+    // A draft lives under a row of the language that is on screen. Switching
+    // languages can hide that row, which would leave an input with no owner.
+    this.cancelDraft();
+    this.cancelRename();
+    this.addMenuKey = null;
+
     // The editor can stay on a version the filter just hid; keeping the
     // selection is fine, but it must not look like the row vanished.
     if (
@@ -468,6 +485,14 @@ export default class IngenicDocManager extends Component {
       next.delete(key);
     } else {
       next.add(key);
+      // Folding removes the row a draft was being typed into. A removed input
+      // does not blur, so the draft would stay alive but invisible.
+      if (
+        this.draft?.parent?.id === record.id &&
+        this.draft.parent.kind === record.kind
+      ) {
+        this.cancelDraft();
+      }
     }
 
     this.collapsedProducts = next;
@@ -553,12 +578,17 @@ export default class IngenicDocManager extends Component {
       }
     }
 
+    this.draftSeq += 1;
     this.draft = { kind, parent };
     this.draftName = "";
   }
 
   @action
   focusDraft(element) {
+    // A draft is filed at the end of its list, which can be below the fold
+    // when earlier rows are expanded. Bring it to the eye instead of folding
+    // the tree the editor was reading.
+    element.scrollIntoView({ block: "nearest" });
     element.focus();
     element.select?.();
   }
@@ -671,6 +701,11 @@ export default class IngenicDocManager extends Component {
       }
     } catch (error) {
       this.error = this.#errorMessage(error);
+      // The row was never created, so put the name back instead of making
+      // the editor type it again. The bumped sequence remounts the input.
+      this.draftSeq += 1;
+      this.draft = draft;
+      this.draftName = name;
     } finally {
       this.busy = false;
     }
@@ -764,6 +799,8 @@ export default class IngenicDocManager extends Component {
       await this.reload();
     } catch (error) {
       this.error = this.#errorMessage(error);
+      this.renaming = renaming;
+      this.renameDraft = name;
     } finally {
       this.busy = false;
     }
@@ -776,7 +813,10 @@ export default class IngenicDocManager extends Component {
   }
 
   // A version row's + asks the page tree to insert its draft row. Opening the
-  // tree first means waiting for the pages to exist in the DOM.
+  // tree first means waiting for the pages to exist in the DOM — and the page
+  // tree only registers itself once it has rendered, which can be one or two
+  // frames after the data arrives. A single frame was a race: the click
+  // silently did nothing when the tree was not mounted yet.
   @action
   async startPageDraft(version, kind) {
     this.addMenuKey = null;
@@ -789,9 +829,24 @@ export default class IngenicDocManager extends Component {
       await this.loadPages(version);
     }
 
-    requestAnimationFrame(() => {
-      this.treeApis.get(version.id)?.startDraft(null, kind);
-    });
+    this.#startPageDraftWhenReady(version.id, kind);
+  }
+
+  #startPageDraftWhenReady(versionId, kind, attempts = 40) {
+    const api = this.treeApis.get(versionId);
+
+    if (api) {
+      api.startDraft(null, kind);
+      return;
+    }
+
+    if (attempts <= 0) {
+      return;
+    }
+
+    requestAnimationFrame(() =>
+      this.#startPageDraftWhenReady(versionId, kind, attempts - 1)
+    );
   }
 
   // ------------------------------------------------------------ page CRUD ---
@@ -847,6 +902,8 @@ export default class IngenicDocManager extends Component {
       }
     } catch (error) {
       this.error = this.#errorMessage(error);
+      // The page tree restores its draft row with the typed name.
+      throw error;
     } finally {
       this.busy = false;
     }
@@ -872,6 +929,8 @@ export default class IngenicDocManager extends Component {
       await this.loadPages(version);
     } catch (error) {
       this.error = this.#errorMessage(error);
+      // Put the name back in the row's input.
+      throw error;
     } finally {
       this.busy = false;
     }
@@ -950,20 +1009,21 @@ export default class IngenicDocManager extends Component {
       return;
     }
 
-    if (
-      target.inherited ||
-      (dragged.parent_slug ?? null) !== (target.parent_slug ?? null)
-    ) {
+    // An inherited row is a perfectly good landmark to drop beside: the
+    // server materialises the inherited rows of that level into this version
+    // first (the same copy editing makes), so the reader's order can be
+    // expressed without touching the version that wrote them.
+    if ((dragged.parent_slug ?? null) !== (target.parent_slug ?? null)) {
       return;
     }
 
+    // Slugs identify a resolved row. An inherited row's id belongs to the
+    // version that wrote it, so ids cannot be used to build this list.
     const siblings = pages.filter(
-      (entry) =>
-        (entry.parent_slug ?? null) === (dragged.parent_slug ?? null) &&
-        !entry.inherited
+      (entry) => (entry.parent_slug ?? null) === (dragged.parent_slug ?? null)
     );
-    const reordered = siblings.filter((entry) => entry.id !== dragged.id);
-    const index = reordered.findIndex((entry) => entry.id === target.id);
+    const reordered = siblings.filter((entry) => entry.slug !== dragged.slug);
+    const index = reordered.findIndex((entry) => entry.slug === target.slug);
 
     if (index < 0) {
       return;
@@ -975,13 +1035,21 @@ export default class IngenicDocManager extends Component {
     this.error = null;
 
     try {
-      await Promise.all(
-        reordered.map((entry, position) =>
-          ajax(`${BASE}/documentation/pages/${entry.id}`, {
-            type: "PUT",
-            data: { position },
-          })
-        )
+      // One request: the server renumbers the whole level in a transaction
+      // and copies inherited rows into this version as needed. A PUT per row
+      // used to leave inherited rows out of the numbering, so their positions
+      // collided with the rows that were rewritten and the order scrambled
+      // after the reload.
+      await ajax(
+        `${BASE}/documentation/versions/${version.id}/reorder/pages`,
+        {
+          type: "PUT",
+          data: {
+            parent_slug: dragged.parent_slug ?? null,
+            moved_slug: dragged.slug,
+            slugs: reordered.map((entry) => entry.slug),
+          },
+        }
       );
       await this.loadPages(version);
     } catch (error) {
@@ -1691,11 +1759,6 @@ export default class IngenicDocManager extends Component {
                         <span class="ingenic-admin-tree__kind" aria-hidden="true">{{row.icon}}</span>
                         {{row.label}}
                       </span>
-                      {{#if row.isLatest}}
-                        <span class="ingenic-admin-tree__badge">
-                          {{i18n "admin.ingenic.documentation.latest"}}
-                        </span>
-                      {{/if}}
                     </button>
                   {{/if}}
 

@@ -389,6 +389,7 @@ after_initialize do
       get "/documentation" => "admin/ingenic#documentation"
       put "/documentation/reorder/products" => "admin/ingenic#reorder_products"
       put "/documentation/reorder/versions" => "admin/ingenic#reorder_versions"
+      put "/documentation/versions/:id/reorder/pages" => "admin/ingenic#reorder_pages"
       get "/documentation/products/:id" => "admin/ingenic#product"
       post "/documentation/products" => "admin/ingenic#create_product"
       put "/documentation/products/:id" => "admin/ingenic#update_product"

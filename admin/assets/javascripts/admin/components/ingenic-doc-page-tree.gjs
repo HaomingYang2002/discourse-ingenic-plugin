@@ -50,6 +50,9 @@ export default class IngenicDocPageTree extends Component {
   // The row being typed into: { parent, parentSlug, kind, depth }.
   @tracked draft = null;
   @tracked draftName = "";
+  // Part of the draft row's key: a fresh input every time, so didInsert runs
+  // and the input is focused instead of reusing the previous element.
+  @tracked draftSeq = 0;
 
   @tracked renamingSlug = null;
   @tracked renameDraft = "";
@@ -96,6 +99,7 @@ export default class IngenicDocPageTree extends Component {
 
       rows.push({
         ...page,
+        key: page.slug,
         folder: page.kind === "folder",
         indent: Math.min(this.indentBase + (page.depth ?? 0), MAX_INDENT),
         canDrag: this.writable && !page.inherited,
@@ -145,6 +149,7 @@ export default class IngenicDocPageTree extends Component {
       }
 
       rows.splice(index, 0, {
+        key: `__draft__-${this.draftSeq}`,
         isDraft: true,
         kind: this.draft.kind,
         indent: Math.min(this.indentBase + this.draft.depth, MAX_INDENT),
@@ -224,6 +229,7 @@ export default class IngenicDocPageTree extends Component {
     this.addSlug = null;
     this.renamingSlug = null;
 
+    this.draftSeq += 1;
     this.draft = {
       parent,
       parentSlug,
@@ -236,6 +242,8 @@ export default class IngenicDocPageTree extends Component {
 
   @action
   focusDraft(element) {
+    // The draft can land below the fold in a long manual.
+    element.scrollIntoView({ block: "nearest" });
     element.focus();
     element.select?.();
   }
@@ -273,7 +281,7 @@ export default class IngenicDocPageTree extends Component {
   }
 
   @action
-  commitDraft() {
+  async commitDraft() {
     const draft = this.draft;
     const name = this.draftName.trim();
 
@@ -283,7 +291,17 @@ export default class IngenicDocPageTree extends Component {
 
     this.draft = null;
     this.draftName = "";
-    this.args.onCreate(draft.parent, draft.kind, name);
+
+    try {
+      await this.args.onCreate(draft.parent, draft.kind, name);
+    } catch {
+      // Creation failed (a duplicate slug is the usual reason). The row is
+      // gone from the DOM, so restore it with the typed name rather than
+      // losing what the editor wrote.
+      this.draftSeq += 1;
+      this.draft = draft;
+      this.draftName = name;
+    }
   }
 
   @action
@@ -338,13 +356,20 @@ export default class IngenicDocPageTree extends Component {
   }
 
   @action
-  commitRename(page) {
+  async commitRename(page) {
     const name = this.renameDraft.trim();
     this.renamingSlug = null;
     this.renameDraft = "";
 
-    if (name) {
-      this.args.onRename(page, name);
+    if (!name) {
+      return;
+    }
+
+    try {
+      await this.args.onRename(page, name);
+    } catch {
+      this.renamingSlug = page.slug;
+      this.renameDraft = name;
     }
   }
 
@@ -383,10 +408,12 @@ export default class IngenicDocPageTree extends Component {
     // "put it before or after", which only makes sense among siblings.
     const into = page.folder && ratio > 0.3 && ratio < 0.7;
 
+    // Inherited rows are valid landmarks for a sibling drop: the server copies
+    // them into this version when the level is renumbered. Only a different
+    // parent is a reason to refuse the drop.
     if (
       !into &&
-      (page.inherited ||
-        (dragged.parent_slug ?? null) !== (page.parent_slug ?? null))
+      (dragged.parent_slug ?? null) !== (page.parent_slug ?? null)
     ) {
       return;
     }
@@ -435,7 +462,7 @@ export default class IngenicDocPageTree extends Component {
 
   <template>
     <div class="ingenic-admin-tree" {{didInsert this.announceReady}}>
-      {{#each this.rows as |page|}}
+      {{#each this.rows key="key" as |page|}}
         {{#if page.isDraft}}
           <div class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{page.indent}} is-draft">
             <span class="ingenic-admin-tree__handle ingenic-admin-tree__handle--empty"></span>

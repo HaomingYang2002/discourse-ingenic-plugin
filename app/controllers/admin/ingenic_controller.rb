@@ -172,6 +172,62 @@ module Admin
       render_json_dump(applied: ordered)
     end
 
+    # Pages resolve per version, so one row on screen can be this version's
+    # own and the next can be inherited from an earlier version, where its
+    # position lives. Reordering only the owned rows left their new positions
+    # colliding with the inherited ones and the tree came back scrambled.
+    #
+    # The screen sends the whole level as it now reads. Inherited rows are
+    # materialised into this version first (the same copy editing makes), and
+    # then every row in that level gets a fresh position in one transaction.
+    def reorder_pages
+      version = IngenicDocVersion.find(params[:id])
+      authorize_ingenic!(version)
+
+      parent_slug = params[:parent_slug].presence
+      moved_slug = params[:moved_slug].to_s
+      slugs = Array(params[:slugs]).map(&:to_s).reject(&:blank?).uniq
+      resolved = version.page_tree(locale: tree_locale(version))
+      by_slug = resolved.index_by(&:slug)
+      moved = by_slug[moved_slug]
+      siblings =
+        resolved.select { |entry| entry.parent_slug.presence == parent_slug }
+
+      same_level =
+        slugs.all? do |slug|
+          entry = by_slug[slug]
+          entry && entry.parent_slug.presence == parent_slug
+        end
+
+      valid =
+        moved && slugs.include?(moved_slug) &&
+          slugs.length == siblings.length && same_level
+
+      unless valid
+        return render_json_error(I18n.t("ingenic.admin_errors.invalid_move"), status: 422)
+      end
+
+      ActiveRecord::Base.transaction do
+        slugs.each_with_index do |slug, index|
+          entry = by_slug[slug]
+
+          if entry.inherited?
+            copy = entry.page.dup
+            copy.version_id = version.id
+            copy.locale = version.locale if version.locale.present?
+            copy.position = index
+            copy.save!
+          else
+            IngenicDocPage.where(id: entry.page.id).update_all(position: index)
+          end
+        end
+      end
+
+      render_json_dump(applied: slugs)
+    rescue ActiveRecord::RecordNotUnique
+      render_json_error(I18n.t("ingenic.admin_errors.locale_conflict"), status: 422)
+    end
+
     # The whole editing surface for one version in a single response: the
     # product tree it belongs to, its sibling versions, and every page it
     # resolves to with inherited pages flagged.
@@ -248,6 +304,9 @@ module Admin
     def destroy_page
       record = IngenicDocPage.find(params[:id])
       authorize_ingenic!(record.version)
+      # Pages copied into later versions still point at this row as their
+      # parent; the AR cascade would delete them with it.
+      record.detach_foreign_descendants!
       record.destroy!
       head :no_content
     end
