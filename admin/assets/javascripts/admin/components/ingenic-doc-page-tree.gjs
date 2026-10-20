@@ -63,6 +63,25 @@ export default class IngenicDocPageTree extends Component {
     });
   }
 
+  // The tree is nested under a version row now, so its first page sits at the
+  // manager's indent for that version plus one. `depth` stays the page's own
+  // depth; this only shifts where the row is drawn.
+  get indentBase() {
+    return this.args.indentBase ?? 0;
+  }
+
+  get writable() {
+    return this.args.writable ?? true;
+  }
+
+  // A component that unmounts (the version row folded, or the version was
+  // deleted) must not leave its `startDraft` in the manager's map: the row's +
+  // would call a method on a destroyed component.
+  willDestroy() {
+    super.willDestroy(...arguments);
+    this.args.onReady?.(null);
+  }
+
   get rows() {
     const hidden = new Set();
     const rows = [];
@@ -78,7 +97,8 @@ export default class IngenicDocPageTree extends Component {
       rows.push({
         ...page,
         folder: page.kind === "folder",
-        indent: Math.min(page.depth ?? 0, MAX_INDENT),
+        indent: Math.min(this.indentBase + (page.depth ?? 0), MAX_INDENT),
+        canDrag: this.writable && !page.inherited,
         hasChildren: this.#hasChildren(page),
         isCollapsed: this.collapsed.has(page.slug),
         isDragging: this.dragging?.slug === page.slug,
@@ -127,7 +147,7 @@ export default class IngenicDocPageTree extends Component {
       rows.splice(index, 0, {
         isDraft: true,
         kind: this.draft.kind,
-        indent: Math.min(this.draft.depth, MAX_INDENT),
+        indent: Math.min(this.indentBase + this.draft.depth, MAX_INDENT),
         slug: "__draft__",
       });
     }
@@ -156,6 +176,11 @@ export default class IngenicDocPageTree extends Component {
   toggleAdd(page, event) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!this.writable) {
+      return;
+    }
+
     this.addSlug = this.addSlug === page.slug ? null : page.slug;
   }
 
@@ -174,6 +199,10 @@ export default class IngenicDocPageTree extends Component {
   // the draft still appears right after the article, because the row that was
   // pressed is the anchor, not the parent.
   startDraft(row, kind) {
+    if (!this.writable) {
+      return;
+    }
+
     let parent = row;
     let depth = row ? (row.depth ?? 0) + 1 : 0;
 
@@ -269,6 +298,11 @@ export default class IngenicDocPageTree extends Component {
   startRename(page, event) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (!this.writable) {
+      return;
+    }
+
     this.addSlug = null;
     this.renamingSlug = page.slug;
     this.renameDraft = page.title;
@@ -324,7 +358,7 @@ export default class IngenicDocPageTree extends Component {
   // draggable would swallow the click that selects a page.
   @action
   startDrag(page, event) {
-    if (page.inherited) {
+    if (!this.writable || page.inherited) {
       return;
     }
 
@@ -339,7 +373,7 @@ export default class IngenicDocPageTree extends Component {
   dragOver(page, event) {
     const dragged = this.dragging;
 
-    if (!dragged || dragged.id === page.id) {
+    if (!this.writable || !dragged || dragged.id === page.id) {
       return;
     }
 
@@ -367,6 +401,10 @@ export default class IngenicDocPageTree extends Component {
 
   @action
   drop(page, event) {
+    if (!this.writable) {
+      return;
+    }
+
     event.preventDefault();
 
     const dragged = this.dragging;
@@ -425,7 +463,7 @@ export default class IngenicDocPageTree extends Component {
             {{on "dragover" (fn this.dragOver page)}}
             {{on "drop" (fn this.drop page)}}
           >
-            {{#unless page.inherited}}
+            {{#if page.canDrag}}
               <span
                 class="ingenic-admin-tree__handle"
                 draggable="true"
@@ -435,7 +473,7 @@ export default class IngenicDocPageTree extends Component {
               >⠿</span>
             {{else}}
               <span class="ingenic-admin-tree__handle ingenic-admin-tree__handle--empty"></span>
-            {{/unless}}
+            {{/if}}
 
             {{#if page.hasChildren}}
               <button
@@ -480,18 +518,20 @@ export default class IngenicDocPageTree extends Component {
               </button>
             {{/if}}
 
-            <span class="ingenic-admin-tree__tools">
-              <button
-                type="button"
-                class="ingenic-admin-tree__add"
-                title={{if
-                  page.folder
-                  (i18n "admin.ingenic.documentation.workbench.new_child")
-                  (i18n "admin.ingenic.documentation.workbench.new_sibling")
-                }}
-                {{on "click" (fn this.toggleAdd page)}}
-              >＋</button>
-            </span>
+            {{#if this.writable}}
+              <span class="ingenic-admin-tree__tools">
+                <button
+                  type="button"
+                  class="ingenic-admin-tree__add"
+                  title={{if
+                    page.folder
+                    (i18n "admin.ingenic.documentation.workbench.new_child")
+                    (i18n "admin.ingenic.documentation.workbench.new_sibling")
+                  }}
+                  {{on "click" (fn this.toggleAdd page)}}
+                >＋</button>
+              </span>
+            {{/if}}
 
             {{#if (eq this.addSlug page.slug)}}
               <span class="ingenic-admin-tree__add-menu">
