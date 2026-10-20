@@ -608,7 +608,9 @@
 .ingenic-admin-tree__tools {
   flex: 0 0 auto;
   display: inline-flex;
-  gap: 0.1rem;
+  // + and − are a destructive pair sitting side by side; a gap keeps a click
+  // meant for + from landing on − when the rows are as small as they are.
+  gap: 0.45rem;
   padding-right: 0.25rem;
 
   button {
@@ -708,15 +710,25 @@
 
 // One step per level of the contents. The tree saturates the level at the
 // deepest step here, so a page nested further than this keeps the last
-// indentation instead of falling back to none.
-.ingenic-admin-tree__row--indent-1 { padding-left: 1.4rem; }
+// indentation instead of falling back to none. The step is wide enough to see
+// at a glance which series a chip and which chip a version belongs to; at 1rem
+// the three levels were hard to tell apart in the 300px pane.
+.ingenic-admin-tree__row--indent-1 { padding-left: 1.2rem; }
 .ingenic-admin-tree__row--indent-2 { padding-left: 2.4rem; }
-.ingenic-admin-tree__row--indent-3 { padding-left: 3.4rem; }
-.ingenic-admin-tree__row--indent-4 { padding-left: 4.4rem; }
-.ingenic-admin-tree__row--indent-5 { padding-left: 5.4rem; }
-.ingenic-admin-tree__row--indent-6 { padding-left: 6.4rem; }
-.ingenic-admin-tree__row--indent-7 { padding-left: 7.4rem; }
-.ingenic-admin-tree__row--indent-8 { padding-left: 8.4rem; }
+.ingenic-admin-tree__row--indent-3 { padding-left: 3.6rem; }
+.ingenic-admin-tree__row--indent-4 { padding-left: 4.8rem; }
+.ingenic-admin-tree__row--indent-5 { padding-left: 6rem; }
+.ingenic-admin-tree__row--indent-6 { padding-left: 7.2rem; }
+.ingenic-admin-tree__row--indent-7 { padding-left: 8.4rem; }
+.ingenic-admin-tree__row--indent-8 { padding-left: 9.6rem; }
+
+// The container levels are the skeleton of the manual, so their names carry
+// more weight than the versions under them. Without this every level looked
+// like another folder and a chip read as a top-level row.
+.ingenic-admin-tree__row.is-series .ingenic-admin-tree__title,
+.ingenic-admin-tree__row.is-chip .ingenic-admin-tree__title {
+  font-weight: 600;
+}
 
 .ingenic-admin-tree__badge {
   flex: 0 0 auto;

@@ -485,17 +485,45 @@ export default class IngenicDocManager extends Component {
       next.delete(key);
     } else {
       next.add(key);
-      // Folding removes the row a draft was being typed into. A removed input
-      // does not blur, so the draft would stay alive but invisible.
-      if (
-        this.draft?.parent?.id === record.id &&
-        this.draft.parent.kind === record.kind
-      ) {
-        this.cancelDraft();
-      }
     }
 
     this.collapsedProducts = next;
+
+    // Folding removes the row a draft was being typed into. A removed input
+    // does not blur, so the draft would stay alive but invisible — and folding
+    // a series also hides drafts filed under its chips, not only its own.
+    // Keep a name that was already typed, the way clicking away does.
+    if (!this.#draftIsVisible()) {
+      if (this.draftName.trim()) {
+        this.commitDraft();
+      } else {
+        this.cancelDraft();
+      }
+    }
+  }
+
+  // Whether the draft row would still be rendered after a fold. A version
+  // draft needs its chip open, and a chip draft needs its series open.
+  #draftIsVisible() {
+    const draft = this.draft;
+
+    if (!draft || draft.kind === "series" || !draft.parent) {
+      return true;
+    }
+
+    if (this.collapsedProducts.has(this.#keyOf(draft.parent.kind, draft.parent))) {
+      return false;
+    }
+
+    if (draft.kind === "version") {
+      const series = this.#seriesOfChip(draft.parent.id);
+
+      if (series && this.collapsedProducts.has(this.#keyOf("series", series))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   #toggleVersion(version) {
@@ -513,15 +541,17 @@ export default class IngenicDocManager extends Component {
     this.expandedVersions = next;
   }
 
-  // Clicking a name only selects the row — the chevron is the control that
-  // folds it, the way a file explorer works, and double-clicking renames it.
-  // A version also opens, because that is how its pages are reached.
+  // Clicking a name selects the row, and for the container levels also folds
+  // it: a series or chip has no editor of its own, so without this the click
+  // only moved a highlight and read as a dead row. The chevron stays the
+  // explicit control and double-click still renames.
   @action
   selectRow(row) {
     this.selectedNodeKey = row.key;
     this.addMenuKey = null;
 
     if (row.kind !== "version") {
+      this.#toggleProduct(row.record);
       return;
     }
 
@@ -541,6 +571,11 @@ export default class IngenicDocManager extends Component {
   // The + adds the next level down: a series gets a chip, a chip gets a
   // version, a version gets a page or folder. Only the last one has a choice
   // to make, so only it opens a menu; everything else starts typing at once.
+  //
+  // The menu always opens, never toggles: a second click on + used to close
+  // what the first opened, and with the menu drawn as a second line inside
+  // the row that read as "the + only works every other time". Choosing an
+  // article/folder, clicking any row, or starting another draft closes it.
   @action
   addChild(row) {
     this.selectedNodeKey = row.key;
@@ -550,7 +585,7 @@ export default class IngenicDocManager extends Component {
     } else if (row.kind === "chip") {
       this.#startDraft("version", row.record);
     } else {
-      this.addMenuKey = this.addMenuKey === row.key ? null : row.key;
+      this.addMenuKey = row.key;
     }
   }
 
@@ -562,6 +597,28 @@ export default class IngenicDocManager extends Component {
   }
 
   #startDraft(kind, parent) {
+    const sameRow =
+      this.draft &&
+      this.draft.kind === kind &&
+      (this.draft.parent?.id ?? null) === (parent?.id ?? null);
+
+    // The + for the row already being typed into must not throw the name
+    // away: remount the input so it is focused and visible again.
+    if (sameRow) {
+      this.draftSeq += 1;
+      return;
+    }
+
+    // Starting a draft somewhere else keeps what was already typed by
+    // creating it first; only an empty draft is dropped.
+    if (this.draft) {
+      if (this.draftName.trim()) {
+        this.commitDraft();
+      } else {
+        this.cancelDraft();
+      }
+    }
+
     this.error = null;
     this.addMenuKey = null;
     this.renaming = null;
@@ -586,11 +643,37 @@ export default class IngenicDocManager extends Component {
   @action
   focusDraft(element) {
     // A draft is filed at the end of its list, which can be below the fold
-    // when earlier rows are expanded. Bring it to the eye instead of folding
-    // the tree the editor was reading.
-    element.scrollIntoView({ block: "nearest" });
-    element.focus();
+    // when earlier rows are expanded. Bring it to the eye by scrolling the
+    // tree pane only: `scrollIntoView` also moves the page, so the admin's
+    // whole screen jumped and every row appeared to have moved.
+    this.#revealInTree(element);
+    element.focus({ preventScroll: true });
     element.select?.();
+  }
+
+  // The article/folder menu is a second line inside the row. A row near the
+  // bottom of the pane opens it below the fold, which reads as "the + did
+  // nothing".
+  @action
+  revealMenu(element) {
+    this.#revealInTree(element);
+  }
+
+  #revealInTree(element) {
+    const pane = element.closest(".ingenic-doc-tree-scroll");
+
+    if (!pane) {
+      return;
+    }
+
+    const box = element.getBoundingClientRect();
+    const frame = pane.getBoundingClientRect();
+
+    if (box.bottom > frame.bottom) {
+      pane.scrollTop += box.bottom - frame.bottom + 8;
+    } else if (box.top < frame.top) {
+      pane.scrollTop -= frame.top - box.top + 8;
+    }
   }
 
   @action
@@ -610,10 +693,17 @@ export default class IngenicDocManager extends Component {
   }
 
   // Clicking away commits a named row and discards an empty one, the way a
-  // file explorer does.
+  // file explorer does. Moving within the workbench is not clicking away:
+  // pressing the + or a chevron while half a name is typed used to create a
+  // row from the fragment, and pressing the + again silently discarded the
+  // draft — which is why the same button seemed to work only sometimes.
   @action
-  draftBlur() {
+  draftBlur(event) {
     if (!this.draft) {
+      return;
+    }
+
+    if (event.relatedTarget?.closest?.(".ingenic-doc-workbench")) {
       return;
     }
 
@@ -628,6 +718,7 @@ export default class IngenicDocManager extends Component {
   async commitDraft() {
     const draft = this.draft;
     const name = this.draftName.trim();
+    const seq = this.draftSeq;
 
     if (!draft || !name) {
       return;
@@ -701,6 +792,14 @@ export default class IngenicDocManager extends Component {
       }
     } catch (error) {
       this.error = this.#errorMessage(error);
+
+      // Another + replaced this draft while the request was in flight. Putting
+      // the failed one back would overwrite the row the editor is typing into
+      // now; the error note is enough.
+      if (this.draftSeq !== seq) {
+        return;
+      }
+
       // The row was never created, so put the name back instead of making
       // the editor type it again. The bumped sequence remounts the input.
       this.draftSeq += 1;
@@ -1708,7 +1807,7 @@ export default class IngenicDocManager extends Component {
                 </div>
               {{else}}
                 <div
-                  class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{row.depth}} {{if row.isSelected 'is-selected'}} {{if (eq row.kind 'version') 'is-version'}} {{if row.isDragging 'is-dragging'}} {{if row.isDropBefore 'is-drop-before'}} {{if row.isDropAfter 'is-drop-after'}} {{if row.isDropInto 'is-drop-into'}}"
+                  class="ingenic-admin-tree__row ingenic-admin-tree__row--indent-{{row.depth}} is-{{row.kind}} {{if row.isSelected 'is-selected'}} {{if row.isDragging 'is-dragging'}} {{if row.isDropBefore 'is-drop-before'}} {{if row.isDropAfter 'is-drop-after'}} {{if row.isDropInto 'is-drop-into'}}"
                   {{on "dragover" (fn this.dragOver row)}}
                   {{on "dragleave" (fn this.dragLeave row)}}
                   {{on "drop" (fn this.dropOn row)}}
@@ -1780,7 +1879,7 @@ export default class IngenicDocManager extends Component {
                   {{/if}}
 
                   {{#if row.addMenuOpen}}
-                    <span class="ingenic-admin-tree__add-menu">
+                    <span class="ingenic-admin-tree__add-menu" {{didInsert this.revealMenu}}>
                       <button type="button" {{on "click" (fn this.startPageDraft row.record "page")}}>
                         📄 {{i18n "admin.ingenic.documentation.workbench.new_article"}}
                       </button>
