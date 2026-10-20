@@ -57,6 +57,7 @@ en:
             series: "Series"
             chip: "Chip"
             language: "Language"
+            all_languages: "All languages"
             version: "Version"
             tree: "Contents"
             new_series: "New series"

@@ -57,6 +57,7 @@ zh_CN:
             series: "系列"
             chip: "型号"
             language: "语言"
+            all_languages: "全部语言"
             version: "版本"
             tree: "目录"
             new_series: "新建系列"

@@ -60,6 +60,18 @@ describe Ingenic::DocumentationResolver do
 
       expect(v1.published_pages.map(&:slug)).to contain_exactly("overview")
     end
+
+    it "keeps inheriting in creation order when the display order changes" do
+      page(v1, "overview")
+
+      # The admin tree sorts by position. Dragging the newer version above the
+      # older one is a display operation; it used to invert the chain, so the
+      # version flagged latest resolved to no pages at all.
+      v2.update!(position: 0)
+      v1.update!(position: 1)
+
+      expect(v2.published_pages.map(&:slug)).to contain_exactly("overview")
+    end
   end
 
   describe "tree shape" do

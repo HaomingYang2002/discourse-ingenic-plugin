@@ -135,15 +135,29 @@ export default class IngenicDocManager extends Component {
     }
 
     const unique = [...new Set(values.filter(Boolean))];
+    const options = unique.map((value) => ({
+      value,
+      name: this.#localeName(value),
+    }));
 
-    return unique.map((value) => ({ value, name: this.#localeName(value) }));
+    // The empty value is "all languages": every version in one tree. Without
+    // it the screen could only ever show one language, and a chip whose rows
+    // were written in another one simply disappeared.
+    return [
+      {
+        value: "",
+        name: i18n("admin.ingenic.documentation.workbench.all_languages"),
+      },
+      ...options,
+    ];
   }
 
-  // The language whose tree is on screen: the editor's pick, or the first
-  // known language before one was made. Row filtering and every create default
-  // go through this, so the tree can never mix two languages.
+  // The language whose versions are on screen, or null for all of them. Only
+  // versions are filtered: series and chips are the skeleton of the manual
+  // and stay visible in every language, so changing the filter can never make
+  // a row look like it moved or vanished.
   get activeLanguage() {
-    return this.languageFilter ?? this.languageOptions[0]?.value ?? null;
+    return this.languageFilter;
   }
 
   get selectedLanguage() {
@@ -292,21 +306,17 @@ export default class IngenicDocManager extends Component {
     );
   }
 
-  // A chip belongs to the language on its own row, and is also shown when it
-  // holds versions in the selected language — older data can mix the two, and
-  // hiding the parent would strand those versions with no row to live under.
+  // The language filter applies to versions only. Series and chips are the
+  // skeleton of the manual: hiding a chip because its own row was written in
+  // another language stranded the versions under it, and a series whose rows
+  // were all in another language disappeared entirely. Both stay on screen; a
+  // chip with nothing in the selected language simply shows no versions.
   #visibleChips(series) {
-    return this.#orderedChips(series).filter(
-      (chip) =>
-        this.#localeMatches(chip) || this.#visibleVersions(chip).length > 0
-    );
+    return this.#orderedChips(series);
   }
 
   #visibleSeries() {
-    return this.#orderedSeries().filter(
-      (series) =>
-        this.#localeMatches(series) || this.#visibleChips(series).length > 0
-    );
+    return this.#orderedSeries();
   }
 
   #seriesOfChip(chipId) {
@@ -541,17 +551,17 @@ export default class IngenicDocManager extends Component {
     this.expandedVersions = next;
   }
 
-  // Clicking a name selects the row, and for the container levels also folds
-  // it: a series or chip has no editor of its own, so without this the click
-  // only moved a highlight and read as a dead row. The chevron stays the
-  // explicit control and double-click still renames.
+  // Clicking a name only selects the row: the chevron is the control that
+  // folds a container, the way a file explorer works, and double-clicking
+  // renames it. Folding on the name click as well made every click rearrange
+  // the tree under the pointer — the rows looked like they were moving on
+  // their own, which is the complaint this screen kept getting.
   @action
   selectRow(row) {
     this.selectedNodeKey = row.key;
     this.addMenuKey = null;
 
     if (row.kind !== "version") {
-      this.#toggleProduct(row.record);
       return;
     }
 
@@ -1344,12 +1354,10 @@ export default class IngenicDocManager extends Component {
     // to match before the two rows can be called the same row.
     if (
       !drag ||
-      (drag.kind === row.kind && drag.record.id === row.record?.id)
+      (drag.kind === row.kind && drag.record.id === row.record?.id) ||
+      !["series", "chip", "version"].includes(row.kind)
     ) {
-      return;
-    }
-
-    if (!["series", "chip", "version"].includes(row.kind)) {
+      this.#clearDrop(row);
       return;
     }
 
@@ -1357,6 +1365,7 @@ export default class IngenicDocManager extends Component {
     const sibling = this.#siblingDropAllowed(drag, row);
 
     if (!into && !sibling) {
+      this.#clearDrop(row);
       return;
     }
 
@@ -1371,6 +1380,15 @@ export default class IngenicDocManager extends Component {
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = (event.clientY - rect.top) / Math.max(rect.height, 1);
     this.drop = { key: row.key, mode: ratio > 0.5 ? "after" : "before" };
+  }
+
+  // The highlight must never outlive the row it was on: a release over a row
+  // that is not a target would otherwise apply the previous row's before/after
+  // mode, filing the dragged row somewhere the editor never pointed at.
+  #clearDrop(row) {
+    if (this.drop?.key === row.key) {
+      this.drop = null;
+    }
   }
 
   // Moving into a child element fires a dragleave on the row; only a leave
@@ -1427,13 +1445,17 @@ export default class IngenicDocManager extends Component {
     event.preventDefault();
 
     const drag = this.drag;
-    const mode = this.drop?.mode;
+    const drop = this.drop;
 
     this.endDrag();
 
-    if (!drag || !mode) {
+    // The release has to be on the row the highlight is on. Using a stale
+    // highlight here is what moved a row to a neighbour nobody pointed at.
+    if (!drag || !drop || drop.key !== row.key) {
       return;
     }
+
+    const mode = drop.mode;
 
     if (mode === "into") {
       await this.#moveInto(drag, row.record);

@@ -9,8 +9,9 @@ module Ingenic
   # version does not mean duplicating the whole manual and then keeping every
   # copy in sync.
   #
-  # Version order is the `position` column, lowest first, so moving a version
-  # changes what inherits from what. Ties fall back to insertion order.
+  # Which version inherits from which follows creation order, not the order the
+  # admin screen draws them in: `position` is a display column, and dragging a
+  # version row must not silently change what readers see in another version.
   class DocumentationResolver
     def initialize(product)
       @product = product
@@ -19,16 +20,23 @@ module Ingenic
     # Every version of the product, oldest first. There is no `published` flag on
     # a version to filter by — what a reader may see is decided page by page, and
     # a version with no pages of its own is not empty, it is the one before it.
-    # Asking for a scope that does not exist raised `NoMethodError` on the first
-    # request that resolved any documentation at all.
+    #
+    # "Oldest" is creation order. `position` is the order the admin tree draws
+    # them in; using it here meant that dragging V2 above V1 made V2 the oldest
+    # version, so it inherited nothing and readers saw an empty manual. The
+    # insertion order is the chronology the versions were actually written in.
     def versions
-      @versions ||= product.versions.to_a.sort_by { |version| [version.position, version.id] }
+      @versions ||= product.versions.to_a.sort_by { |version| [version.created_at || Time.at(0), version.id] }
     end
 
     # Every version that contributes to `version`, oldest first and including
-    # the version itself.
+    # the version itself, following creation order rather than the display
+    # order.
     def chain_for(version)
-      versions.select { |candidate| candidate.position <= version.position }
+      index = versions.index { |candidate| candidate.id == version.id }
+      return versions.dup if index.nil?
+
+      versions[0..index]
     end
 
     # The version's pages in reading order: depth-first, parents before their
