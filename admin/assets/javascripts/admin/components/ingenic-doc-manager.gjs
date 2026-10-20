@@ -15,14 +15,16 @@ const BASE = "/admin/plugins/discourse-ingenic";
 /**
  * Authoring workbench for the documentation tree.
  *
- * The shape is series -> chip -> version -> pages, with a language that picks
- * which manual of that chip is being written. The four filters are chosen once,
- * at the top; language sits last in the bar but still narrows the version list,
- * because a chip plus a language names one manual. The left pane is always the
- * page tree of the chosen version, and the right pane is always the editor of
- * the selected row. Series, chips and versions are changed in a drawer so that
- * the two columns stay reserved for the two things an editor does all day:
- * find a page, write it.
+ * The shape is language -> series -> chip -> version -> pages: the language
+ * picks which manual of that chip is being written, so it comes first and
+ * narrows everything below it. Whatever is already selected at the top is
+ * inherited by a new row — the + next to Series only asks for the series
+ * itself, + next to Chip also takes the series and language from the bar, and
+ * + next to Version takes all three. The left pane is always the page tree of
+ * the chosen version, and the right pane is always the editor of the selected
+ * row. Series, chips and versions are changed in a drawer so that the two
+ * columns stay reserved for the two things an editor does all day: find a
+ * page, write it.
  */
 export default class IngenicDocManager extends Component {
   @tracked series = this.args.series;
@@ -59,6 +61,13 @@ export default class IngenicDocManager extends Component {
   startUp() {
     if (this.selectedSeriesId === null) {
       this.#selectFirst();
+    }
+
+    // With no chip picked yet — an empty site, or a series with no chips —
+    // the top bar still has to name a language, because the very first series
+    // created there inherits it.
+    if (this.selectedLocale === null) {
+      this.selectedLocale = this.args.defaultLocale ?? null;
     }
   }
 
@@ -154,6 +163,16 @@ export default class IngenicDocManager extends Component {
   // the common case — while editing uses the row's own value.
   get drawerLocale() {
     return this.drawer?.record?.locale ?? this.selectedLocale;
+  }
+
+  get selectedLocaleName() {
+    const served = this.args.locales ?? [];
+
+    return (
+      served.find((locale) => locale.value === this.selectedLocale)?.name ??
+      this.selectedLocale ??
+      ""
+    );
   }
 
   // The site's served languages, plus the row's own value when it is not one
@@ -923,16 +942,18 @@ export default class IngenicDocManager extends Component {
         const response = await this.#createRecord("documentation/versions", {
           label: values.label?.trim(),
           slug: values.slug?.trim(),
-          locale: values.locale,
+          // The folder above the version is already open in the top bar; the
+          // drawer only names the new version, so it inherits the language.
+          locale: this.selectedLocale,
           released_on: values.released_on || null,
           deprecated: form.elements.deprecated?.checked ?? false,
           product_id: this.selectedChipId,
         });
 
         if (response?.version) {
-          // The new version decides which language the workbench shows: the
-          // drawer just said so, and the version would otherwise be hidden by
-          // the current filter.
+          // Follow the language the server stored — it is the inherited one,
+          // unless a default had to be filled in — so the new version is not
+          // hidden by the current filter.
           this.selectedLocale = this.#localeOf(response.version);
           this.selectedVersionId = response.version.id;
           await this.loadTree();
@@ -944,7 +965,9 @@ export default class IngenicDocManager extends Component {
       const response = await this.#createRecord("documentation/products", {
         name: values.name?.trim(),
         slug: values.slug?.trim(),
-        locale: values.locale,
+        // A new series or chip joins the language open in the top bar; a
+        // chip's series is the one already selected there too.
+        locale: this.selectedLocale,
         published: form.elements.published?.checked ?? true,
         kind,
         parent_id: kind === "chip" ? this.selectedSeriesId : null,
@@ -1014,6 +1037,27 @@ export default class IngenicDocManager extends Component {
 
     <div class="ingenic-doc-workbench" {{didInsert this.startUp}}>
       <header class="ingenic-doc-workbench__bar">
+        {{! Language is the outermost choice: the same chip can carry an English
+            and a Chinese manual, so it narrows everything below it. It lists
+            every language the forum serves, including ones with no version
+            yet — picking one opens that empty manual so its first version can
+            be written. }}
+        <div class="ingenic-doc-workbench__field">
+          <span>{{i18n "admin.ingenic.documentation.workbench.language"}}</span>
+          <select
+            class="ingenic-doc-workbench__language"
+            {{on "change" this.selectLanguageById}}
+          >
+            {{#each this.languageOptions as |locale|}}
+              <option value={{locale.value}} selected={{eq locale.value this.selectedLocale}}>
+                {{locale.name}}
+              </option>
+            {{/each}}
+          </select>
+        </div>
+
+        <span class="ingenic-doc-workbench__sep">/</span>
+
         <div class="ingenic-doc-workbench__field">
           <span>{{i18n "admin.ingenic.documentation.workbench.series"}}</span>
           <select {{on "change" this.selectSeries}} disabled={{this.noSeries}}>
@@ -1091,28 +1135,6 @@ export default class IngenicDocManager extends Component {
           disabled={{this.noSelectedVersion}}
           {{on "click" (fn this.openDrawer "version" "edit" this.selectedVersion)}}
         >⚙</button>
-
-        <span class="ingenic-doc-workbench__sep">/</span>
-
-        {{! Language sits at the end of the bar but is still mandatory: a chip
-            plus a language names one manual, and it narrows the version list.
-            It lists every language the forum serves, so one with no version
-            yet can be picked and its first version created in the drawer. }}
-        <div class="ingenic-doc-workbench__field">
-          <span>{{i18n "admin.ingenic.documentation.workbench.language"}}</span>
-          <select
-            class="ingenic-doc-workbench__language"
-            {{on "change" this.selectLanguageById}}
-            disabled={{this.noSelectedChip}}
-            required
-          >
-            {{#each this.languageOptions as |locale|}}
-              <option value={{locale.value}} selected={{eq locale.value this.selectedLocale}}>
-                {{locale.name}}
-              </option>
-            {{/each}}
-          </select>
-        </div>
 
         <span class="ingenic-doc-workbench__spacer"></span>
 
@@ -1261,16 +1283,33 @@ export default class IngenicDocManager extends Component {
               <span>{{i18n "admin.ingenic.documentation.version_slug"}}</span>
               <input name="slug" value={{this.drawer.record.slug}} required />
             </label>
-            <label>
-              <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-              <select name="locale" required>
-                {{#each (this.localeOptions this.drawerLocale) as |locale|}}
-                  <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
-                    {{locale.name}}
-                  </option>
-                {{/each}}
-              </select>
-            </label>
+            {{#if (eq this.drawer.action "create")}}
+              {{! The version is being added under the chip already open at the
+                  top, so its language and parent are inherited, not asked. }}
+              <p class="ingenic-admin-note">
+                {{i18n
+                  "admin.ingenic.documentation.workbench.inherited_language"
+                  language=this.selectedLocaleName
+                }}
+              </p>
+              <p class="ingenic-admin-note">
+                {{i18n
+                  "admin.ingenic.documentation.workbench.inherited_chip"
+                  name=this.selectedChip.name
+                }}
+              </p>
+            {{else}}
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
+                <select name="locale" required>
+                  {{#each (this.localeOptions this.drawerLocale) as |locale|}}
+                    <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
+                      {{locale.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+            {{/if}}
             <label>
               <span>{{i18n "admin.ingenic.documentation.released_on"}}</span>
               <input type="date" name="released_on" value={{this.drawer.record.released_on}} />
@@ -1300,16 +1339,35 @@ export default class IngenicDocManager extends Component {
               </span>
               <input name="slug" value={{this.drawer.record.slug}} required />
             </label>
-            <label>
-              <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
-              <select name="locale" required>
-                {{#each (this.localeOptions this.drawerLocale) as |locale|}}
-                  <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
-                    {{locale.name}}
-                  </option>
-                {{/each}}
-              </select>
-            </label>
+            {{#if (eq this.drawer.action "create")}}
+              {{! The new row sits under whatever is already open at the top:
+                  a series inherits the language, a chip also its series. }}
+              <p class="ingenic-admin-note">
+                {{i18n
+                  "admin.ingenic.documentation.workbench.inherited_language"
+                  language=this.selectedLocaleName
+                }}
+              </p>
+              {{#if (eq this.drawer.kind "chip")}}
+                <p class="ingenic-admin-note">
+                  {{i18n
+                    "admin.ingenic.documentation.workbench.inherited_series"
+                    name=this.selectedSeries.name
+                  }}
+                </p>
+              {{/if}}
+            {{else}}
+              <label>
+                <span>{{i18n "admin.ingenic.documentation.locale"}}</span>
+                <select name="locale" required>
+                  {{#each (this.localeOptions this.drawerLocale) as |locale|}}
+                    <option value={{locale.value}} selected={{eq locale.value this.drawerLocale}}>
+                      {{locale.name}}
+                    </option>
+                  {{/each}}
+                </select>
+              </label>
+            {{/if}}
             <label class="checkbox-label">
               <input type="checkbox" name="published" checked={{this.drawer.record.published}} />
               <span>{{i18n "admin.ingenic.documentation.published"}}</span>
