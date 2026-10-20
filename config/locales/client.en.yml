@@ -82,6 +82,7 @@ en:
             pick_version: "Pick a version first."
             empty_editor: "Pick a page in the tree on the left to edit it."
             empty_series: "No series yet — use ＋ at the top right to create one."
+            empty_version: "No version in this language yet — use ＋ next to Version in the top bar to create the first one."
             edit_tab: "Write"
             preview_tab: "Preview"
             body_placeholder: "Write the article here (Markdown)…"

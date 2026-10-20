@@ -1225,6 +1225,13 @@ export default class IngenicDocManager extends Component {
                   {{i18n "admin.ingenic.documentation.workbench.empty_series"}}
                 </p>
               {{/if}}
+              {{#if this.selectedChip}}
+                {{#if this.noSelectedVersion}}
+                  <p class="ingenic-admin-note">
+                    {{i18n "admin.ingenic.documentation.workbench.empty_version"}}
+                  </p>
+                {{/if}}
+              {{/if}}
             </div>
           {{/if}}
         </section>

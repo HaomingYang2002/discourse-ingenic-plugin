@@ -82,6 +82,7 @@ zh_CN:
             pick_version: "请先选择一个版本。"
             empty_editor: "从左侧目录选择一篇文章开始编辑。"
             empty_series: "还没有产品系列，请先点右上角的 ＋ 新建系列。"
+            empty_version: "这个型号还没有当前语言的版本，请点顶栏「版本」旁的 ＋ 新建第一个版本。"
             edit_tab: "编辑"
             preview_tab: "预览"
             body_placeholder: "在这里写文章正文（Markdown）…"
